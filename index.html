@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SkyDog's GPS">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b0f14">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
@@ -69,6 +71,15 @@
   #chips::-webkit-scrollbar{display:none}
   .chip{flex:0 0 auto;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
     color:var(--text);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);user-select:none}
+  .chip.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
+
+  /* 🎣 fishing mode */
+  #fishchips{display:none;gap:7px;overflow-x:auto;padding:2px 2px 6px;pointer-events:auto;scrollbar-width:none}
+  #fishchips::-webkit-scrollbar{display:none}
+  #fishchips.on{display:flex}
+  #fishchips .chip{border-color:#1f4d6e;background:#0d1d2c}
+  .popbtn.fish{display:none;width:100%;margin-top:6px;background:#12314d;color:#bfe0ff}
+  body.fishing .popbtn.fish{display:block}
 
   /* ---------- Right FABs + zoom ---------- */
   #fabs{position:absolute;right:10px;top:50%;transform:translateY(-60%);z-index:1000;display:flex;flex-direction:column;gap:10px}
@@ -100,7 +111,7 @@
   #hud .mode{font-weight:800;font-size:14px;display:flex;gap:8px;align-items:center}
   #hud .rec{width:9px;height:9px;border-radius:50%;background:var(--danger);animation:blink 1.1s infinite}
   @keyframes blink{50%{opacity:.15}}
-  #stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+  #stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 6px;text-align:center}
   .stat b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
   .stat span{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
   #hudbtns{display:flex;gap:8px;margin-top:10px}
@@ -163,6 +174,7 @@
     </div>
   </div>
   <div id="chips"></div>
+  <div id="fishchips"></div>
 </div>
 
 <div id="fabs">
@@ -170,8 +182,10 @@
   <button class="fab" id="locatefab" title="My location">🎯</button>
   <button class="fab" id="savedfab" title="Saved adventures">📁</button>
   <button class="fab" id="keyfab" title="Map key">🔑</button>
+  <button class="fab" id="fishfab" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
   <button class="fab" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
   <button class="fab" id="clearfab" title="Clear pins">🧹</button>
+  <button class="fab" id="installfab" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
 </div>
 
 <div id="zoomctl">
@@ -192,6 +206,8 @@
       <div class="stat"><b id="st-dist">0.00</b><span>Miles</span></div>
       <div class="stat"><b id="st-speed">0.0</b><span>MPH</span></div>
       <div class="stat"><b id="st-max">0.0</b><span>Max MPH</span></div>
+      <div class="stat"><b id="st-elev">—</b><span>Elev FT</span></div>
+      <div class="stat"><b id="st-gain">0</b><span>Climb FT</span></div>
     </div>
     <div id="hudbtns">
       <button id="pausebtn">⏸ Pause</button>
@@ -202,6 +218,16 @@
 </div>
 
 <div class="backdrop" id="backdrop"></div>
+
+<div class="sheet" id="layersheet">
+  <div class="grabber"></div>
+  <h3>🗺️ Map Style</h3>
+  <div id="basegrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px"></div>
+  <h3 style="margin-top:16px">✨ Overlays — stack on top of any map</h3>
+  <div id="ovchips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+  <div class="lg-note">🏂 Ski &amp; Board Runs shows real runs color-coded by difficulty. 🌊 Lake Depths shades deeper water darker (killer for the Great Lakes). ⛰️ 3D Terrain makes hills &amp; valleys pop on any map. 🎣 Lake Depth Contours + ⚓ NOAA Depth Charts come on automatically in Fishing Mode (the 🎣 button) — or stack them here yourself.</div>
+  <button class="btn green" id="layerdone" style="width:100%;margin-top:14px">✔ Done</button>
+</div>
 
 <div class="sheet" id="modesheet">
   <div class="grabber"></div>
@@ -236,6 +262,28 @@
   <h3 id="legendtitle">🔑 Map Key</h3>
   <div id="legendbody"></div>
   <button class="btn green" id="legendwhat" style="width:100%;margin-top:14px">❓ What's this? — tap any spot on the map</button>
+</div>
+
+<div class="sheet" id="fishsheet">
+  <div class="grabber"></div>
+  <h3 id="fishtitle">🎣 Local Fishing Intel</h3>
+  <div id="fishbody"></div>
+</div>
+
+<div class="sheet" id="paysheet">
+  <div class="grabber"></div>
+  <h3>🎣 Fishing Pack</h3>
+  <div class="lg-row"><span class="lg-em">🗺</span><span><b>Real DNR depth contours</b> — see the drop-offs, holes &amp; flats on your lake</span></div>
+  <div class="lg-row"><span class="lg-em">⚓</span><span><b>NOAA depth charts</b> — soundings &amp; hazards on the Great Lakes &amp; coasts</span></div>
+  <div class="lg-row"><span class="lg-em">🛶</span><span><b>Launch intel</b> — every ramp paired with its nearest parking, surface &amp; fees</span></div>
+  <div class="lg-row"><span class="lg-em">📖</span><span><b>Local rules &amp; records</b> — regs, state records &amp; stocking for any lake you tap</span></div>
+  <a class="btn green" id="paysub" style="display:block;text-align:center;text-decoration:none;margin:14px 0 10px" target="_blank" rel="noopener">🔓 Subscribe — $4.99/mo</a>
+  <input class="field" id="paycode" placeholder="Have an unlock code? Enter it here" autocapitalize="characters" autocomplete="off">
+  <div class="btnrow">
+    <button class="btn blue" id="payunlock">✔ Unlock</button>
+    <button class="btn gray" id="paytrial">🎁 Try it free today</button>
+  </div>
+  <div class="lg-note">Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page &amp; receipt. Cancel anytime. GPS tracking, maps &amp; discovery stay 100% free forever.</div>
 </div>
 
 <div id="toast"></div>
@@ -285,12 +333,24 @@ function gmapsDir(lat, lng){ return 'https://www.google.com/maps/dir/?api=1&dest
    MAP ENGINE
    ===================================================================== */
 const BASES = {
-  street:{ name:'🗺️ Streets',  maxTile:19, attrib:'© OpenStreetMap contributors',
+  street:{ name:'🗺️ Streets',       maxTile:19, attrib:'© OpenStreetMap contributors',
     url:(z,x,y)=>'https://tile.openstreetmap.org/'+z+'/'+x+'/'+y+'.png' },
-  topo:{   name:'⛰️ Topo',     maxTile:17, attrib:'© OpenTopoMap · © OpenStreetMap',
+  topo:{   name:'⛰️ Topo Contours', maxTile:17, attrib:'© OpenTopoMap · © OpenStreetMap',
     url:(z,x,y)=>'https://'+('abc'[(x+y)%3])+'.tile.opentopomap.org/'+z+'/'+x+'/'+y+'.png' },
-  sat:{    name:'🛰️ Satellite',maxTile:19, attrib:'© Esri World Imagery',
-    url:(z,x,y)=>'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+y+'/'+x }
+  usgs:{   name:'🇺🇸 USGS Topo',     maxTile:16, attrib:'© USGS The National Map',
+    url:(z,x,y)=>'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/'+z+'/'+y+'/'+x },
+  sat:{    name:'🛰️ Satellite',     maxTile:19, attrib:'© Esri World Imagery',
+    url:(z,x,y)=>'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+y+'/'+x },
+  lake:{   name:'🌊 Lake Depths',    maxTile:13, attrib:'© Esri Ocean · GEBCO · NOAA',
+    url:(z,x,y)=>'https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/'+z+'/'+y+'/'+x }
+};
+const OVERLAYS = {
+  hillshade:{ name:'⛰️ 3D Terrain',       alpha:0.45, maxTile:16, attrib:'© Esri Hillshade',
+    url:(z,x,y)=>'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/'+z+'/'+y+'/'+x },
+  slopes:{    name:'🏂 Ski & Board Runs', alpha:1,    maxTile:18, attrib:'© waymarkedtrails.org',
+    url:(z,x,y)=>'https://tile.waymarkedtrails.org/slopes/'+z+'/'+x+'/'+y+'.png' },
+  hiking:{    name:'🥾 Hiking Routes',    alpha:1,    maxTile:18, attrib:'© waymarkedtrails.org',
+    url:(z,x,y)=>'https://tile.waymarkedtrails.org/hiking/'+z+'/'+x+'/'+y+'.png' }
 };
 
 class SDMap {
@@ -303,6 +363,7 @@ class SDMap {
     this.zoom = 7;
     this.minZoom = 3; this.maxZoom = 19;
     this.base = 'street';
+    this.overlays = new Set();   // active OVERLAYS keys
     this.tiles = new Map();      // url -> {img, ok, failed}
     this.markers = [];
     this.track = [];             // live/neon polyline points [{lat,lng}]
@@ -384,8 +445,12 @@ class SDMap {
   }
   setBase(key){
     this.base = key;
-    $('attrib').textContent = BASES[key].attrib;
     this.requestDraw();
+  }
+  toggleOverlay(key){
+    if(this.overlays.has(key)) this.overlays.delete(key); else this.overlays.add(key);
+    this.requestDraw();
+    return this.overlays.has(key);
   }
 
   /* ---- markers ---- */
@@ -432,8 +497,8 @@ class SDMap {
   setCircle(c){ this.circle = c; this.requestDraw(); }
 
   /* ---- tiles ---- */
-  _tile(z, x, y){
-    const url = BASES[this.base].url(z, x, y);
+  _tile(def, z, x, y){
+    const url = def.url(z, x, y);
     let t = this.tiles.get(url);
     if(t) return t;
     t = {img:new Image(), ok:false, failed:false};
@@ -449,7 +514,7 @@ class SDMap {
     };
     t.img.src = url;
     this.tiles.set(url, t);
-    if(this.tiles.size > 500){                      // simple LRU-ish eviction
+    if(this.tiles.size > 800){                      // simple LRU-ish eviction
       const firstKey = this.tiles.keys().next().value;
       this.tiles.delete(firstKey);
     }
@@ -459,6 +524,45 @@ class SDMap {
   requestDraw(){
     if(this._raf) return;
     this._raf = requestAnimationFrame(() => { this._raf = 0; this.draw(); });
+  }
+
+  _drawTileLayer(def, alpha, isBase, ox, oy, w, h){
+    const ctx = this.ctx;
+    ctx.globalAlpha = alpha;
+    const tz = clamp(Math.round(this.zoom), this.minZoom, def.maxTile);
+    const f = Math.pow(2, this.zoom - tz);          // handles over-zoom & pinch fractions
+    const tpx = 256 * f;
+    const n = Math.pow(2, tz);
+    const x0 = Math.floor(ox / tpx), x1 = Math.floor((ox + w) / tpx);
+    const y0 = Math.max(0, Math.floor(oy / tpx)), y1 = Math.min(n-1, Math.floor((oy + h) / tpx));
+    for(let ty = y0; ty <= y1; ty++){
+      for(let tx = x0; tx <= x1; tx++){
+        const wx = ((tx % n) + n) % n;
+        const dx = tx*tpx - ox, dy = ty*tpx - oy;
+        const t = this._tile(def, tz, wx, ty);
+        if(t.ok){
+          ctx.drawImage(t.img, dx, dy, tpx+0.5, tpx+0.5);
+        } else {
+          /* fallback: draw a loaded ancestor tile, cropped & scaled */
+          let drawn = false;
+          for(let k=1; k<=4 && tz-k >= this.minZoom; k++){
+            const pz = tz-k, px = wx >> k, py = ty >> k;
+            const pt = this.tiles.get(def.url(pz, px, py));
+            if(pt && pt.ok){
+              const sub = 256 / Math.pow(2,k);
+              const sx = (wx - px*Math.pow(2,k)) * sub, sy = (ty - py*Math.pow(2,k)) * sub;
+              ctx.drawImage(pt.img, sx, sy, sub, sub, dx, dy, tpx+0.5, tpx+0.5);
+              drawn = true; break;
+            }
+          }
+          if(!drawn && isBase){
+            ctx.fillStyle = '#121a25';
+            ctx.fillRect(dx, dy, tpx+0.5, tpx+0.5);
+          }
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 
   draw(){
@@ -472,43 +576,14 @@ class SDMap {
     const ox = cx - w/2, oy = cy - h/2;
     this._ox = ox; this._oy = oy; this._ws = ws;
 
-    /* tiles */
-    const maxTile = BASES[this.base].maxTile;
-    const tz = clamp(Math.round(this.zoom), this.minZoom, maxTile);
-    const f = Math.pow(2, this.zoom - tz);          // handles over-zoom & pinch fractions
-    const tpx = 256 * f;
-    const n = Math.pow(2, tz);
-    const x0 = Math.floor(ox / tpx), x1 = Math.floor((ox + w) / tpx);
-    const y0 = Math.max(0, Math.floor(oy / tpx)), y1 = Math.min(n-1, Math.floor((oy + h) / tpx));
+    /* tiles: base layer, then any active overlays stacked on top */
     ctx.imageSmoothingEnabled = true;
-    for(let ty = y0; ty <= y1; ty++){
-      for(let tx = x0; tx <= x1; tx++){
-        const wx = ((tx % n) + n) % n;
-        const dx = tx*tpx - ox, dy = ty*tpx - oy;
-        const t = this._tile(tz, wx, ty);
-        if(t.ok){
-          ctx.drawImage(t.img, dx, dy, tpx+0.5, tpx+0.5);
-        } else {
-          /* fallback: draw a loaded ancestor tile, cropped & scaled */
-          let drawn = false;
-          for(let k=1; k<=4 && tz-k >= this.minZoom; k++){
-            const pz = tz-k, px = wx >> k, py = ty >> k;
-            const purl = BASES[this.base].url(pz, px, py);
-            const pt = this.tiles.get(purl);
-            if(pt && pt.ok){
-              const sub = 256 / Math.pow(2,k);
-              const sx = (wx - px*Math.pow(2,k)) * sub, sy = (ty - py*Math.pow(2,k)) * sub;
-              ctx.drawImage(pt.img, sx, sy, sub, sub, dx, dy, tpx+0.5, tpx+0.5);
-              drawn = true; break;
-            }
-          }
-          if(!drawn){
-            ctx.fillStyle = '#121a25';
-            ctx.fillRect(dx, dy, tpx+0.5, tpx+0.5);
-          }
-        }
-      }
+    this._drawTileLayer(BASES[this.base], 1, true, ox, oy, w, h);
+    for(const key of this.overlays){
+      const def = OVERLAYS[key];
+      if(def) this._drawTileLayer(def, def.alpha || 1, false, ox, oy, w, h);
     }
+    ctx.globalAlpha = 1;
 
     /* accuracy circle */
     if(this.circle){
@@ -660,14 +735,43 @@ $('popupclose').addEventListener('click', e => { e.stopPropagation(); map.closeP
 $('zoomin').addEventListener('click', () => map._zoomAbout(map.w/2, map.h/2, 1));
 $('zoomout').addEventListener('click', () => map._zoomAbout(map.w/2, map.h/2, -1));
 
-/* layer cycle */
-const layerOrder = ['street','topo','sat'];
-let currentLayer = 0;
-$('layerfab').addEventListener('click', () => {
-  currentLayer = (currentLayer+1) % layerOrder.length;
-  map.setBase(layerOrder[currentLayer]);
-  toast(BASES[layerOrder[currentLayer]].name);
-});
+/* ---------- layer picker ---------- */
+function updateAttrib(){
+  const parts = [BASES[map.base].attrib];
+  map.overlays.forEach(k => { if(OVERLAYS[k]) parts.push(OVERLAYS[k].attrib); });
+  $('attrib').textContent = [...new Set(parts)].join(' · ');
+}
+function buildLayerSheet(){
+  const bg = $('basegrid');
+  bg.innerHTML = '';
+  Object.entries(BASES).forEach(([key, def]) => {
+    const b = document.createElement('button');
+    b.className = 'modebtn';
+    if(key === map.base) b.style.borderColor = 'var(--accent)';
+    const parts = def.name.split(' ');
+    b.innerHTML = '<span class="em">'+parts[0]+'</span><span class="nm">'+parts.slice(1).join(' ')+'</span>';
+    b.addEventListener('click', () => {
+      map.setBase(key); updateAttrib(); buildLayerSheet();
+      toast(def.name);
+    });
+    bg.appendChild(b);
+  });
+  const oc = $('ovchips');
+  oc.innerHTML = '';
+  Object.entries(OVERLAYS).forEach(([key, def]) => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (map.overlays.has(key) ? ' active' : '');
+    c.textContent = def.name;
+    c.addEventListener('click', () => {
+      const on = map.toggleOverlay(key);
+      updateAttrib(); buildLayerSheet();
+      toast(def.name + (on ? ' ON' : ' off'));
+    });
+    oc.appendChild(c);
+  });
+}
+$('layerfab').addEventListener('click', () => { buildLayerSheet(); openSheet('layersheet'); });
+$('layerdone').addEventListener('click', () => closeSheets());
 
 /* ---------- my location ---------- */
 let meMarker = null;
@@ -697,7 +801,8 @@ function popupHTML(name, sub, lat, lng, extra){
     + '<div class="popbtns">'
     + '<a class="popbtn nav" href="'+gmapsDir(lat,lng)+'" target="_blank" rel="noopener">🚗 Drive there</a>'
     + '<button class="popbtn go" onclick="window.sdFly('+lat+','+lng+')">🔍 Zoom in</button>'
-    + '</div>';
+    + '</div>'
+    + '<button class="popbtn fish" onclick="window.sdFishInfo('+lat+','+lng+')">📖 Local rules &amp; records</button>';
 }
 window.sdFly = (lat,lng) => map.flyTo(lat, lng, 16);
 
@@ -737,8 +842,17 @@ const CATS = [
   {id:'trails',   label:'🥾 Trails',      q:'way["highway"~"path|footway|track"]["name"]', em:'🥾'},
   {id:'parking',  label:'🅿️ Parking',     q:'nwr["amenity"="parking"]["access"!="private"]', em:'🅿️'},
   {id:'overlook', label:'🌄 Overlooks',   q:'nwr["tourism"="viewpoint"]', em:'🌄'},
-  {id:'beach',    label:'🏖️ Beaches',     q:'nwr["natural"="beach"]', em:'🏖️'},
-  {id:'boat',     label:'🛶 Boat Launch', q:'nwr["leisure"="slipway"]', em:'🛶'},
+  {id:'beach',    label:'🏖️ Beaches',     q:'nwr["natural"="beach"]', em:'🏖️',
+    detail:t=>[t.surface && ('surface: '+t.surface),
+               t.access && ('access: '+String(t.access).replace(/_/g,' ')),
+               t.supervised==='yes' && 'lifeguard',
+               t.dog==='leashed' && 'dogs on leash', t.dog==='no' && 'no dogs',
+               t.fee==='yes' && 'fee', t.operator].filter(Boolean).join(' · ')},
+  {id:'boat',     label:'🛶 Boat Launch', q:'nwr["leisure"="slipway"]', em:'🛶',
+    detail:t=>[t.surface && ('ramp: '+t.surface),
+               t.fee==='yes' ? 'launch fee' : (t.fee==='no' && 'free launch'),
+               t.access && ('access: '+String(t.access).replace(/_/g,' ')),
+               t['mooring'] && 'mooring', t.operator].filter(Boolean).join(' · ')},
   {id:'falls',    label:'🌊 Waterfalls',  q:'nwr["waterway"="waterfall"]', em:'🌊'},
   {id:'camp',     label:'🏕️ Camping',     q:'nwr["tourism"="camp_site"]', em:'🏕️'},
   {id:'picnic',   label:'🧺 Picnic',      q:'nwr["tourism"="picnic_site"]', em:'🧺'},
@@ -767,8 +881,9 @@ async function discover(cat){
       if(seen.has(key)) return; seen.add(key);
       const t = e.tags || {};
       const name = t.name || cat.label.replace(/^\S+\s/,'');
-      const sub = [t.surface, t.sac_scale && ('difficulty: '+String(t.sac_scale).replace(/_/g,' ')),
-                   t.fee==='yes' && 'fee', t.operator].filter(Boolean).join(' · ') || cat.id;
+      const sub = (cat.detail ? cat.detail(t)
+                   : [t.surface, t.sac_scale && ('difficulty: '+String(t.sac_scale).replace(/_/g,' ')),
+                      t.fee==='yes' && 'fee', t.operator].filter(Boolean).join(' · ')) || cat.id;
       map.addMarker({lat, lng, html:'<div class="poimark">'+cat.em+'</div>', group:'poi',
         popup: popupHTML(name, sub, lat, lng)});
       n++;
@@ -852,6 +967,44 @@ const LEGENDS = {
     [sw('background:#d9c9a3'), '<b>Tan</b> — sand, beaches &amp; dirt roads'],
     [sw('background:#8a8f96'), '<b>Gray</b> — pavement, rooftops &amp; rock'],
   ],
+  usgs: [
+    ['<div class="lg-h">Colors on the USGS Topo map (official U.S. survey)</div>'],
+    [sw(lineSw('#8a6b3f')), '<b>Brown lines</b> — elevation contours with heights in feet (closer = steeper!)'],
+    [sw('background:#c9e8bd'), '<b>Green</b> — forest &amp; woods'],
+    [sw('background:#a5cfe3'), '<b>Blue</b> — lakes, rivers &amp; swamps'],
+    [sw(lineSw('#444444', true)), '<b>Black dashed</b> — trails &amp; unpaved roads'],
+    [sw(lineSw('#e06060')), '<b>Red / pink</b> — highways &amp; major roads'],
+    [sw('background:#e8d5e8'), '<b>Purple / gray blocks</b> — buildings &amp; developed areas'],
+  ],
+  lake: [
+    ['<div class="lg-h">Reading Lake &amp; Ocean Depths (bathymetry)</div>'],
+    [sw('background:#d7e8f2'), '<b>Palest blue</b> — shallow water near shore'],
+    [sw('background:#9dc4e0'), '<b>Light blue</b> — moderate depth'],
+    [sw('background:#5b93c4'), '<b>Medium blue</b> — deep water'],
+    [sw('background:#1f4e79'), '<b>Dark blue</b> — the deepest spots (Great Lakes trenches show up great)'],
+    [sw('background:#e8e4d8'), '<b>Tan / white</b> — land (minimal detail — this map is all about the water)'],
+    ['<div class="lg-note">Depth numbers appear on the map at wider zooms. Best for the Great Lakes, coasts &amp; big water.</div>'],
+  ],
+};
+const OVERLAY_LEGENDS = {
+  hillshade: [
+    ['<div class="lg-h">⛰️ 3D Terrain overlay</div>'],
+    [sw('background:linear-gradient(135deg,#f0f0f0,#7a7a7a)'), '<b>Light-to-dark shading</b> — sunlit vs shadowed slopes; makes hills, valleys &amp; ridges pop'],
+  ],
+  slopes: [
+    ['<div class="lg-h">🏂 Ski &amp; Board Runs overlay</div>'],
+    [sw(lineSw('#2db92d')), '<b>Green runs</b> — easiest'],
+    [sw(lineSw('#3d7afd')), '<b>Blue runs</b> — intermediate'],
+    [sw(lineSw('#e03030')), '<b>Red runs</b> — advanced'],
+    [sw(lineSw('#111111')), '<b>Black runs</b> — expert only'],
+    [sw(lineSw('#f0a030')), '<b>Orange / yellow</b> — freeride &amp; backcountry routes'],
+    [sw(lineSw('#888888', true)), '<b>Gray dashed</b> — chairlifts &amp; tows'],
+  ],
+  hiking: [
+    ['<div class="lg-h">🥾 Hiking Routes overlay</div>'],
+    [sw(lineSw('#c93030')), '<b>Red lines</b> — major marked hiking routes (national &amp; regional trails)'],
+    [sw(lineSw('#d9884d')), '<b>Orange / lighter lines</b> — local marked loops &amp; connector trails'],
+  ],
 };
 const APP_SYMBOLS = [
   ['<div class="lg-h">SkyDog symbols</div>'],
@@ -864,16 +1017,300 @@ const APP_SYMBOLS = [
   [em('🔎'), 'Spot you identified with ❓'],
 ];
 function openLegend(){
-  const base = layerOrder[currentLayer];
+  const base = map.base;
   $('legendtitle').textContent = '🔑 Map Key — ' + BASES[base].name;
   let html = '';
   LEGENDS[base].forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
+  map.overlays.forEach(k => {
+    (OVERLAY_LEGENDS[k]||[]).forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
+  });
   APP_SYMBOLS.forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
-  html += '<div class="lg-note">Tip: hit 🗺️ to flip between Streets, Topo and Satellite — the key updates to match.</div>';
+  html += '<div class="lg-note">Tip: hit 🗺️ to change map style or stack overlays — this key updates to match whatever is on screen.</div>';
   $('legendbody').innerHTML = html;
   openSheet('legendsheet');
 }
 $('keyfab').addEventListener('click', openLegend);
+
+/* =====================================================================
+   🎣 FISHING MODE — the "Fishing Pack" (first paid feature)
+   Self-contained module: detailed lake-depth contours from FREE keyless
+   state-DNR ArcGIS services + NOAA ENC charts, richer launch/beach
+   discovery, and local rules/records link-outs. Fails soft everywhere:
+   no service coverage → falls back to the Esri 🌊 Lake Depths base.
+   ===================================================================== */
+
+/* ---- slippy tile (z,x,y) → EPSG:3857 bbox for ArcGIS dynamic export ---- */
+function tileMercBBox(z, x, y){
+  const M = 20037508.342789244, n = Math.pow(2, z);
+  return (x/n*2*M - M)+','+(M - (y+1)/n*2*M)+','+((x+1)/n*2*M - M)+','+(M - y/n*2*M);
+}
+function arcgisTileURL(base, layers, z, x, y){
+  return base+'/export?f=image&format=png32&transparent=true&size=256,256&dpi=96'
+    + '&bboxSR=3857&imageSR=3857&bbox='+tileMercBBox(z,x,y)
+    + (layers ? '&layers=show:'+layers : '');
+}
+const BLANK_TILE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/* ---- free, keyless lake-contour services (add more states here) ----
+   Each: bounds [southLat, westLng, northLat, eastLng], minZ = zoom where
+   contours start rendering, base = ArcGIS MapServer, layers = layer ids. */
+const FISH_DEPTH_SERVICES = [
+  { id:'mi', name:'Michigan DNR inland lake contours', attrib:'© Michigan DNR/EGLE bathymetry',
+    bounds:[41.6,-90.5,48.4,-82.1], minZ:10,
+    base:'https://gisagocss.state.mi.us/arcgis/rest/services/OpenData/hydro/MapServer', layers:'4' },
+  { id:'ia', name:'Iowa DNR lake bathymetry', attrib:'© Iowa DNR bathymetry',
+    bounds:[40.3,-96.7,43.6,-90.1], minZ:10,
+    base:'https://programs.iowadnr.gov/geospatial/rest/services/Recreation/fishing/MapServer', layers:'1' },
+];
+const NOAA_CHART = { name:'NOAA ENC depth charts', attrib:'© NOAA ENC', minZ:8,
+  base:'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/MapServer' };
+
+function fishServiceFor(c){
+  return FISH_DEPTH_SERVICES.find(s =>
+    c.lat>=s.bounds[0] && c.lng>=s.bounds[1] && c.lat<=s.bounds[2] && c.lng<=s.bounds[3]) || null;
+}
+
+/* register the two fishing overlays with the SDMap tile engine */
+OVERLAYS.fishdepth = { name:'🎣 Lake Depth Contours', alpha:0.95, maxTile:19,
+  attrib:'© State DNR bathymetry',
+  url:(z,x,y)=>{
+    const svc = fishServiceFor(map ? map.center : {lat:0,lng:0});
+    return (!svc || z < svc.minZ) ? BLANK_TILE : arcgisTileURL(svc.base, svc.layers, z, x, y);
+  } };
+OVERLAYS.fishchart = { name:'⚓ NOAA Depth Charts', alpha:0.8, maxTile:19,
+  attrib:'© NOAA ENC',
+  url:(z,x,y)=> z < NOAA_CHART.minZ ? BLANK_TILE : arcgisTileURL(NOAA_CHART.base, null, z, x, y) };
+
+/* legend entries — picked up automatically by openLegend() when active */
+OVERLAY_LEGENDS.fishdepth = [
+  ['<div class="lg-h">🎣 Lake Depth Contours (state DNR surveys)</div>'],
+  [sw(lineSw('#4aa3ff')), '<b>Blue contour lines</b> — equal-depth lines from state lake surveys; numbers are depth in feet'],
+  [sw(lineSw('#1f4e79')), '<b>Lines packed tight</b> — steep drop-off (fish highway!) · wide gaps = shallow flats'],
+  ['<div class="lg-note">Contours appear as you zoom into a surveyed lake (Michigan &amp; Iowa wired in so far — the registry takes more states). No survey here? The 🌊 Lake Depths base still shades deeper water darker.</div>'],
+];
+OVERLAY_LEGENDS.fishchart = [
+  ['<div class="lg-h">⚓ NOAA Depth Charts (Great Lakes &amp; coasts)</div>'],
+  [sw('background:#c7e5f5'), '<b>Light blue areas</b> — shallow water near shore'],
+  [sw('background:#ffffff;border:1px solid #9db6c9'), '<b>White areas</b> — deeper open water'],
+  [em('🔢'), '<b>Small numbers</b> — spot depths (soundings) &amp; depth-contour labels'],
+  ['<div class="lg-note">Official NOAA electronic-chart data: depth areas, soundings, buoys &amp; hazards on big water. Reference only — not for navigation.</div>'],
+];
+
+/* ---- richer boat-launch discovery: ramps + nearby parking in one scan ---- */
+async function discoverRamps(){
+  $('spinner').style.display='block'; $('spinner').textContent='Scanning launches + parking…';
+  const c = map.center;
+  const radius = Math.round(clamp(40000000 / Math.pow(2, map.zoom), 3000, 30000));
+  const q = '[out:json][timeout:25];('
+    + 'nwr["leisure"="slipway"](around:'+radius+','+c.lat+','+c.lng+');'
+    + 'nwr["amenity"="parking"]["access"!="private"](around:'+radius+','+c.lat+','+c.lng+');'
+    + ');out center 200;';
+  try{
+    const res = await fetch('https://overpass-api.de/api/interpreter', {method:'POST',
+      body:'data='+encodeURIComponent(q), headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const pts = (data.elements||[]).filter(e=>e.lat!=null||e.center).map(e=>({
+      lat:e.lat!=null?e.lat:e.center.lat, lng:e.lon!=null?e.lon:e.center.lon, t:e.tags||{}}));
+    const ramps = pts.filter(p=>p.t.leisure==='slipway');
+    const lots  = pts.filter(p=>p.t.amenity==='parking');
+    if(!ramps.length){ toast('No boat launches found nearby — zoom out or pan around'); return; }
+    const seen = new Set(), usedLots = new Set();
+    let n = 0;
+    ramps.forEach(r=>{
+      const key = r.lat.toFixed(4)+','+r.lng.toFixed(4);
+      if(seen.has(key)) return; seen.add(key);
+      let best=null, bestMi=Infinity;
+      lots.forEach(l=>{ const d=haversineMi(r,l); if(d<bestMi){ bestMi=d; best=l; } });
+      const sub = [r.t.surface && ('ramp: '+r.t.surface),
+                   r.t.fee==='yes' ? 'launch fee' : (r.t.fee==='no' && 'free launch'),
+                   r.t.access && ('access: '+String(r.t.access).replace(/_/g,' ')),
+                   r.t.operator].filter(Boolean).join(' · ') || 'boat launch';
+      const park = (best && bestMi<=0.5)
+        ? '🅿️ Parking '+(bestMi<0.06 ? 'right at the ramp' : '~'+Math.round(bestMi*5280)+' ft away')
+          + (best.t.surface ? ' ('+best.t.surface+')' : '') + (best.t.fee==='yes' ? ' · fee' : '')
+        : '🅿️ No mapped parking within ½ mile — check the aerial view';
+      map.addMarker({lat:r.lat, lng:r.lng, html:'<div class="poimark">🛶</div>', group:'poi',
+        popup: popupHTML(r.t.name||'Boat launch', sub, r.lat, r.lng, park)});
+      if(best && bestMi<=0.5 && !usedLots.has(best)){
+        usedLots.add(best);
+        map.addMarker({lat:best.lat, lng:best.lng, html:'<div class="poimark">🅿️</div>', group:'poi',
+          popup: popupHTML(best.t.name||'Launch parking',
+            [best.t.surface, best.t.fee==='yes' && 'fee'].filter(Boolean).join(' · ')||'parking', best.lat, best.lng)});
+      }
+      n++;
+    });
+    toast('🛶 '+n+' launch'+(n>1?'es':'')+' mapped with parking intel');
+  }catch(e){ toast('⚠️ Area scan failed — try again in a few seconds'); }
+  finally{ $('spinner').style.display='none'; }
+}
+
+/* ---- local rules / records / stocking link-outs (no keys, no scraping) ---- */
+const FISH_LINKS = {
+  'Michigan':     { home:'https://www.michigan.gov/dnr/things-to-do/fishing',
+                    records:'https://www.michigan.gov/dnr/things-to-do/fishing/master-angler',
+                    stocking:'https://www2.dnr.state.mi.us/fishstock/' },
+  'Wisconsin':    { home:'https://dnr.wisconsin.gov/topic/Fishing' },
+  'Minnesota':    { home:'https://www.dnr.state.mn.us/fishing/index.html' },
+  'Ohio':         { home:'https://ohiodnr.gov' },
+  'Indiana':      { home:'https://www.in.gov/dnr/fish-and-wildlife/' },
+  'Illinois':     { home:'https://ifishillinois.org' },
+  'Iowa':         { home:'https://www.iowadnr.gov/things-to-do/fishing' },
+  'New York':     { home:'https://dec.ny.gov' },
+  'Pennsylvania': { home:'https://www.fishandboat.com' },
+  'Florida':      { home:'https://myfwc.com/fishing/' },
+  'Texas':        { home:'https://tpwd.texas.gov/fishboat/fish/' },
+  'California':   { home:'https://wildlife.ca.gov/Fishing' },
+};
+const gsearch = q => 'https://www.google.com/search?q='+encodeURIComponent(q);
+
+async function openFishInfo(lat, lng){
+  $('spinner').style.display='block'; $('spinner').textContent='Looking up local fishing intel…';
+  try{
+    const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=12',
+      {headers:{'Accept':'application/json'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const d = await res.json();
+    const a = (d && d.address) || {};
+    const state  = a.state || '';
+    const county = a.county || '';
+    const water  = (d && (d.class==='water' || d.class==='natural' || d.type==='water' || d.type==='lake' || d.type==='bay'))
+                   ? (d.name || '') : '';
+    const btn = (href, label) =>
+      '<a class="btn blue" style="display:block;text-align:center;text-decoration:none;margin-bottom:9px" '
+      + 'target="_blank" rel="noopener" href="'+href+'">'+label+'</a>';
+    let html = '<div class="lg-note" style="margin:0 0 12px">📍 '
+      + esc([water, county, state].filter(Boolean).join(' · ') || (lat.toFixed(4)+', '+lng.toFixed(4)))
+      + '</div>';
+    if(!state){
+      html += '<div class="empty">Couldn’t pin down the state here — pan closer to shore and try again.</div>';
+    } else {
+      const L = FISH_LINKS[state] || {};
+      html += btn(L.home     || gsearch(state+' DNR official fishing page'), '🏛️ '+esc(state)+' official fishing page');
+      html += btn(gsearch(state+' fishing regulations current season'),      '📜 '+esc(state)+' fishing regulations');
+      html += btn(L.records  || gsearch(state+' state record fish list'),    '🏆 '+esc(state)+' record fish');
+      html += btn(L.stocking || gsearch(state+' fish stocking report database'), '🐟 '+esc(state)+' stocking reports');
+      if(water) html += btn(gsearch(water+' '+state+' fishing report depth map'),
+                            '🎣 '+esc(water)+' — reports &amp; depth maps');
+      html += '<div class="lg-note">Links open official state pages or a fresh search in a new tab — always check current regs before you fish.</div>';
+    }
+    $('fishtitle').textContent = '🎣 Fishing Intel — ' + (water || county || state || 'this spot');
+    $('fishbody').innerHTML = html;
+    openSheet('fishsheet');
+  }catch(e){ toast('⚠️ Couldn’t look that up — check connection'); }
+  finally{ $('spinner').style.display='none'; }
+}
+window.sdFishInfo = openFishInfo;
+
+/* ---- fishing discovery chips ---- */
+function buildFishChips(){
+  const host = $('fishchips'); host.innerHTML = '';
+  const mk = (label, fn) => { const b=document.createElement('button'); b.className='chip';
+    b.textContent=label; b.addEventListener('click', fn); host.appendChild(b); };
+  mk('🎣 Fishing Spots', ()=>discover(CATS.find(c=>c.id==='fish')));
+  mk('🛶 Ramps + 🅿️', discoverRamps);
+  mk('🏖️ Beaches', ()=>discover(CATS.find(c=>c.id==='beach')));
+  mk('📖 Rules & Records', ()=>openFishInfo(map.center.lat, map.center.lng));
+}
+buildFishChips();
+
+/* ---- 💰 Fishing Pack paywall ----------------------------------------
+   Freemium: everything the app did before stays free; Fishing Mode is
+   the paid upgrade. No backend, no keys: unlock codes verify offline
+   (checksum), payment runs through a Stripe payment link (paste below).
+   Storage note: trips remain in-memory-only by design — the ONLY things
+   remembered on-device are the unlock code + trial flag, via a guarded
+   try/catch store that degrades to session-only if storage is blocked. */
+const sdStore = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+};
+const FISHPACK = {
+  /* ↓ paste the Stripe payment link URL here when it exists (e.g. https://buy.stripe.com/…) */
+  STRIPE_URL: '',
+  PRICE: '$4.99/mo',
+  KEY: 'sd-fishpack', TRIAL_KEY: 'sd-fishpack-trial',
+  _session: false,
+  codeOK(c){
+    c = String(c||'').toUpperCase().replace(/\s+/g,'');
+    const m = /^FISH-([0-9A-Z]{3})([0-9A-Z])$/.exec(c);
+    if(!m) return false;
+    const sum = m[1].split('').reduce((a,ch)=>a+parseInt(ch,36),0);
+    return ((sum*7)%36).toString(36).toUpperCase() === m[2];
+  },
+  unlocked(){ return this._session || this.codeOK(sdStore.get(this.KEY)); },
+  redeem(c){
+    if(!this.codeOK(c)) return false;
+    this._session = true;
+    sdStore.set(this.KEY, String(c).toUpperCase().replace(/\s+/g,''));
+    return true;
+  },
+  trialUsed(){ return sdStore.get(this.TRIAL_KEY) === '1'; },
+  startTrial(){ this._session = true; sdStore.set(this.TRIAL_KEY,'1'); }
+};
+function openPaywall(){
+  const sub = $('paysub');
+  sub.textContent = '🔓 Subscribe — ' + FISHPACK.PRICE;
+  if(FISHPACK.STRIPE_URL) sub.href = FISHPACK.STRIPE_URL;
+  else sub.removeAttribute('href');
+  $('paytrial').style.display = FISHPACK.trialUsed() ? 'none' : '';
+  openSheet('paysheet');
+}
+$('paysub').addEventListener('click', e => {
+  if(!FISHPACK.STRIPE_URL){
+    e.preventDefault();
+    toast('💳 Checkout goes live any day — grab the free trial below!', 3600);
+  }
+});
+$('payunlock').addEventListener('click', () => {
+  if(FISHPACK.redeem($('paycode').value)){
+    $('paycode').value = '';
+    closeSheets();
+    setFishingMode(true);
+    toast('🎉 Fishing Pack unlocked — tight lines!', 3600);
+  } else {
+    toast('⚠️ That code didn’t check out — double-check it (looks like FISH-XXXX)', 3600);
+  }
+});
+$('paytrial').addEventListener('click', () => {
+  FISHPACK.startTrial();
+  closeSheets();
+  setFishingMode(true);
+  toast('🎁 Free taste of the Fishing Pack — enjoy today on the house!', 3600);
+});
+
+/* ---- the 🎣 toggle itself ---- */
+let fishingMode = false, fishPrevBase = null;
+function setFishingMode(on){
+  fishingMode = on;
+  document.body.classList.toggle('fishing', on);
+  $('fishfab').classList.toggle('active', on);
+  $('fishchips').classList.toggle('on', on);
+  if(on){
+    map.overlays.add('fishdepth'); map.overlays.add('fishchart');
+    const svc = fishServiceFor(map.center);
+    if(!svc && map.base!=='lake'){
+      fishPrevBase = map.base; map.setBase('lake');
+      toast('🎣 Fishing Mode ON — no state depth survey here, showing Esri lake depths', 4200);
+    } else {
+      toast('🎣 Fishing Mode ON — depth contours load as you zoom into a lake', 4200);
+    }
+  } else {
+    map.overlays.delete('fishdepth'); map.overlays.delete('fishchart');
+    if(fishPrevBase){ map.setBase(fishPrevBase); fishPrevBase = null; }
+    toast('Fishing Mode off');
+  }
+  map.requestDraw(); updateAttrib();
+}
+$('fishfab').addEventListener('click', () => {
+  if(!fishingMode && !FISHPACK.unlocked()){ openPaywall(); return; }
+  setFishingMode(!fishingMode);
+});
+
+/* test/debug handle for the fishing pack */
+window.__sdfish = { get mode(){ return fishingMode; }, setFishingMode, fishServiceFor,
+  FISH_DEPTH_SERVICES, NOAA_CHART, arcgisTileURL, tileMercBBox, BLANK_TILE,
+  openFishInfo, discoverRamps, FISHPACK, openPaywall };
 
 /* ---------- ❓ what's this? — tap the map, get an answer ---------- */
 let inspectMode = false;
@@ -895,20 +1332,30 @@ async function identify(lat, lng){
   $('spinner').style.display='block'; $('spinner').textContent='Checking that spot…';
   try{
     const z = Math.round(clamp(map.zoom, 10, 18));
-    const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom='+z,
-      {headers:{'Accept':'application/json'}});
+    const [res, elevRes] = await Promise.all([
+      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom='+z,
+        {headers:{'Accept':'application/json'}}),
+      fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lng).catch(()=>null)
+    ]);
     if(!res.ok) throw new Error('HTTP '+res.status);
     const d = await res.json();
+    let elevTxt = '';
+    try{
+      if(elevRes && elevRes.ok){
+        const ed = await elevRes.json();
+        if(ed.elevation && ed.elevation.length) elevTxt = '⛰ Elevation: '+Math.round(ed.elevation[0]*3.28084)+' ft — ';
+      }
+    }catch(e){}
     map.clearGroup('inspect');
     let title, sub, extra;
     if(d.error || !d.display_name){
-      title = 'Open water or unmapped wild'; sub = 'nothing mapped right here'; extra = 'Coordinates: '+lat.toFixed(5)+', '+lng.toFixed(5);
+      title = 'Open water or unmapped wild'; sub = 'nothing mapped right here'; extra = elevTxt + 'Coordinates: '+lat.toFixed(5)+', '+lng.toFixed(5);
     } else {
       const a = d.address || {};
       title = d.name || a.leisure || a.tourism || a.natural || a.road || a.hamlet || a.village || a.town || a.city
               || String(d.display_name).split(',')[0];
       sub = [d.class, d.type].filter(Boolean).join(' · ').replace(/_/g,' ');
-      extra = d.display_name;
+      extra = elevTxt + d.display_name;
     }
     const m = map.addMarker({lat, lng, html:'<div class="poimark">🔎</div>', group:'inspect',
       popup: popupHTML(title, sub, lat, lng, extra)});
@@ -918,7 +1365,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -946,8 +1393,9 @@ document.addEventListener('visibilitychange', () => {
 
 function startTracking(mode){
   if(!navigator.geolocation){ toast('⚠️ This device has no GPS'); return; }
-  trk = {mode, points:[], distMi:0, maxMph:0, startedAt:new Date().toISOString(),
-         elapsed:0, lastResume:Date.now(), paused:false};
+  trk = {mode, points:[], distMi:0, maxMph:0, gainM:0, lastAlt:null,
+         startedAt:new Date().toISOString(), elapsed:0, lastResume:Date.now(), paused:false};
+  $('st-elev').textContent = '—'; $('st-gain').textContent = '0';
   map.setTrack([]);
   $('hudmode').textContent = mode.em+' '+mode.name;
   $('hud').style.display = 'block';
@@ -984,6 +1432,14 @@ function onFix(p){
       $('st-speed').textContent = mph.toFixed(1);
     }
   }
+  /* elevation & climb (from GPS altitude when the device provides it) */
+  if(altitude != null && isFinite(altitude)){
+    $('st-elev').textContent = Math.round(altitude * 3.28084);
+    if(trk.lastAlt == null) trk.lastAlt = altitude;
+    else if(altitude > trk.lastAlt + 2){ trk.gainM += altitude - trk.lastAlt; trk.lastAlt = altitude; }
+    else if(altitude < trk.lastAlt - 2){ trk.lastAlt = altitude; }
+    $('st-gain').textContent = Math.round(trk.gainM * 3.28084);
+  }
   trk.points.push(pt);
   map.addTrackPoint({lat, lng});
   map.setView(lat, lng);                          // follow
@@ -1019,8 +1475,10 @@ $('stopbtn').addEventListener('click', () => {
   if(watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
   clearInterval(timerId);
   if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
+  const gainFt = Math.round(trk.gainM * 3.28084);
   $('savesummary').innerHTML = trk.mode.em+' <b>'+esc(trk.mode.name)+'</b> · '+trk.distMi.toFixed(2)
-    +' mi · '+fmtTime(trk.elapsed/1000)+' · max '+trk.maxMph.toFixed(1)+' mph · '+trk.points.length+' GPS points';
+    +' mi · '+fmtTime(trk.elapsed/1000)+' · max '+trk.maxMph.toFixed(1)+' mph'
+    +(gainFt > 0 ? ' · ⛰ +'+gainFt+' ft climb' : '')+' · '+trk.points.length+' GPS points';
   $('tripname').value = trk.mode.name+' — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
   openSheet('savesheet');
 });
@@ -1042,7 +1500,7 @@ $('savetripbtn').addEventListener('click', () => {
     id: Date.now()+'-'+trips.length,
     name: $('tripname').value.trim() || 'Untitled adventure',
     notes: $('tripnotes').value.trim(),
-    mode: trk.mode, points: trk.points, distMi: trk.distMi,
+    mode: trk.mode, points: trk.points, distMi: trk.distMi, gainM: trk.gainM,
     maxMph: trk.maxMph, elapsed: trk.elapsed, startedAt: trk.startedAt
   });
   $('tripnotes').value = '';
@@ -1077,7 +1535,9 @@ async function shareTrip(tr){
   const start = tr.points[0];
   const link = start ? '\n📍 '+start.lat.toFixed(5)+', '+start.lng.toFixed(5)
     +'\nhttps://www.google.com/maps/search/?api=1&query='+start.lat.toFixed(5)+','+start.lng.toFixed(5) : '';
-  const text = tr.mode.em+' '+tr.name+'\n'+mi+' mi in '+tm+' · max '+tr.maxMph.toFixed(1)+' mph'+link+'\n\n— tracked with SkyDog GPS 🐺';
+  const gFt = Math.round((tr.gainM||0) * 3.28084);
+  const text = tr.mode.em+' '+tr.name+'\n'+mi+' mi in '+tm+' · max '+tr.maxMph.toFixed(1)+' mph'
+    +(gFt > 0 ? ' · +'+gFt+' ft climb' : '')+link+'\n\n— tracked with SkyDog GPS 🐺';
   const gpx = tripGPX(tr);
   try{
     const file = new File([gpx], safeName(tr.name)+'.gpx', {type:'application/gpx+xml'});
@@ -1112,7 +1572,8 @@ function renderTrips(){
     d.className = 'trip';
     d.innerHTML =
       '<div class="t1"><span>'+tr.mode.em+' '+esc(tr.name)+'</span><span style="color:var(--accent)">'+tr.distMi.toFixed(2)+' mi</span></div>'
-      + '<div class="t2">'+fmtTime(tr.elapsed/1000)+' · max '+tr.maxMph.toFixed(1)+' mph · '
+      + '<div class="t2">'+fmtTime(tr.elapsed/1000)+' · max '+tr.maxMph.toFixed(1)+' mph'
+      + (Math.round((tr.gainM||0)*3.28084) > 0 ? ' · ⛰ +'+Math.round(tr.gainM*3.28084)+' ft' : '')+' · '
       + new Date(tr.startedAt).toLocaleString()+(tr.notes ? ' · '+esc(tr.notes) : '')+'</div>'
       + '<div class="btnrow">'
       + '<button class="btn blue" data-act="view">🗺 View</button>'
@@ -1133,6 +1594,44 @@ $('savedfab').addEventListener('click', () => { renderTrips(); openSheet('saveds
 /* boot status + debug handle (used by automated tests, harmless in production) */
 window.__sdmap = map;
 window.__SKYDOG_READY = true;
+
+/* ---- Add to phone (PWA install) ---- */
+(function(){
+  var btn = $('installfab');
+  if(!btn) return;
+  var deferred = null;
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+  // Android/Chrome/Edge: capture the native install prompt and reveal the button
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferred = e;
+    if(!standalone) btn.style.display = '';
+  });
+
+  // iOS Safari has no beforeinstallprompt — show the button with manual steps
+  if(isIOS && !standalone) btn.style.display = '';
+
+  btn.addEventListener('click', function(){
+    if(deferred){
+      deferred.prompt();
+      deferred.userChoice.then(function(c){
+        if(c && c.outcome === 'accepted') toast('Installing SkyDog’s GPS…');
+        deferred = null; btn.style.display = 'none';
+      });
+    } else if(isIOS){
+      toast('Tap the Share button, then “Add to Home Screen”', 4000);
+    } else {
+      toast('Open your browser menu and choose “Install app” / “Add to Home screen”', 4000);
+    }
+  });
+
+  window.addEventListener('appinstalled', function(){
+    btn.style.display = 'none';
+    toast('SkyDog’s GPS added to your phone 🐾');
+  });
+})();
 
 /* installable PWA when hosted (GitHub Pages); skipped for the downloaded single file */
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
