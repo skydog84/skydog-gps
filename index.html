@@ -72,6 +72,12 @@
   .chip{flex:0 0 auto;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
     color:var(--text);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);user-select:none}
   .chip.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
+  /* gentle yellow "I'm a button" glow (owner request 2026-07-18) */
+  @keyframes chipGlow{0%,100%{box-shadow:0 0 3px 0 rgba(255,214,64,.18)}50%{box-shadow:0 0 10px 2px rgba(255,214,64,.5)}}
+  .chip{animation:chipGlow 2.8s ease-in-out infinite}
+  .chip:nth-child(odd){animation-delay:-1.4s} /* stagger so the row shimmers, not blinks in unison */
+  .chip.active{animation:none} /* active state is already visually loud */
+  @media (prefers-reduced-motion: reduce){.chip{animation:none}}
 
   /* 🎣 fishing mode */
   #fishchips{display:none;gap:7px;overflow-x:auto;padding:2px 2px 6px;pointer-events:auto;scrollbar-width:none}
@@ -87,6 +93,10 @@
     font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);user-select:none}
   .fab:active{transform:scale(.94)}
   .fab.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
+  .fab{animation:chipGlow 2.8s ease-in-out infinite}
+  .fab:nth-child(even){animation-delay:-1.4s}
+  .fab.active{animation:none}
+  @media (prefers-reduced-motion: reduce){.fab{animation:none}}
 
   /* map key / legend */
   .lg-h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px}
@@ -857,6 +867,17 @@ const CATS = [
   {id:'camp',     label:'🏕️ Camping',     q:'nwr["tourism"="camp_site"]', em:'🏕️'},
   {id:'picnic',   label:'🧺 Picnic',      q:'nwr["tourism"="picnic_site"]', em:'🧺'},
   {id:'fish',     label:'🎣 Fishing',     q:'nwr["leisure"="fishing"]', em:'🎣'},
+  {id:'restroom', label:'🚻 Restrooms',   q:'nwr["amenity"="toilets"]["access"!="private"]', em:'🚻',
+    detail:t=>[t.fee==='yes' ? 'fee' : (t.fee==='no' && 'free'),
+               t.wheelchair==='yes' && '♿ accessible',
+               t.changing_table==='yes' && 'changing table',
+               t.opening_hours && ('hours: '+t.opening_hours), t.operator].filter(Boolean).join(' · ')},
+  {id:'icecream', label:'🍦 Ice Cream',   q:'nwr[~"^(amenity|shop)$"~"^ice_cream$"]', em:'🍦',
+    detail:t=>[t.opening_hours && ('hours: '+t.opening_hours),
+               t.website, t.phone || t['contact:phone']].filter(Boolean).join(' · ')},
+  {id:'market',   label:'🥕 Farmers Mkt', q:'nwr["amenity"="marketplace"]', em:'🥕',
+    detail:t=>[t.opening_hours && ('hours: '+t.opening_hours),
+               t.organic==='yes' && 'organic', t.website, t.operator].filter(Boolean).join(' · ')},
 ];
 async function discover(cat){
   $('spinner').style.display='block';

@@ -1,6 +1,6 @@
 /* SkyDog GPS service worker — caches the app shell so it opens instantly
    (and offline). Map tiles & live searches always go to the network. */
-const CACHE = 'skydog-gps-v5';
+const CACHE = 'skydog-gps-v6';
 const SHELL = ['.', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon.png'];
 
 self.addEventListener('install', e => {
