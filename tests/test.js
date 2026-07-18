@@ -203,6 +203,7 @@ async function main(){
   console.log('\n— 🎣 Depth service registry —');
   T('Michigan center → MI DNR service', await page.evaluate('(__sdfish.fishServiceFor({lat:44.76,lng:-85.62})||{}).id') === 'mi');
   T('Iowa center → IA DNR service', await page.evaluate('(__sdfish.fishServiceFor({lat:42.0,lng:-93.5})||{}).id') === 'ia');
+  T('Minnesota center → MN DNR service', await page.evaluate('(__sdfish.fishServiceFor({lat:46.2,lng:-93.65})||{}).id') === 'mn');
   T('Nevada center → no local service', await page.evaluate('__sdfish.fishServiceFor({lat:36.1,lng:-115.2})') === null);
   T('export URL shape correct', await page.evaluate(`(function(){
     const u = __sdfish.arcgisTileURL('https://x/MapServer', '4', 12, 1100, 1500);
@@ -216,6 +217,10 @@ async function main(){
   T('depth layer live at z12 in MI', await page.evaluate(`(function(){
     __sdmap.setView(44.76, -85.62, 12);
     return OVERLAYS.fishdepth.url(12, 100, 100).includes('gisagocss.state.mi.us');
+  })()`));
+  T('depth layer live at z12 in MN', await page.evaluate(`(function(){
+    __sdmap.setView(46.2, -93.65, 12);
+    return OVERLAYS.fishdepth.url(12, 100, 100).includes('enterprise.gisdata.mn.gov');
   })()`));
   T('NOAA chart blank below z8, live at z10', await page.evaluate(
     'OVERLAYS.fishchart.url(7,1,1) === __sdfish.BLANK_TILE && OVERLAYS.fishchart.url(10,1,1).includes("charttools.noaa.gov")'));
@@ -320,7 +325,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v7', sw.includes("skydog-gps-v7") && !sw.includes("skydog-gps-v6"));
+  T('sw.js cache bumped to v8', sw.includes("skydog-gps-v8") && !sw.includes("skydog-gps-v7"));
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',

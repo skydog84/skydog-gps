@@ -1082,6 +1082,11 @@ const FISH_DEPTH_SERVICES = [
   { id:'ia', name:'Iowa DNR lake bathymetry', attrib:'© Iowa DNR bathymetry',
     bounds:[40.3,-96.7,43.6,-90.1], minZ:10,
     base:'https://programs.iowadnr.gov/geospatial/rest/services/Recreation/fishing/MapServer', layers:'1' },
+  { id:'mn', name:'Minnesota DNR lake bathymetric contours', attrib:'© Minnesota DNR bathymetry',
+    bounds:[43.4,-97.3,49.4,-89.4], minZ:10,
+    base:'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr/water_lake_bathymetry/MapServer', layers:'0' },
+  /* Wisconsin: no statewide DNR bathy REST service exists (lake maps are scanned
+     PDFs per the WI State Cartographer's Office) — rechecked 2026-07-18. */
 ];
 const NOAA_CHART = { name:'NOAA ENC depth charts', attrib:'© NOAA ENC', minZ:8,
   base:'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/MapServer' };
@@ -1107,7 +1112,7 @@ OVERLAY_LEGENDS.fishdepth = [
   ['<div class="lg-h">🎣 Lake Depth Contours (state DNR surveys)</div>'],
   [sw(lineSw('#4aa3ff')), '<b>Blue contour lines</b> — equal-depth lines from state lake surveys; numbers are depth in feet'],
   [sw(lineSw('#1f4e79')), '<b>Lines packed tight</b> — steep drop-off (fish highway!) · wide gaps = shallow flats'],
-  ['<div class="lg-note">Contours appear as you zoom into a surveyed lake (Michigan &amp; Iowa wired in so far — the registry takes more states). No survey here? The 🌊 Lake Depths base still shades deeper water darker.</div>'],
+  ['<div class="lg-note">Contours appear as you zoom into a surveyed lake (Michigan, Minnesota &amp; Iowa wired in so far — the registry takes more states). No survey here? The 🌊 Lake Depths base still shades deeper water darker.</div>'],
 ];
 OVERLAY_LEGENDS.fishchart = [
   ['<div class="lg-h">⚓ NOAA Depth Charts (Great Lakes &amp; coasts)</div>'],
