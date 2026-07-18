@@ -178,7 +178,7 @@ async function main(){
   await page.click('#fishfab');
   T('locked: fab opens paywall, not mode', await page.evaluate('__sdfish.mode') === false
     && await page.$eval('#paysheet', (el) => el.classList.contains('open')));
-  T('subscribe btn safe while Stripe URL unset', await page.$eval('#paysub', (el) => !el.hasAttribute('href')));
+  T('subscribe btn wired to live Stripe link', await page.$eval('#paysub', (el) => (el.getAttribute('href') || '').startsWith('https://buy.stripe.com/')));
   T('free trial offered', await page.$eval('#paytrial', (el) => getComputedStyle(el).display !== 'none'));
   T('checksum rejects bad codes', await page.evaluate(
     '!__sdfish.FISHPACK.codeOK("FISH-AAAA") && !__sdfish.FISHPACK.codeOK("hello") && !__sdfish.FISHPACK.codeOK("")'));
@@ -320,7 +320,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v6', sw.includes("skydog-gps-v6") && !sw.includes("skydog-gps-v5"));
+  T('sw.js cache bumped to v7', sw.includes("skydog-gps-v7") && !sw.includes("skydog-gps-v6"));
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',
