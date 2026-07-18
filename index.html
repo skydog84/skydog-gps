@@ -287,7 +287,8 @@
   <div class="lg-row"><span class="lg-em">⚓</span><span><b>NOAA depth charts</b> — soundings &amp; hazards on the Great Lakes &amp; coasts</span></div>
   <div class="lg-row"><span class="lg-em">🛶</span><span><b>Launch intel</b> — every ramp paired with its nearest parking, surface &amp; fees</span></div>
   <div class="lg-row"><span class="lg-em">📖</span><span><b>Local rules &amp; records</b> — regs, state records &amp; stocking for any lake you tap</span></div>
-  <a class="btn green" id="paysub" style="display:block;text-align:center;text-decoration:none;margin:14px 0 10px" target="_blank" rel="noopener">🔓 Subscribe — $4.99/mo</a>
+  <a class="btn green" id="paysub" style="display:block;text-align:center;text-decoration:none;margin:14px 0 8px" target="_blank" rel="noopener">🔓 Subscribe — $4.99/mo</a>
+  <a class="btn blue" id="paysubyr" style="display:block;text-align:center;text-decoration:none;margin:0 0 10px" target="_blank" rel="noopener">⭐ Year pass — $29/yr (save 52%)</a>
   <input class="field" id="paycode" placeholder="Have an unlock code? Enter it here" autocapitalize="characters" autocomplete="off">
   <div class="btnrow">
     <button class="btn blue" id="payunlock">✔ Unlock</button>
@@ -1076,6 +1077,13 @@ const BLANK_TILE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALA
    Each: bounds [southLat, westLng, northLat, eastLng], minZ = zoom where
    contours start rendering, base = ArcGIS MapServer, layers = layer ids. */
 const FISH_DEPTH_SERVICES = [
+  /* ORDER MATTERS: state boxes overlap and find() takes the first hit.
+     IL sits first so its northern strip (which also falls inside MI's box)
+     resolves to the Illinois service; MI stays ahead of MN so the western
+     UP (inside MN's box) keeps Michigan's own surveys. */
+  { id:'il', name:'Illinois DNR lake depth contours', attrib:'© Illinois DNR OWR bathymetry',
+    bounds:[36.9,-91.6,42.6,-87.0], minZ:14,   /* layer minScale 1:24k → contours render deep-zoom only */
+    base:'https://maps.dnr.illinois.gov/geoservices/rest/services/WaterResources/LakeDepthAndCapacity/MapServer', layers:'0' },
   { id:'mi', name:'Michigan DNR inland lake contours', attrib:'© Michigan DNR/EGLE bathymetry',
     bounds:[41.6,-90.5,48.4,-82.1], minZ:10,
     base:'https://gisagocss.state.mi.us/arcgis/rest/services/OpenData/hydro/MapServer', layers:'4' },
@@ -1086,7 +1094,12 @@ const FISH_DEPTH_SERVICES = [
     bounds:[43.4,-97.3,49.4,-89.4], minZ:10,
     base:'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr/water_lake_bathymetry/MapServer', layers:'0' },
   /* Wisconsin: no statewide DNR bathy REST service exists (lake maps are scanned
-     PDFs per the WI State Cartographer's Office) — rechecked 2026-07-18. */
+     PDFs per the WI State Cartographer's Office) — rechecked 2026-07-18.
+     Ohio: per-lake feature services on gis-odnr.opendata.arcgis.com only — no
+     statewide contour MapServer to register (checked 2026-07-18).
+     Indiana: candidate maps.indiana.edu/arcgis/rest/services/Hydrology/
+     Water_Bodies_Lakes_Bathymetry/MapServer layer 0 (IDNR selected lakes) —
+     server UNREACHABLE (connect timeout) when checked 2026-07-18; retry later. */
 ];
 const NOAA_CHART = { name:'NOAA ENC depth charts', attrib:'© NOAA ENC', minZ:8,
   base:'https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/ENCOnline/MapServer/exts/MaritimeChartService/MapServer' };
@@ -1112,7 +1125,7 @@ OVERLAY_LEGENDS.fishdepth = [
   ['<div class="lg-h">🎣 Lake Depth Contours (state DNR surveys)</div>'],
   [sw(lineSw('#4aa3ff')), '<b>Blue contour lines</b> — equal-depth lines from state lake surveys; numbers are depth in feet'],
   [sw(lineSw('#1f4e79')), '<b>Lines packed tight</b> — steep drop-off (fish highway!) · wide gaps = shallow flats'],
-  ['<div class="lg-note">Contours appear as you zoom into a surveyed lake (Michigan, Minnesota &amp; Iowa wired in so far — the registry takes more states). No survey here? The 🌊 Lake Depths base still shades deeper water darker.</div>'],
+  ['<div class="lg-note">Contours appear as you zoom into a surveyed lake (Michigan, Minnesota, Iowa &amp; Illinois wired in so far — the registry takes more states). Tap the water in Fishing Mode to read the depth. No survey here? The 🌊 Lake Depths base still shades deeper water darker.</div>'],
 ];
 OVERLAY_LEGENDS.fishchart = [
   ['<div class="lg-h">⚓ NOAA Depth Charts (Great Lakes &amp; coasts)</div>'],
@@ -1254,7 +1267,9 @@ const sdStore = {
 const FISHPACK = {
   /* ↓ paste the Stripe payment link URL here when it exists (e.g. https://buy.stripe.com/…) */
   STRIPE_URL: 'https://buy.stripe.com/9B67sKcMI4hK41T7R38AE01',
-  PRICE: '$4.99/mo',
+  /* annual price point — same product, second Stripe payment link */
+  STRIPE_URL_ANNUAL: 'https://buy.stripe.com/bJe00i4gccOgaqhefr8AE02',
+  PRICE: '$4.99/mo', PRICE_ANNUAL: '$29/yr',
   KEY: 'sd-fishpack', TRIAL_KEY: 'sd-fishpack-trial',
   _session: false,
   codeOK(c){
@@ -1279,11 +1294,21 @@ function openPaywall(){
   sub.textContent = '🔓 Subscribe — ' + FISHPACK.PRICE;
   if(FISHPACK.STRIPE_URL) sub.href = FISHPACK.STRIPE_URL;
   else sub.removeAttribute('href');
+  const subyr = $('paysubyr');
+  subyr.textContent = '⭐ Year pass — ' + FISHPACK.PRICE_ANNUAL + ' (save 52%)';
+  if(FISHPACK.STRIPE_URL_ANNUAL){ subyr.href = FISHPACK.STRIPE_URL_ANNUAL; subyr.style.display = 'block'; }
+  else { subyr.removeAttribute('href'); subyr.style.display = 'none'; }
   $('paytrial').style.display = FISHPACK.trialUsed() ? 'none' : '';
   openSheet('paysheet');
 }
 $('paysub').addEventListener('click', e => {
   if(!FISHPACK.STRIPE_URL){
+    e.preventDefault();
+    toast('💳 Checkout goes live any day — grab the free trial below!', 3600);
+  }
+});
+$('paysubyr').addEventListener('click', e => {
+  if(!FISHPACK.STRIPE_URL_ANNUAL){
     e.preventDefault();
     toast('💳 Checkout goes live any day — grab the free trial below!', 3600);
   }
@@ -1305,6 +1330,52 @@ $('paytrial').addEventListener('click', () => {
   toast('🎁 Free taste of the Fishing Pack — enjoy today on the house!', 3600);
 });
 
+/* ---- 🎣 depth-at-tap: ask the state DNR survey what's under your tap ----
+   Uses the same keyless ArcGIS service as the contour overlay, via the
+   layer /query endpoint with a ~150 m buffer (live-verified MI/MN/IA
+   2026-07-18 — /identify returns empty on these servers). Attribute names
+   differ per state (DEPTH / depth+abs_depth / CONTOUR), so we scan for
+   anything depth/contour-ish and report the deepest contour nearby. */
+let depthBusy = false;
+async function showDepthAt(lat, lng){
+  if(depthBusy) return;
+  /* state boxes overlap near borders — try every covering service in order */
+  const candidates = FISH_DEPTH_SERVICES.filter(s =>
+    lat>=s.bounds[0] && lng>=s.bounds[1] && lat<=s.bounds[2] && lng<=s.bounds[3]);
+  if(!candidates.length) return;
+  depthBusy = true;
+  try{
+    for(const svc of candidates){
+      let data;
+      try{
+        const url = svc.base + '/' + svc.layers.split(',')[0]
+          + '/query?f=json&geometryType=esriGeometryPoint&inSR=4326'
+          + '&geometry=' + lng.toFixed(6) + ',' + lat.toFixed(6)
+          + '&distance=150&units=esriSRUnit_Meter&outFields=*&returnGeometry=false&resultRecordCount=50';
+        const res = await fetch(url, {headers:{'Accept':'application/json'}});
+        if(!res.ok) continue;
+        data = await res.json();
+      }catch(e){ continue; }   /* one state down ≠ feature down */
+      let best = null, lake = '';
+      (data.features || []).forEach(f => {
+        const at = f.attributes || {};
+        Object.keys(at).forEach(k => {
+          if(/lake_?name/i.test(k) && at[k] && !lake) lake = String(at[k]).trim();
+          if(!/depth|contour/i.test(k)) return;
+          const v = Math.abs(parseFloat(at[k]));
+          if(isFinite(v) && v > 0 && (best === null || v > best)) best = v;
+        });
+      });
+      if(best !== null){
+        toast('🎣 ' + (lake ? lake + ': ' : '') + '~' + Math.round(best)
+          + ' ft — deepest surveyed contour near your tap (' + svc.attrib.replace('© ','') + ')', 4600);
+        return;
+      }
+    }
+    if(map.zoom >= 12) toast('🎣 No surveyed contour near that spot — try a mapped lake', 3000);
+  }finally{ depthBusy = false; }
+}
+
 /* ---- the 🎣 toggle itself ---- */
 let fishingMode = false, fishPrevBase = null;
 function setFishingMode(on){
@@ -1319,7 +1390,7 @@ function setFishingMode(on){
       fishPrevBase = map.base; map.setBase('lake');
       toast('🎣 Fishing Mode ON — no state depth survey here, showing Esri lake depths', 4200);
     } else {
-      toast('🎣 Fishing Mode ON — depth contours load as you zoom into a lake', 4200);
+      toast('🎣 Fishing Mode ON — zoom into a lake for contours, tap the water to read the depth', 4200);
     }
   } else {
     map.overlays.delete('fishdepth'); map.overlays.delete('fishchart');
@@ -1336,7 +1407,7 @@ $('fishfab').addEventListener('click', () => {
 /* test/debug handle for the fishing pack */
 window.__sdfish = { get mode(){ return fishingMode; }, setFishingMode, fishServiceFor,
   FISH_DEPTH_SERVICES, NOAA_CHART, arcgisTileURL, tileMercBBox, BLANK_TILE,
-  openFishInfo, discoverRamps, FISHPACK, openPaywall };
+  openFishInfo, discoverRamps, FISHPACK, openPaywall, showDepthAt };
 
 /* ---------- ❓ what's this? — tap the map, get an answer ---------- */
 let inspectMode = false;
@@ -1349,9 +1420,9 @@ $('whatfab').addEventListener('click', () => setInspect(!inspectMode));
 $('legendwhat').addEventListener('click', () => { closeSheets(); setInspect(true); });
 
 map.onTap = ll => {
-  if(!inspectMode) return false;
-  identify(ll.lat, ll.lng);
-  return true;
+  if(inspectMode){ identify(ll.lat, ll.lng); return true; }
+  if(fishingMode) showDepthAt(ll.lat, ll.lng);   /* depth readout rides along, never blocks */
+  return false;
 };
 
 async function identify(lat, lng){
