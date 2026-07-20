@@ -1696,16 +1696,14 @@ $('savedfab').addEventListener('click', () => { renderTrips(); openSheet('saveds
    ============================================================ */
 const SD_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
-/* SkyDog GPS AdMob IDs.
-   ⚠️ PLACEHOLDERS: Google's official sample IDs — safe for device testing.
-   Swap in the real "SkyDog GPS" AdMob app/banner IDs before shipping. */
+/* SkyDog GPS AdMob IDs — REAL production IDs (AdMob app "SKYDOG GPS"). */
 const ADMOB_IDS = {
-  appId:  "ca-app-pub-3940256099942544~1458002511",   /* TODO real GPS App ID */
-  banner: "ca-app-pub-3940256099942544/2934735716"    /* TODO real GPS banner unit */
+  appId:  "ca-app-pub-5768994898556694~5508912318",
+  banner: "ca-app-pub-5768994898556694/6215489322"
 };
-/* ⚠️ TESTING SWITCH — LEAVE TRUE UNTIL THE FINAL UPLOAD BUILD.
-   true = Google TEST ads (safe). false = REAL ads — never tap your own. */
-const ADMOB_TESTING = true;
+/* TESTING SWITCH — false for App Store builds (REAL ads — never tap your own).
+   Flip to true for local device testing. */
+const ADMOB_TESTING = false;
 
 function sdNativeAdMob(){
   return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) || null;
