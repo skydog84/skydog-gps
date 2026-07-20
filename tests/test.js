@@ -325,7 +325,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v8', sw.includes("skydog-gps-v8") && !sw.includes("skydog-gps-v7"));
+  T('sw.js cache bumped to v10', sw.includes("skydog-gps-v10") && !sw.includes("skydog-gps-v9"));
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',

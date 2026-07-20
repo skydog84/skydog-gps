@@ -1,0 +1,9 @@
+{
+  "appId": "com.skydog.skygps",
+  "appName": "SkyDog GPS",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0b0f14"
+  }
+}

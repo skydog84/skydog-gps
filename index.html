@@ -18,7 +18,8 @@
     --text:#e8f0f8; --dim:#8fa3b8; --accent:#35e08a; --accent2:#25b56d;
     --danger:#ff5a5a; --warn:#ffb03a; --blue:#4aa3ff;
     --shadow:0 8px 30px rgba(0,0,0,.55);
-    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    --adh:0px; /* native ad-banner height — set by SkyGPSAds inside the iOS app, always 0 on the web */
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:calc(env(safe-area-inset-bottom,0px) + var(--adh));
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);
@@ -1687,6 +1688,153 @@ function renderTrips(){
   });
 }
 $('savedfab').addEventListener('click', () => { renderTrips(); openSheet('savedsheet'); });
+
+/* ============================================================
+   📱 NATIVE (iOS app) monetization — AdMob banner + StoreKit IAP.
+   Runs ONLY inside the Capacitor app; a plain browser hits none of it.
+   Web keeps the Stripe paywall above exactly as-is.
+   ============================================================ */
+const SD_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+/* SkyDog GPS AdMob IDs.
+   ⚠️ PLACEHOLDERS: Google's official sample IDs — safe for device testing.
+   Swap in the real "SkyDog GPS" AdMob app/banner IDs before shipping. */
+const ADMOB_IDS = {
+  appId:  "ca-app-pub-3940256099942544~1458002511",   /* TODO real GPS App ID */
+  banner: "ca-app-pub-3940256099942544/2934735716"    /* TODO real GPS banner unit */
+};
+/* ⚠️ TESTING SWITCH — LEAVE TRUE UNTIL THE FINAL UPLOAD BUILD.
+   true = Google TEST ads (safe). false = REAL ads — never tap your own. */
+const ADMOB_TESTING = true;
+
+function sdNativeAdMob(){
+  return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) || null;
+}
+function sdNativeStore(){
+  return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NativePurchases) || null;
+}
+
+const SkyGPSAds = {
+  showing: false,
+  setInset(px){ document.documentElement.style.setProperty('--adh', (px|0) + 'px'); },
+  async init(){
+    const AdMob = sdNativeAdMob();
+    if (!AdMob){ console.log('[SkyGPSAds] Browser mode — native ads not attached.'); return; }
+    if (FISHPACK.unlocked()){ console.log('[SkyGPSAds] Fishing Pack owned — no ads.'); return; }
+    try{
+      await AdMob.initialize({ initializeForTesting: ADMOB_TESTING });
+      try{ await AdMob.requestTrackingAuthorization(); }catch(e){}
+      try{
+        AdMob.addListener('bannerAdSizeChanged', s => {
+          const h = s && s.height ? Math.min(Math.max(s.height, 0), 140) : 0;
+          if (h > 0) SkyGPSAds.setInset(h);
+        });
+      }catch(e){}
+      await AdMob.showBanner({ adId: ADMOB_IDS.banner, adSize: 'ADAPTIVE_BANNER',
+        position: 'BOTTOM_CENTER', isTesting: ADMOB_TESTING });
+      this.showing = true;
+      this.setInset(62);            /* fallback inset until the size event lands */
+      console.log('[SkyGPSAds] banner up (' + (ADMOB_TESTING ? 'TEST' : 'LIVE') + ').');
+    }catch(e){ console.log('[SkyGPSAds] init failed:', e); }
+  },
+  async remove(){
+    this.setInset(0);
+    const AdMob = sdNativeAdMob();
+    if (AdMob){ try{ await AdMob.hideBanner(); }catch(e){} try{ await AdMob.removeBanner(); }catch(e){} }
+    this.showing = false;
+  }
+};
+
+/* ---- Fishing Pack as a ONE-TIME App Store purchase (unlocks pack + kills ads) ---- */
+const IAP_PRODUCT_ID = 'com.skydog.skygps.fishingpack';
+const IAP_KEY = 'sd-fishpack-iap';
+
+/* teach FISHPACK about the App Store unlock without touching the web paths */
+const _fpUnlockedWeb = FISHPACK.unlocked.bind(FISHPACK);
+FISHPACK.unlocked = function(){ return sdStore.get(IAP_KEY) === '1' || _fpUnlockedWeb(); };
+
+async function sdGrantFishpack(msg){
+  sdStore.set(IAP_KEY, '1');
+  FISHPACK._session = true;
+  await SkyGPSAds.remove();
+  closeSheets();
+  setFishingMode(true);
+  toast(msg || '🎉 Fishing Pack unlocked — tight lines!', 3600);
+}
+
+const SkyGPSIAP = {
+  price: '$4.99',
+  async init(){
+    const Store = sdNativeStore();
+    if (!Store) return;
+    try{
+      const res = await Store.getProducts({ productIdentifiers: [IAP_PRODUCT_ID], productType: 'inapp' });
+      const p = res && res.products && res.products[0];
+      if (p && p.priceString) this.price = p.priceString;
+    }catch(e){ console.log('[SkyGPSIAP] price load failed:', e); }
+    /* silent auto-restore: reinstall / new phone → unlock without a tap */
+    if (!(sdStore.get(IAP_KEY) === '1') && Store.getPurchases){
+      try{
+        const owned = await Store.getPurchases({ onlyCurrentEntitlements: true });
+        if (owned && owned.purchases && owned.purchases.some(t => t.productIdentifier === IAP_PRODUCT_ID)){
+          sdStore.set(IAP_KEY, '1'); FISHPACK._session = true;
+          await SkyGPSAds.remove();
+          console.log('[SkyGPSIAP] existing purchase found — restored automatically.');
+        }
+      }catch(e){ console.log('[SkyGPSIAP] entitlement check failed:', e); }
+    }
+  },
+  async buy(){
+    const Store = sdNativeStore();
+    if (!Store || !Store.purchaseProduct){ toast('Purchases work in the App Store version'); return; }
+    try{
+      /* re-buying an owned non-consumable re-unlocks at $0, so this doubles as restore */
+      await Store.purchaseProduct({ productIdentifier: IAP_PRODUCT_ID, productType: 'inapp', quantity: 1 });
+      await sdGrantFishpack('🎉 Fishing Pack unlocked forever — ads gone, tight lines!');
+    }catch(e){ console.log('[SkyGPSIAP] purchase failed/cancelled:', e); }
+  },
+  async restore(){
+    const Store = sdNativeStore();
+    if (!Store || !Store.restorePurchases){ toast('Restore works in the App Store version'); return; }
+    try{
+      await Store.restorePurchases();
+      const owned = await Store.getPurchases({ onlyCurrentEntitlements: true });
+      if (owned && owned.purchases && owned.purchases.some(t => t.productIdentifier === IAP_PRODUCT_ID)){
+        await sdGrantFishpack('✔ Purchases restored — Fishing Pack unlocked!');
+      } else {
+        toast('No previous purchase found on this Apple ID');
+      }
+    }catch(e){ console.log('[SkyGPSIAP] restore failed:', e); toast("Restore didn't finish — try again"); }
+  }
+};
+
+if (SD_NATIVE){
+  /* Apple 3.1.1: no external purchase links in the app — swap the Stripe
+     paywall for the one-time App Store purchase. Web build untouched. */
+  const _openPaywallWeb = openPaywall;
+  openPaywall = function(){
+    _openPaywallWeb();
+    const sub = $('paysub');
+    sub.removeAttribute('href'); sub.removeAttribute('target');
+    sub.textContent = '🔓 Unlock forever — ' + SkyGPSIAP.price + ' (one-time, removes ads)';
+    $('paysubyr').style.display = 'none';
+    $('paycode').style.display = 'none';
+    $('payunlock').style.display = 'none';
+    const note = document.querySelector('#paysheet .lg-note');
+    if (note) note.textContent = 'One-time purchase through the App Store — unlocks the Fishing Pack forever and removes ads. GPS tracking, maps & discovery stay 100% free forever.';
+    if (!$('payrestore')){
+      const r = document.createElement('button');
+      r.id = 'payrestore'; r.className = 'btn gray';
+      r.style.cssText = 'display:block;width:100%;margin-top:8px';
+      r.textContent = '↻ Restore Purchases';
+      r.addEventListener('click', () => SkyGPSIAP.restore());
+      document.querySelector('#paysheet .btnrow').insertAdjacentElement('afterend', r);
+    }
+  };
+  $('paysub').addEventListener('click', e => { e.preventDefault(); SkyGPSIAP.buy(); });
+  $('paysubyr').addEventListener('click', e => { e.preventDefault(); });
+  SkyGPSIAP.init().then(() => SkyGPSAds.init());
+}
 
 /* boot status + debug handle (used by automated tests, harmless in production) */
 window.__sdmap = map;
