@@ -43,6 +43,18 @@ const FIX_NOMINATIM_MI = {
   address: { state: 'Michigan', county: 'Grand Traverse County', country: 'United States' },
 };
 
+/* FAA UASFM grid: two square cells near Traverse City — one 0-ft (no-fly), one 400-ft */
+const FIX_UASFM = { features: [
+  { attributes: { OBJECTID: 1, CEILING: 0, UNIT: 'FT', APT1_NAME: 'Cherry Capital', APT1_FAAID: 'TVC', APT1_LAANC: 1, AIRSPACE_1: 'D' },
+    geometry: { rings: [[[-85.60, 44.74], [-85.55, 44.74], [-85.55, 44.78], [-85.60, 44.78], [-85.60, 44.74]]] } },
+  { attributes: { OBJECTID: 2, CEILING: 400, UNIT: 'FT', APT1_NAME: 'Cherry Capital', APT1_FAAID: 'TVC', APT1_LAANC: 1, AIRSPACE_1: 'D' },
+    geometry: { rings: [[[-85.55, 44.74], [-85.50, 44.74], [-85.50, 44.78], [-85.55, 44.78], [-85.55, 44.74]]] } },
+] };
+const FIX_FIXEDSITES = { features: [
+  { attributes: { OBJECTID: 10, SITE_NAME: 'TC Flyers Field', CITY: 'Traverse City', STATE: 'MI', CEILING: 400, LATITUDE: 44.77, LONGITUDE: -85.60 } },
+] };
+const FIX_WEATHER = { current: { temperature_2m: 72.4, wind_speed_10m: 8.3, wind_direction_10m: 270, wind_gusts_10m: 12.1 } };
+
 /* minimal firebase compat stub (served for both firebase-app & firebase-database) */
 const FB_STUB = `window.firebase = window.firebase || (function(){
   function mkRef(path){ return {
@@ -96,6 +108,7 @@ async function main(){
   const ctx = await browser.newContext({ viewport: { width: 420, height: 850 } });
 
   let overpassMode = 'beaches';
+  let faaHits = 0;
   await ctx.route('**/*', (route) => {
     const url = route.request().url();
     if (url.startsWith('http://localhost:' + PORT)) return route.continue();
@@ -108,6 +121,16 @@ async function main(){
     }
     if (url.includes('nominatim')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    }
+    if (url.includes('FAA_UAS_FacilityMap_Data')) {
+      faaHits++;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_UASFM) });
+    }
+    if (url.includes('Recreational_Flyer_Fixed_Sites')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_FIXEDSITES) });
+    }
+    if (url.includes('open-meteo') && url.includes('/v1/forecast')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_WEATHER) });
     }
     if (url.includes('open-meteo')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{"elevation":[190]}' });
@@ -199,7 +222,9 @@ async function main(){
   await page.click('#fishfab');
   T('locked: fab opens paywall, not mode', await page.evaluate('__sdfish.mode') === false
     && await page.$eval('#paysheet', (el) => el.classList.contains('open')));
-  T('subscribe btn wired to live Stripe link', await page.$eval('#paysub', (el) => (el.getAttribute('href') || '').startsWith('https://buy.stripe.com/')));
+  T('one paywall: subscribe sells All Access at $2.99', (await page.$eval('#paysub', (el) => el.textContent)).includes('$2.99')
+    && !(await page.$eval('#paysub', (el) => el.getAttribute('href')))); /* old $4.99 fishing-only Stripe links retired */
+  T('paywall spotlights the pack you tapped', (await page.$eval('#paytitle', (el) => el.textContent)).includes('Fishing'));
   T('free trial offered', await page.$eval('#paytrial', (el) => getComputedStyle(el).display !== 'none'));
   T('checksum rejects bad codes', await page.evaluate(
     '!__sdfish.FISHPACK.codeOK("FISH-AAAA") && !__sdfish.FISHPACK.codeOK("hello") && !__sdfish.FISHPACK.codeOK("")'));
@@ -334,9 +359,9 @@ async function main(){
   await page.click('#fishfab');
   await page.click('#paytrial');
   T('free trial enables mode for the day', await page.evaluate('__sdfish.mode') === true
-    && (await page.evaluate('localStorage.getItem("sd-fishpack-trial")')) === '1');
+    && (await page.evaluate('localStorage.getItem("sd-allaccess-trial")')) === '1');
   await page.click('#fishfab'); /* off */
-  await page.evaluate('__sdfish.FISHPACK._session = false');
+  await page.evaluate('__sdpacks.PACK_STATE.allaccess._session = false');
   await page.click('#fishfab'); /* paywall again */
   T('trial is one-shot: button gone on next visit', await page.$eval('#paytrial', (el) => getComputedStyle(el).display === 'none'));
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
@@ -424,12 +449,122 @@ async function main(){
     && (await page.$eval('#buddycode', (el) => el.value)) === 'ABMXZ');
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
 
+  console.log('\n— 🎒 Packs system (one paywall) —');
+  T('packs config: fishing + drone + All Access bundle', await page.evaluate(
+    '!!(__sdpacks.PACKS_CONFIG.packs.fishing && __sdpacks.PACKS_CONFIG.packs.drone && __sdpacks.PACKS_CONFIG.bundle)'));
+  T('All Access is the ONE sellable product ($2.99/mo sub)', await page.evaluate(`(function(){
+    const C = __sdpacks.PACKS_CONFIG;
+    const separately = Object.values(C.packs).some(p => p.sellable);
+    return !separately && C.bundle.price === '$2.99/mo' && C.bundle.product.type === 'subs'
+      && C.bundle.product.ios === 'com.skydog.skygps.allaccess.monthly';
+  })()`));
+  T('legacy fishing one-time product still honored', await page.evaluate(
+    '__sdpacks.PACKS_CONFIG.packs.fishing.product.ios === "com.skydog.skygps.fishingpack" && __sdpacks.PACKS_CONFIG.packs.fishing.product.type === "inapp"'));
+  await page.click('#packsfab');
+  T('🎒 fab opens the store sheet', await page.$eval('#packsheet', (el) => el.classList.contains('open')));
+  T('store lists every pack (2 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 2);
+  T('one subscribe button at the bundle price', (await page.$eval('#packsub', (el) => el.textContent)).includes('$2.99'));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  T('all-access entitlement unlocks every pack', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    const ok = __sdpacks.Entitlements.isUnlocked('drone') && __sdpacks.Entitlements.isUnlocked('fishing');
+    localStorage.setItem('sd-allaccess-iap', '0');
+    return ok && !__sdpacks.Entitlements.isUnlocked('drone');
+  })()`));
+
+  console.log('\n— 🚁 Drone Pack: gating + unlock —');
+  T('drone fab exists', (await page.$eval('#dronefab', (el) => el.textContent.trim())) === '🚁');
+  await page.click('#dronefab');
+  T('locked: drone fab opens the paywall, not the mode', await page.evaluate('__sddrone.mode') === false
+    && await page.$eval('#paysheet', (el) => el.classList.contains('open'))
+    && (await page.$eval('#paytitle', (el) => el.textContent)).includes('Drone'));
+  T('drone checksum rejects bad codes', await page.evaluate(
+    '!__sdpacks.packCodeOK("DRONE", "DRONE-AAAA") && !__sdpacks.packCodeOK("DRONE", "nope")'));
+  await page.fill('#paycode', 'drone-aa2a'); /* lowercase on purpose — must normalize */
+  await page.click('#payunlock');
+  T('valid DRONE code unlocks + enables Drone Mode', await page.evaluate('__sddrone.mode') === true
+    && !(await page.$eval('#paysheet', (el) => el.classList.contains('open'))));
+  T('drone license persisted on device', await page.evaluate('localStorage.getItem("sd-dronepack")') === 'DRONE-AA2A');
+  T('drone fab lit + hud shown', await page.$eval('#dronefab', (el) => el.classList.contains('active'))
+    && await page.$eval('#dronehud', (el) => getComputedStyle(el).display !== 'none'));
+  T('attribution credits FAA + Open-Meteo', await page.$eval('#attrib', (el) => /FAA/.test(el.textContent) && /Open-Meteo/.test(el.textContent)));
+
+  console.log('\n— 🚁 Airspace grid + fixed sites —');
+  await page.evaluate('__sdmap.setView(44.76, -85.58, 12)');
+  await page.evaluate('__sddrone.refreshDrone()');
+  T('UASFM grid cells cached (2)', await page.evaluate('__sddrone.airspace.cells.size') === 2);
+  T('fixed site pinned with popup', await page.evaluate('__sdmap.countGroup("dronesite")') === 1
+    && await page.evaluate(`(function(){
+      const m = __sdmap.markers.find(m => m.group === 'dronesite');
+      return !!m && m.popup.includes('TC Flyers Field') && m.popup.includes('400 ft');
+    })()`));
+  T('0-ft cell → danger readout at center', await page.evaluate(`(function(){
+    const s = __sddrone.droneAirspaceSummary(44.76, -85.58);
+    return s.level === 'danger' && s.ceiling === 0;
+  })()`));
+  T('hud shows the red 0-ft warning', await page.$eval('#dh-air', (el) => el.className.includes('lvl-danger') && el.textContent.includes('0 ft')));
+  T('400-ft cell → caution with ceiling', await page.evaluate(`(function(){
+    const s = __sddrone.droneAirspaceSummary(44.76, -85.52);
+    return s.level === 'caution' && s.ceiling === 400;
+  })()`));
+  T('outside every grid → clear to 400', await page.evaluate(`(function(){
+    const s = __sddrone.droneAirspaceSummary(44.76, -85.90);
+    return s.level === 'ok' && s.ceiling === 400 && s.cell === null;
+  })()`));
+  T('grid colors: red at 0, green at 400 (config-driven)', await page.evaluate(
+    '__sddrone.droneColor(0).fill.includes("255,90,90") && __sddrone.droneColor(400).fill.includes("53,224,138")'));
+  const faa0 = faaHits;
+  await page.evaluate('__sddrone.refreshDrone()');
+  T('airspace cached — second refresh skips refetch', faaHits === faa0);
+
+  console.log('\n— 💨 Conditions readout —');
+  T('free temp badge visible for everyone', await page.$eval('#tempbadge', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('72°')));
+  T('hud wind row: speed + direction + gusts + temp', await page.$eval('#dh-wind',
+    (el) => /\b8\b/.test(el.textContent) && /W/.test(el.textContent) && /gusts\s*12/.test(el.textContent) && /72°F/.test(el.textContent)));
+  T('hud wind dot is green at 8 mph', await page.$eval('#dh-wind', (el) => el.className.includes('lvl-ok')));
+  T('wind safety thresholds are config-driven + gust rule', await page.evaluate(`(function(){
+    const W = __sddrone;
+    return W.windLevel(8, 10) === 'ok' && W.windLevel(15, 18) === 'caution'
+      && W.windLevel(25, 30) === 'danger' && W.windLevel(5, 30) === 'danger'
+      && W.WX_CFG.windCautionMph === 10 && W.WX_CFG.windDangerMph === 20;
+  })()`));
+
+  console.log('\n— 🛫 LAANC seam (architected, never faked) —');
+  T('check: 0-ft grid at 200 ft → required, NOT auto-approvable', await page.evaluate(`(function(){
+    const v = __sddrone.LaancService.check(44.76, -85.58, 200);
+    return v.required === true && v.autoApprovable === false && v.laancAvailable === true;
+  })()`));
+  T('check: 400-ft grid at 200 ft → auto-approvable', await page.evaluate(`(function(){
+    const v = __sddrone.LaancService.check(44.76, -85.52, 200);
+    return v.required === true && v.autoApprovable === true;
+  })()`));
+  T('check: open country at 300 ft → no authorization needed', await page.evaluate(
+    '__sddrone.LaancService.check(44.76, -85.90, 300).required === false'));
+  await page.evaluate('(function(){ document.getElementById("dh-check").click(); })()');
+  T('flight check sheet opens with a verdict', await page.$eval('#dronesheet', (el) => el.classList.contains('open'))
+    && await page.$eval('#laancverdict', (el) => el.textContent.length > 20));
+  await page.click('#laancreq');
+  T('request → clearly-labeled placeholder ("coming soon")', await page.$eval('#laancresult', (el) => /coming/i.test(el.textContent)));
+  T('placeholder provider is marked not-live', await page.evaluate('__sddrone.laancProvider.live === false'));
+  T('request resolves unavailable — no fake approvals possible', await page.evaluate(
+    `__sddrone.LaancService.request({lat:44.76,lng:-85.58,altFt:200,startISO:'x',durationMin:30}).then(r => r.status === 'unavailable')`));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  await page.click('#dronefab'); /* drone off */
+  T('toggle off: hud hidden + sites cleared', await page.$eval('#dronehud', (el) => getComputedStyle(el).display === 'none')
+    && await page.evaluate('__sdmap.countGroup("dronesite")') === 0);
+
+  console.log('\n— 📢 Ads stay for everyone —');
+  const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+  T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
+  T('no purchase copy promises ad removal', !/removes ads|ads gone|ad-free|removes the ads/i.test(appSrc));
+  T('grant path never touches the ad banner', !appSrc.slice(appSrc.indexOf('function sdGrantPack')).includes('SkyGPSAds.remove'));
+
   console.log('\n— Fail-loud + shell —');
   await page.evaluate('window.dispatchEvent(new ErrorEvent("error", { message: "test-explosion" }))');
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v11', sw.includes("skydog-gps-v11") && !sw.includes("skydog-gps-v10"));
+  T('sw.js cache bumped to v12', sw.includes("skydog-gps-v12") && !sw.includes("skydog-gps-v11"));
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',

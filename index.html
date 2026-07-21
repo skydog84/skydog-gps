@@ -193,6 +193,35 @@
   .bdymark.stale .bdot{opacity:.5;border-style:dashed}
   .bdymark .bname{margin-top:3px;background:rgba(13,19,28,.85);border-radius:8px;padding:2px 7px;font-size:10.5px;
     color:#fff;white-space:nowrap;border:1px solid var(--line)}
+
+  /* ---- 🎒 Feature Packs store ---- */
+  .packcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:9px}
+  .packcard .p1{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14.5px;gap:8px}
+  .packcard .price{color:var(--accent);font-size:12.5px;white-space:nowrap;font-weight:800}
+  .packcard .owned{color:var(--accent);font-size:12.5px;font-weight:800;white-space:nowrap}
+  .packcard .p2{color:var(--dim);font-size:12px;margin-top:4px;line-height:1.45}
+
+  /* ---- 🚁 Drone Mode ---- */
+  #dronehud{position:absolute;left:8px;right:8px;top:calc(150px + var(--safe-top));z-index:950;
+    background:rgba(13,19,28,.93);border:1px solid var(--line);border-radius:14px;padding:9px 12px;
+    box-shadow:var(--shadow);font-size:12.5px;backdrop-filter:blur(6px)}
+  .dh-row{display:flex;align-items:center;gap:8px;padding:3px 0;line-height:1.4}
+  .dh-row b{font-variant-numeric:tabular-nums}
+  .dh-dot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex:none}
+  .dh-row.lvl-ok .dh-dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .dh-row.lvl-caution .dh-dot{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+  .dh-row.lvl-danger .dh-dot{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+  #dh-check{display:block;width:100%;margin-top:7px;border:0;border-radius:10px;padding:9px;font-size:12.5px;
+    font-weight:800;cursor:pointer;background:#12314d;color:#bfe0ff}
+  #tempbadge{position:absolute;right:4px;bottom:calc(24px + var(--safe-bottom));z-index:600;
+    background:rgba(11,15,20,.72);border:1px solid var(--line);color:var(--text);font-size:11px;
+    padding:3px 9px;border-radius:999px;cursor:pointer;font-family:inherit}
+  .laancrow{display:flex;gap:8px;margin:0 0 8px}
+  .laancrow select{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:11px;font-size:14px}
+  .laancbox{border:1px solid var(--line);border-radius:12px;padding:11px;font-size:13px;line-height:1.5;margin-top:6px}
+  .laancbox.ok{border-color:#2b5f43;background:rgba(53,224,138,.07)}
+  .laancbox.caution{border-color:#6e5a1f;background:rgba(255,176,58,.07)}
+  .laancbox.danger{border-color:#6e2b2b;background:rgba(255,90,90,.07)}
 </style>
 </head>
 <body>
@@ -223,6 +252,8 @@
   <button class="fab" id="savedfab" title="Saved adventures">📁</button>
   <button class="fab" id="keyfab" title="Map key">🔑</button>
   <button class="fab" id="fishfab" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
+  <button class="fab" id="dronefab" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
+  <button class="fab" id="packsfab" title="Feature Packs — optional add-ons">🎒</button>
   <button class="fab" id="buddyfab" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="fab" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
   <button class="fab" id="clearfab" title="Clear pins">🧹</button>
@@ -237,6 +268,13 @@
 <div id="spinner">Scanning the area…</div>
 
 <button id="buddypill" style="display:none">👥 sharing with <b id="buddycount">0</b></button>
+
+<div id="dronehud" style="display:none">
+  <div id="dh-air" class="dh-row"><span class="dh-dot"></span>✈️ checking airspace…</div>
+  <div id="dh-wind" class="dh-row"><span class="dh-dot"></span>💨 fetching conditions…</div>
+  <button id="dh-check">🛫 Flight check — can I fly here?</button>
+</div>
+<button id="tempbadge" style="display:none" title="Current temperature at map center">🌡 —</button>
 
 <div id="dock">
   <div id="hud">
@@ -315,19 +353,48 @@
 
 <div class="sheet" id="paysheet">
   <div class="grabber"></div>
-  <h3>🎣 Fishing Pack</h3>
-  <div class="lg-row"><span class="lg-em">🗺</span><span><b>Real DNR depth contours</b> — see the drop-offs, holes &amp; flats on your lake</span></div>
-  <div class="lg-row"><span class="lg-em">⚓</span><span><b>NOAA depth charts</b> — soundings &amp; hazards on the Great Lakes &amp; coasts</span></div>
-  <div class="lg-row"><span class="lg-em">🛶</span><span><b>Launch intel</b> — every ramp paired with its nearest parking, surface &amp; fees</span></div>
-  <div class="lg-row"><span class="lg-em">📖</span><span><b>Local rules &amp; records</b> — regs, state records &amp; stocking for any lake you tap</span></div>
-  <a class="btn green" id="paysub" style="display:block;text-align:center;text-decoration:none;margin:14px 0 8px" target="_blank" rel="noopener">🔓 Subscribe — $4.99/mo</a>
-  <a class="btn blue" id="paysubyr" style="display:block;text-align:center;text-decoration:none;margin:0 0 10px" target="_blank" rel="noopener">⭐ Year pass — $29/yr (save 52%)</a>
+  <h3 id="paytitle">🎒 SkyDog All Access</h3>
+  <div id="payfeatures"></div>
+  <a class="btn green" id="paysub" style="display:block;text-align:center;text-decoration:none;margin:14px 0 8px" target="_blank" rel="noopener">🔓 Subscribe</a>
+  <a class="btn blue" id="paysubyr" style="display:none;text-align:center;text-decoration:none;margin:0 0 10px" target="_blank" rel="noopener">⭐ Year pass</a>
   <input class="field" id="paycode" placeholder="Have an unlock code? Enter it here" autocapitalize="characters" autocomplete="off">
   <div class="btnrow">
     <button class="btn blue" id="payunlock">✔ Unlock</button>
     <button class="btn gray" id="paytrial">🎁 Try it free today</button>
   </div>
-  <div class="lg-note">Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page &amp; receipt. Cancel anytime. GPS tracking, maps &amp; discovery stay 100% free forever.</div>
+  <div class="lg-note" id="paynote"></div>
+</div>
+
+<div class="sheet" id="packsheet">
+  <div class="grabber"></div>
+  <h3>🎒 SkyDog All Access</h3>
+  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery &amp; buddy trips are <b>free forever</b>. One cheap subscription unlocks every specialist pack — current and future.</div>
+  <div id="packlist"></div>
+  <button class="btn green" id="packsub" style="width:100%;margin-top:4px">🔓 Unlock everything</button>
+  <button class="btn gray" id="packrestore" style="width:100%;margin-top:8px;display:none">↻ Restore Purchases</button>
+  <div class="lg-note">Ads support the free app and stay for everyone — subscribing adds features, it never changes the ads.</div>
+</div>
+
+<div class="sheet" id="dronesheet">
+  <div class="grabber"></div>
+  <h3>🛫 Flight Check</h3>
+  <div class="lg-note" id="laancloc" style="margin:0 0 10px"></div>
+  <div class="laancrow">
+    <select id="laancalt" title="Planned altitude">
+      <option value="50">50 ft</option><option value="100">100 ft</option>
+      <option value="150">150 ft</option><option value="200">200 ft</option>
+      <option value="250">250 ft</option><option value="300">300 ft</option>
+      <option value="350">350 ft</option><option value="400" selected>400 ft</option>
+    </select>
+    <select id="laancdur" title="Flight window, starting now">
+      <option value="15">15 min</option><option value="30" selected>30 min</option>
+      <option value="60">1 hour</option><option value="120">2 hours</option>
+    </select>
+  </div>
+  <div id="laancverdict"></div>
+  <button class="btn blue" id="laancreq" style="width:100%;margin-top:10px">🛫 Request LAANC Authorization</button>
+  <div id="laancresult"></div>
+  <div class="lg-note">Flying "now" for the window you picked. Advisory only — SkyDog reads the FAA's public UAS Facility Maps; you're responsible for TFRs, NOTAMs &amp; local rules before every launch.</div>
 </div>
 
 <div class="sheet" id="buddysheet">
@@ -657,6 +724,7 @@ class SDMap {
       if(def) this._drawTileLayer(def, def.alpha || 1, false, ox, oy, w, h);
     }
     ctx.globalAlpha = 1;
+    if(this.drawHook) this.drawHook(ctx, ws, ox, oy);   /* pack modules paint here (drone airspace grid) */
 
     /* accuracy circle */
     if(this.circle){
@@ -700,6 +768,7 @@ class SDMap {
       pop.style.left = (px-ox)+'px';
       pop.style.top = (py-oy - m.anchor[1] - 10)+'px';
     }
+    if(this.afterDraw) this.afterDraw();   /* view-settle watcher (weather / airspace refresh) */
   }
 
   /* ---- gestures: drag, pinch, wheel, double-tap ---- */
@@ -812,6 +881,7 @@ $('zoomout').addEventListener('click', () => map._zoomAbout(map.w/2, map.h/2, -1
 function updateAttrib(){
   const parts = [BASES[map.base].attrib];
   map.overlays.forEach(k => { if(OVERLAYS[k]) parts.push(OVERLAYS[k].attrib); });
+  if(window.__sddrone && __sddrone.mode){ parts.push('✈ FAA UAS data'); parts.push('☁ Open-Meteo'); }
   $('attrib').textContent = [...new Set(parts)].join(' · ');
 }
 function buildLayerSheet(){
@@ -1109,6 +1179,9 @@ function openLegend(){
   map.overlays.forEach(k => {
     (OVERLAY_LEGENDS[k]||[]).forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
   });
+  if(window.__sddrone && __sddrone.mode){
+    DRONE_LEGEND.forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
+  }
   APP_SYMBOLS.forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
   html += '<div class="lg-note">Tip: hit 🗺️ to change map style or stack overlays — this key updates to match whatever is on screen.</div>';
   $('legendbody').innerHTML = html;
@@ -1316,82 +1389,239 @@ function buildFishChips(){
 }
 buildFishChips();
 
-/* ---- 💰 Fishing Pack paywall ----------------------------------------
-   Freemium: everything the app did before stays free; Fishing Mode is
-   the paid upgrade. No backend, no keys: unlock codes verify offline
-   (checksum), payment runs through a Stripe payment link (paste below).
+/* =====================================================================
+   💰 FEATURE PACKS — SkyDog's reusable pack "vending machine"
+   ---------------------------------------------------------------------
+   VALUE FRAMING (why this pricing works): the base map + GPS stay 100%
+   free forever. Each pack replaces 2–4 single-purpose apps a specialist
+   would otherwise pay for separately (a drone pilot juggles an airspace
+   app, a wind app and a LAANC app; an angler juggles depth-chart and
+   regs apps). One familiar free map + one cheap all-access unlock beats
+   paying repeatedly across separate apps — and every pack below runs on
+   free public data, so serving a subscriber costs the owner ~nothing.
+
+   PRICING MODEL (owner decision 2026-07-21): ONE paywall. "All Access"
+   at $2.99/mo unlocks every pack, current and future. Packs are still
+   defined individually below so the store can list what's included and
+   so any pack COULD be sold separately later (sellable:true + its own
+   product id) — the system never assumes bundle-only OR subscription-
+   only; a pack's product.type may be 'subs' or a one-time 'inapp'.
+
+   ADS ARE PERMANENT: the banner shows for every user, free or paid.
+   Packs add features. No product here may remove or reduce the ads.
+
+   ADDING A PACK = (1) add a definition below, (2) ship a feature module
+   gated by Entitlements.isUnlocked('<id>') and register its "switch on"
+   hook in PACK_ACTIVATE['<id>']. The store sheet, paywall, unlock
+   codes, trials and StoreKit restore pick it up automatically.
+
+   NOTE (owner): real LAANC authorization must stay OUT of this flat
+   price — a live provider charges per request; price it separately
+   when that partnership lands (see DRONE_SECTION_NOTES.md).
+   ---------------------------------------------------------------------
    Storage note: trips remain in-memory-only by design — the ONLY things
-   remembered on-device are the unlock code + trial flag, via a guarded
+   remembered on-device are unlock codes + trial flags, via a guarded
    try/catch store that degrades to session-only if storage is blocked. */
 const sdStore = {
   get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 };
-const FISHPACK = {
-  /* ↓ paste the Stripe payment link URL here when it exists (e.g. https://buy.stripe.com/…) */
-  STRIPE_URL: 'https://buy.stripe.com/9B67sKcMI4hK41T7R38AE01',
-  /* annual price point — same product, second Stripe payment link */
-  STRIPE_URL_ANNUAL: 'https://buy.stripe.com/bJe00i4gccOgaqhefr8AE02',
-  PRICE: '$4.99/mo', PRICE_ANNUAL: '$29/yr',
-  KEY: 'sd-fishpack', TRIAL_KEY: 'sd-fishpack-trial',
-  _session: false,
-  codeOK(c){
-    c = String(c||'').toUpperCase().replace(/\s+/g,'');
-    const m = /^FISH-([0-9A-Z]{3})([0-9A-Z])$/.exec(c);
-    if(!m) return false;
-    const sum = m[1].split('').reduce((a,ch)=>a+parseInt(ch,36),0);
-    return ((sum*7)%36).toString(36).toUpperCase() === m[2];
+
+const PACKS_CONFIG = {
+  packs: {
+    fishing: {
+      id:'fishing', icon:'🎣', name:'Fishing Pack',
+      tagline:'Lake depth contours, launch intel & local rules',
+      features:[
+        ['🗺','<b>Real DNR depth contours</b> — see the drop-offs, holes &amp; flats on your lake'],
+        ['⚓','<b>NOAA depth charts</b> — soundings &amp; hazards on the Great Lakes &amp; coasts'],
+        ['🛶','<b>Launch intel</b> — every ramp paired with its nearest parking, surface &amp; fees'],
+        ['📖','<b>Local rules &amp; records</b> — regs, state records &amp; stocking for any lake you tap']
+      ],
+      sellable:false,                 /* included in All Access — not sold separately */
+      /* legacy one-time product (v1.0 App Store submission) — still HONORED
+         for anyone who bought it, just no longer offered for sale */
+      product:{ ios:'com.skydog.skygps.fishingpack', type:'inapp' },
+      storeKey:'sd-fishpack',
+      web:{ codePrefix:'FISH' },
+      unlockToast:'🎉 Fishing unlocked — tight lines!'
+    },
+    drone: {
+      id:'drone', icon:'🚁', name:'Drone Pack',
+      tagline:'FAA airspace ceilings, wind & flight check',
+      features:[
+        ['✈️','<b>FAA airspace grid</b> — color-coded max-altitude ceilings right on the map'],
+        ['🛩','<b>Recreational fixed sites</b> — FAA-approved hobby &amp; club fields as pins'],
+        ['💨','<b>Launch-critical wind</b> — speed, gusts &amp; direction with a go / no-go light'],
+        ['🛫','<b>Flight check</b> — instant "can I fly here &amp; how high?" for any spot']
+      ],
+      sellable:false,                 /* included in All Access — not sold separately */
+      product:null,                   /* no separate store product while bundle-only */
+      storeKey:'sd-dronepack',
+      web:{ codePrefix:'DRONE' },
+      unlockToast:'🚁 Drone Mode unlocked — clear skies!'
+    }
   },
-  unlocked(){ return this._session || this.codeOK(sdStore.get(this.KEY)); },
-  redeem(c){
-    if(!this.codeOK(c)) return false;
-    this._session = true;
-    sdStore.set(this.KEY, String(c).toUpperCase().replace(/\s+/g,''));
-    return true;
-  },
-  trialUsed(){ return sdStore.get(this.TRIAL_KEY) === '1'; },
-  startTrial(){ this._session = true; sdStore.set(this.TRIAL_KEY,'1'); }
+  /* THE one product on sale: cheap, unlocks everything, keeps the crowd */
+  bundle: {
+    id:'allaccess', icon:'🎒', name:'SkyDog All Access',
+    tagline:'Every pack — one cheap subscription',
+    features:[
+      ['🎁','<b>Everything unlocked</b> — fishing, drone &amp; every future pack, automatically'],
+      ['🆓','<b>The map stays free</b> — this only adds the specialist extras on top']
+    ],
+    price:'$2.99/mo', priceNote:'subscription',
+    product:{ ios:'com.skydog.skygps.allaccess.monthly', type:'subs' },
+    storeKey:'sd-allaccess',
+    web:{ codePrefix:'SKY',
+      /* ↓ paste the NEW $2.99/mo Stripe payment link here when created —
+         the old fishing-only links charged $4.99 and are retired */
+      stripeUrl:null, stripeUrlAnnual:null, annualLabel:null },
+    trial:true,
+    unlockToast:'🎒 All Access unlocked — everything is yours!'
+  }
 };
-function openPaywall(){
+
+/* offline unlock-code checksum (same scheme as v1.0 FISH codes) */
+function packCodeOK(prefix, c){
+  c = String(c||'').toUpperCase().replace(/\s+/g,'');
+  const m = new RegExp('^'+prefix+'-([0-9A-Z]{3})([0-9A-Z])$').exec(c);
+  if(!m) return false;
+  const sum = m[1].split('').reduce((a,ch)=>a+parseInt(ch,36),0);
+  return ((sum*7)%36).toString(36).toUpperCase() === m[2];
+}
+
+/* per-pack entitlement state — code / trial / App-Store unlock all live here */
+function makePackState(def){
+  return {
+    def, _session:false, iosPrice:null,
+    keys:{ code: def.storeKey, trial: def.storeKey+'-trial', iap: def.storeKey+'-iap' },
+    codeOK(c){ return packCodeOK(def.web.codePrefix, c); },
+    unlocked(){ return this._session || sdStore.get(this.keys.iap)==='1' || this.codeOK(sdStore.get(this.keys.code)); },
+    redeem(c){
+      if(!this.codeOK(c)) return false;
+      this._session = true;
+      sdStore.set(this.keys.code, String(c).toUpperCase().replace(/\s+/g,''));
+      return true;
+    },
+    trialUsed(){ return sdStore.get(this.keys.trial)==='1'; },
+    startTrial(){ this._session = true; sdStore.set(this.keys.trial,'1'); },
+    grantIap(){ sdStore.set(this.keys.iap,'1'); this._session = true; },
+    revokeIap(){ sdStore.set(this.keys.iap,'0'); }    /* lapsed subscription */
+  };
+}
+const PACK_STATE = {};
+Object.values(PACKS_CONFIG.packs).forEach(d => { PACK_STATE[d.id] = makePackState(d); });
+PACK_STATE.allaccess = makePackState(PACKS_CONFIG.bundle);
+const FISHPACK = PACK_STATE.fishing;    /* back-compat alias (v1.0 debug/tests) */
+
+/* feature modules register their "switch on after unlock" hook here */
+const PACK_ACTIVATE = {};
+
+/* THE check the rest of the app uses to gate features & overlays */
+const Entitlements = {
+  isUnlocked(packId){
+    if(packId !== 'allaccess' && PACK_STATE.allaccess.unlocked()) return true;
+    const p = PACK_STATE[packId];
+    return !!(p && p.unlocked());
+  },
+  /* try a code against every pack + the bundle; returns granted id or null */
+  redeemAny(c){
+    for(const id of Object.keys(PACK_STATE)){
+      if(PACK_STATE[id].codeOK(c)){ PACK_STATE[id].redeem(c); return id; }
+    }
+    return null;
+  }
+};
+
+/* ---- paywall sheet: sells All Access, spotlights the pack you tapped ---- */
+let currentPay = 'allaccess';           /* which pack drew them in (activation target) */
+function packDef(id){ return id==='allaccess' ? PACKS_CONFIG.bundle : PACKS_CONFIG.packs[id]; }
+function payPrice(){ return PACK_STATE.allaccess.iosPrice || PACKS_CONFIG.bundle.price; }
+function openPaywall(packId){
+  currentPay = packId && packDef(packId) ? packId : 'allaccess';
+  const def = packDef(currentPay), bundle = PACKS_CONFIG.bundle;
+  $('paytitle').textContent = def.icon + ' ' + def.name;
+  let rows = def.features.map(f => '<div class="lg-row"><span class="lg-em">'+f[0]+'</span><span>'+f[1]+'</span></div>').join('');
+  if(currentPay !== 'allaccess'){
+    rows += '<div class="lg-row"><span class="lg-em">🎒</span><span><b>…plus every other pack</b> — one All Access unlock covers it all</span></div>';
+  }
+  $('payfeatures').innerHTML = rows;
   const sub = $('paysub');
-  sub.textContent = '🔓 Subscribe — ' + FISHPACK.PRICE;
-  if(FISHPACK.STRIPE_URL) sub.href = FISHPACK.STRIPE_URL;
-  else sub.removeAttribute('href');
+  sub.textContent = '🔓 Unlock everything — ' + payPrice();
+  if(bundle.web.stripeUrl) sub.href = bundle.web.stripeUrl; else sub.removeAttribute('href');
   const subyr = $('paysubyr');
-  subyr.textContent = '⭐ Year pass — ' + FISHPACK.PRICE_ANNUAL + ' (save 52%)';
-  if(FISHPACK.STRIPE_URL_ANNUAL){ subyr.href = FISHPACK.STRIPE_URL_ANNUAL; subyr.style.display = 'block'; }
-  else { subyr.removeAttribute('href'); subyr.style.display = 'none'; }
-  $('paytrial').style.display = FISHPACK.trialUsed() ? 'none' : '';
+  if(bundle.web.stripeUrlAnnual){
+    subyr.textContent = bundle.web.annualLabel || '⭐ Year pass';
+    subyr.href = bundle.web.stripeUrlAnnual; subyr.style.display = 'block';
+  } else { subyr.removeAttribute('href'); subyr.style.display = 'none'; }
+  $('paycode').style.display = ''; $('payunlock').style.display = '';
+  $('paytrial').style.display = (bundle.trial && !PACK_STATE.allaccess.trialUsed()) ? '' : 'none';
+  $('paynote').textContent = bundle.web.stripeUrl
+    ? 'Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page & receipt. Cancel anytime. GPS tracking, maps & discovery stay 100% free forever.'
+    : 'One cheap subscription in the SkyDog GPS iOS app unlocks everything. Have an unlock code? Enter it below. GPS tracking, maps & discovery stay 100% free forever.';
   openSheet('paysheet');
 }
+function activatePack(id){ const fn = PACK_ACTIVATE[id]; if(fn) fn(); }
 $('paysub').addEventListener('click', e => {
-  if(!FISHPACK.STRIPE_URL){
+  if(window.__sdNativePay) return;                    /* native buys via StoreKit listener */
+  if(!$('paysub').getAttribute('href')){
     e.preventDefault();
-    toast('💳 Checkout goes live any day — grab the free trial below!', 3600);
+    toast('📱 Subscribe inside the SkyDog GPS iOS app — or redeem an unlock code below', 3600);
   }
 });
 $('paysubyr').addEventListener('click', e => {
-  if(!FISHPACK.STRIPE_URL_ANNUAL){
-    e.preventDefault();
-    toast('💳 Checkout goes live any day — grab the free trial below!', 3600);
-  }
+  if(window.__sdNativePay) return;
+  if(!$('paysubyr').getAttribute('href')) e.preventDefault();
 });
 $('payunlock').addEventListener('click', () => {
-  if(FISHPACK.redeem($('paycode').value)){
+  const granted = Entitlements.redeemAny($('paycode').value);
+  if(granted){
     $('paycode').value = '';
     closeSheets();
-    setFishingMode(true);
-    toast('🎉 Fishing Pack unlocked — tight lines!', 3600);
+    if(granted === 'allaccess' || granted === currentPay) activatePack(currentPay === 'allaccess' ? granted : currentPay);
+    else activatePack(granted);
+    toast(packDef(granted).unlockToast, 3600);
   } else {
-    toast('⚠️ That code didn’t check out — double-check it (looks like FISH-XXXX)', 3600);
+    toast('⚠️ That code didn’t check out — double-check it (looks like SKY-XXXX)', 3600);
   }
 });
 $('paytrial').addEventListener('click', () => {
-  FISHPACK.startTrial();
+  PACK_STATE.allaccess.startTrial();
   closeSheets();
-  setFishingMode(true);
-  toast('🎁 Free taste of the Fishing Pack — enjoy today on the house!', 3600);
+  activatePack(currentPay === 'allaccess' ? 'fishing' : currentPay);
+  toast('🎁 Free taste of everything — enjoy today on the house!', 3600);
 });
+
+/* ---- 🎒 store sheet: what's included + the one subscribe button ---- */
+function buildPackSheet(){
+  const cards = Object.values(PACKS_CONFIG.packs).map(def => {
+    const owned = Entitlements.isUnlocked(def.id);
+    return '<div class="packcard" data-pack="'+def.id+'">'
+      + '<div class="p1"><span>'+def.icon+' '+def.name+'</span>'
+      + (owned ? '<span class="owned">✓ UNLOCKED</span>' : '<span class="price">included</span>')
+      + '</div><div class="p2">'+def.tagline+'</div></div>';
+  }).join('');
+  $('packlist').innerHTML = cards;
+  const all = Entitlements.isUnlocked('allaccess')
+    || Object.keys(PACKS_CONFIG.packs).every(id => Entitlements.isUnlocked(id));
+  $('packsub').textContent = all ? '✓ Everything unlocked — thank you!' : '🔓 Unlock everything — ' + payPrice();
+  $('packsub').disabled = all;
+  $('packrestore').style.display =
+    (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ? '' : 'none';
+}
+$('packsfab').addEventListener('click', () => { buildPackSheet(); openSheet('packsheet'); });
+$('packsub').addEventListener('click', () => {
+  if($('packsub').disabled) return;
+  if(window.__sdNativePay){ SkyGPSStore.buy('allaccess'); return; }
+  openPaywall('allaccess');
+});
+$('packrestore').addEventListener('click', () => { if(window.__sdNativePay) SkyGPSStore.restore(); });
+
+/* debug/test handle for the pack system */
+window.__sdpacks = { PACKS_CONFIG, PACK_STATE, Entitlements, PACK_ACTIVATE,
+  buildPackSheet, packCodeOK, openPaywall: (id) => openPaywall(id),
+  get currentPay(){ return currentPay; } };
 
 /* ---- 🎣 depth-at-tap: ask the state DNR survey what's under your tap ----
    Uses the same keyless ArcGIS service as the contour overlay, via the
@@ -1463,9 +1693,10 @@ function setFishingMode(on){
   map.requestDraw(); updateAttrib();
 }
 $('fishfab').addEventListener('click', () => {
-  if(!fishingMode && !FISHPACK.unlocked()){ openPaywall(); return; }
+  if(!fishingMode && !Entitlements.isUnlocked('fishing')){ openPaywall('fishing'); return; }
   setFishingMode(!fishingMode);
 });
+PACK_ACTIVATE.fishing = () => setFishingMode(true);
 
 /* test/debug handle for the fishing pack */
 window.__sdfish = { get mode(){ return fishingMode; }, setFishingMode, fishServiceFor,
@@ -1485,6 +1716,7 @@ $('legendwhat').addEventListener('click', () => { closeSheets(); setInspect(true
 map.onTap = ll => {
   if(inspectMode){ identify(ll.lat, ll.lng); return true; }
   if(fishingMode) showDepthAt(ll.lat, ll.lng);   /* depth readout rides along, never blocks */
+  if(window.__sddrone && __sddrone.mode) __sddrone.tapInfo(ll.lat, ll.lng);   /* airspace spot check rides along too */
   return false;
 };
 
@@ -1525,7 +1757,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','buddysheet','buddyconsent'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -1992,6 +2224,414 @@ window.addEventListener('pagehide', () => { if(BUDDY.active()) BUDDY.end(true); 
 /* test hooks */
 window.__BUDDY = { BUDDY, buddyCode, buddyBearing, buddyDistTxt, buddyColor };
 
+/* =====================================================================
+   🌤 CURRENT CONDITIONS — Open-Meteo (free, keyless, global)
+   Free tier: a subtle temperature badge for every user.
+   Drone Pack: the full wind readout + launch-safety indicator below.
+   Swappable seam: anything exposing current(lat,lng) → {tempF, windMph,
+   gustMph, windDeg} can replace OpenMeteoWeather (regional sources ok).
+   ===================================================================== */
+const WX_CFG = {
+  debounceMs: 700,        /* map must sit still this long before we fetch     */
+  cacheMins: 10,          /* reuse a reading for the same ~2 km cell this long */
+  windCautionMph: 10,     /* 🟡 at/above (sustained) — tune freely            */
+  windDangerMph: 20,      /* 🔴 at/above (sustained)                          */
+  gustDangerMph: 25       /* 🔴 if gusts hit this even when sustained is calm  */
+};
+const OpenMeteoWeather = {
+  name:'Open-Meteo', attrib:'☁ Open-Meteo',
+  _cache: new Map(),                       /* "lat,lng" ~2 km cell -> {at, data} */
+  _key(lat,lng){ return (Math.round(lat*50)/50)+','+(Math.round(lng*50)/50); },
+  async current(lat,lng){
+    const k = this._key(lat,lng), hit = this._cache.get(k);
+    if(hit && Date.now()-hit.at < WX_CFG.cacheMins*60000) return hit.data;
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat.toFixed(3)
+      + '&longitude='+lng.toFixed(3)
+      + '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m'
+      + '&temperature_unit=fahrenheit&wind_speed_unit=mph';
+    const res = await fetch(url, {headers:{'Accept':'application/json'}});
+    if(!res.ok) throw new Error('weather HTTP '+res.status);
+    const c = (await res.json()).current || {};
+    const data = { tempF:+c.temperature_2m, windMph:+c.wind_speed_10m,
+      gustMph:+c.wind_gusts_10m || 0, windDeg:+c.wind_direction_10m || 0 };
+    this._cache.set(k, {at: Date.now(), data});
+    if(this._cache.size > 200) this._cache.delete(this._cache.keys().next().value);
+    return data;
+  }
+};
+let sdWeather = OpenMeteoWeather;         /* swap point for other providers */
+function windLevel(windMph, gustMph){
+  if(windMph >= WX_CFG.windDangerMph || (gustMph||0) >= WX_CFG.gustDangerMph) return 'danger';
+  if(windMph >= WX_CFG.windCautionMph) return 'caution';
+  return 'ok';
+}
+function windFrom(deg){
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round((((deg%360)+360)%360)/45)%8];
+}
+
+/* one shared "map settled" watcher — modules subscribe, we fire when the
+   view has rested for debounceMs (keeps every data source off the hot path) */
+const settleFns = [];
+(function(){
+  let last = {lat:0, lng:0, z:0}, timer = 0;
+  map.afterDraw = function(){
+    const c = map.center;
+    if(c.lat===last.lat && c.lng===last.lng && map.zoom===last.z) return;
+    last = {lat:c.lat, lng:c.lng, z:map.zoom};
+    clearTimeout(timer);
+    timer = setTimeout(() => settleFns.forEach(f => { try{ f(); }catch(e){} }), WX_CFG.debounceMs);
+  };
+})();
+
+let lastWx = null;
+async function refreshWeather(){
+  try{
+    lastWx = await sdWeather.current(map.center.lat, map.center.lng);
+    const b = $('tempbadge');
+    b.style.display = '';
+    b.textContent = '🌡 ' + Math.round(lastWx.tempF) + '°';
+    if(window.__sddrone && __sddrone.mode) renderDroneHud();
+  }catch(e){ /* offline / blocked — badge quietly keeps its last reading */ }
+}
+settleFns.push(refreshWeather);
+refreshWeather();
+$('tempbadge').addEventListener('click', () => {
+  if(Entitlements.isUnlocked('drone')){
+    if(!droneMode) setDroneMode(true);
+    openFlightCheck();
+  } else {
+    openPaywall('drone');   /* wind + gusts for pilots live in the pack */
+  }
+});
+
+/* =====================================================================
+   🚁 DRONE PACK — feature module (entitlement id: "drone")
+   One map instead of app-hopping: "can I fly here, how high, and will
+   the wind flip my drone?" — all on the map you already use.
+   Self-contained: delete this section and the app runs untouched.
+   ===================================================================== */
+const DRONE_CFG = {
+  minFetchZoom: 8,        /* don't sweep the whole country at low zoom      */
+  fetchPadPct: 0.25,      /* fetch this much past the viewport (pan slack)  */
+  cacheMins: 24*60,       /* FAA grids change rarely — refresh on schedule, */
+                          /* never per-view                                 */
+  maxPages: 3,            /* ArcGIS pagination cap per load (2000 ea)       */
+  labelZoom: 10.5,        /* show ceiling numbers at/after this zoom        */
+  colors: [               /* ceiling → paint (0 = no-fly without auth)      */
+    { max: 0,   fill:'rgba(255,90,90,.30)',  stroke:'rgba(255,90,90,.85)'  },
+    { max: 100, fill:'rgba(255,140,60,.24)', stroke:'rgba(255,140,60,.75)' },
+    { max: 200, fill:'rgba(255,176,58,.19)', stroke:'rgba(255,176,58,.65)' },
+    { max: 300, fill:'rgba(255,214,64,.15)', stroke:'rgba(255,214,64,.55)' },
+    { max: 400, fill:'rgba(53,224,138,.11)', stroke:'rgba(53,224,138,.5)'  }
+  ]
+};
+function droneColor(ceiling){
+  for(const c of DRONE_CFG.colors){ if(ceiling <= c.max) return c; }
+  return DRONE_CFG.colors[DRONE_CFG.colors.length-1];
+}
+function pointInRing(lat, lng, ring){
+  let inside = false;
+  for(let i=0, j=ring.length-1; i<ring.length; j=i++){
+    const xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+    if(((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside = true;
+  }
+  return inside;
+}
+
+/* ---- AirspaceSource interface — the country seam -----------------------
+   { id, country, attrib, load(bbox)→Promise, cellAt(lat,lng)→cell|null,
+     cells:Map, sites:Map }. FAA UDDS covers the US; add a source per
+   country later and pick by location — nothing above this layer changes. */
+const FaaAirspace = {
+  id:'faa-udds', country:'US', attrib:'✈ FAA UAS Facility Maps',
+  gridUrl:  'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/ArcGIS/rest/services/FAA_UAS_FacilityMap_Data/FeatureServer/0/query',
+  sitesUrl: 'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/ArcGIS/rest/services/Recreational_Flyer_Fixed_Sites/FeatureServer/0/query',
+  cells: new Map(), sites: new Map(),
+  _fetched: [], _busy: false,
+  _covered(bbox){
+    const now = Date.now();
+    this._fetched = this._fetched.filter(f => now - f.at < DRONE_CFG.cacheMins*60000);
+    return this._fetched.some(f =>
+      bbox[0]>=f.bbox[0] && bbox[1]>=f.bbox[1] && bbox[2]<=f.bbox[2] && bbox[3]<=f.bbox[3]);
+  },
+  async _query(url, bbox, outFields, withGeom, cb){
+    for(let page=0; page<DRONE_CFG.maxPages; page++){
+      const q = url + '?f=json&where=1%3D1&geometryType=esriGeometryEnvelope&inSR=4326&outSR=4326'
+        + '&spatialRel=esriSpatialRelIntersects'
+        + '&geometry=' + [bbox[1],bbox[0],bbox[3],bbox[2]].map(v => v.toFixed(4)).join('%2C')
+        + '&outFields=' + outFields + '&geometryPrecision=5&orderByFields=OBJECTID'
+        + '&returnGeometry=' + (withGeom ? 'true' : 'false')
+        + '&resultRecordCount=2000&resultOffset=' + (page*2000);
+      const res = await fetch(q, {headers:{'Accept':'application/json'}});
+      if(!res.ok) throw new Error('airspace HTTP ' + res.status);
+      const d = await res.json();
+      (d.features || []).forEach(cb);
+      if(!d.exceededTransferLimit) break;
+    }
+  },
+  async load(bbox){
+    if(this._busy || this._covered(bbox)) return false;
+    this._busy = true;
+    try{
+      await this._query(this.gridUrl, bbox,
+        'OBJECTID,CEILING,UNIT,APT1_NAME,APT1_FAAID,APT1_LAANC,AIRSPACE_1', true, f => {
+          const at = f.attributes || {}, g = f.geometry || {};
+          if(!g.rings || !g.rings.length) return;
+          let s=90, w=180, n=-90, e=-180;
+          g.rings[0].forEach(p => { w=Math.min(w,p[0]); e=Math.max(e,p[0]); s=Math.min(s,p[1]); n=Math.max(n,p[1]); });
+          this.cells.set(at.OBJECTID, { ceiling: at.CEILING|0, apt: at.APT1_NAME || '',
+            aptId: at.APT1_FAAID || '', laanc: at.APT1_LAANC === 1,
+            airspace: at.AIRSPACE_1 || '', rings: g.rings, bbox: [s,w,n,e] });
+        });
+      await this._query(this.sitesUrl, bbox,
+        'OBJECTID,SITE_NAME,CITY,STATE,CEILING,LATITUDE,LONGITUDE', false, f => {
+          const at = f.attributes || {};
+          if(at.LATITUDE == null || at.LONGITUDE == null) return;
+          this.sites.set(at.OBJECTID, { name: at.SITE_NAME || 'Fixed site',
+            city: at.CITY || '', state: at.STATE || '', ceiling: at.CEILING|0,
+            lat: +at.LATITUDE, lng: +at.LONGITUDE });
+        });
+      this._fetched.push({bbox, at: Date.now()});
+      if(this.cells.size > 6000){ this.cells.clear(); this.sites.clear(); this._fetched = []; }
+      return true;
+    } finally { this._busy = false; }
+  },
+  cellAt(lat, lng){
+    for(const c of this.cells.values()){
+      if(lat < c.bbox[0] || lat > c.bbox[2] || lng < c.bbox[1] || lng > c.bbox[3]) continue;
+      if(pointInRing(lat, lng, c.rings[0])) return c;
+    }
+    return null;
+  }
+};
+let airspaceSource = FaaAirspace;         /* country seam — swap/add per region */
+
+/* ---- painting the grid on the SDMap canvas (via map.drawHook) ---- */
+function droneViewBBox(padPct){
+  const ws = map.worldSize();
+  const [cx, cy] = map.project(map.center.lat, map.center.lng, ws);
+  const px = map.w*(0.5 + (padPct||0)), py = map.h*(0.5 + (padPct||0));
+  const a = map.unproject(cx-px, cy+py, ws), b = map.unproject(cx+px, cy-py, ws);
+  return [a.lat, a.lng, b.lat, b.lng];
+}
+function drawAirspace(ctx, ws, ox, oy){
+  const vb = droneViewBBox(0.05);
+  ctx.save();
+  for(const c of airspaceSource.cells.values()){
+    if(c.bbox[2] < vb[0] || c.bbox[0] > vb[2] || c.bbox[3] < vb[1] || c.bbox[1] > vb[3]) continue;
+    const col = droneColor(c.ceiling);
+    ctx.beginPath();
+    c.rings.forEach(r => {
+      r.forEach((p, i) => {
+        const [px, py] = map.project(p[1], p[0], ws);
+        if(i === 0) ctx.moveTo(px-ox, py-oy); else ctx.lineTo(px-ox, py-oy);
+      });
+      ctx.closePath();
+    });
+    ctx.fillStyle = col.fill; ctx.fill();
+    ctx.strokeStyle = col.stroke; ctx.lineWidth = 1; ctx.stroke();
+    if(map.zoom >= DRONE_CFG.labelZoom){
+      const [tx, ty] = map.project((c.bbox[0]+c.bbox[2])/2, (c.bbox[1]+c.bbox[3])/2, ws);
+      ctx.fillStyle = 'rgba(232,240,248,.9)';
+      ctx.font = '700 11px -apple-system,BlinkMacSystemFont,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(c.ceiling), tx-ox, ty-oy);
+    }
+  }
+  ctx.restore();
+}
+function renderDroneSites(){
+  map.clearGroup('dronesite');
+  const vb = droneViewBBox(DRONE_CFG.fetchPadPct);
+  let n = 0;
+  for(const s of airspaceSource.sites.values()){
+    if(s.lat < vb[0] || s.lat > vb[2] || s.lng < vb[1] || s.lng > vb[3]) continue;
+    if(++n > 200) break;
+    map.addMarker({ lat: s.lat, lng: s.lng, html: '<div class="poimark">🛩️</div>', group: 'dronesite',
+      popup: popupHTML(s.name, 'FAA recreational fixed site', s.lat, s.lng,
+        'Approved hobby/club field — fly up to ' + s.ceiling + ' ft here · ' +
+        [s.city, s.state].filter(Boolean).join(', ')) });
+  }
+}
+
+/* ---- "can I fly here?" — the center readout ---- */
+function droneAirspaceSummary(lat, lng){
+  const c = airspaceSource.cellAt(lat, lng);
+  if(!c) return { level:'ok', ceiling:400, cell:null,
+    text:'No controlled-airspace grid here — typically clear up to 400 ft' };
+  const where = (c.airspace ? 'Class ' + c.airspace : 'controlled') + (c.apt ? ' · ' + c.apt : '');
+  if(c.ceiling <= 0) return { level:'danger', ceiling:0, cell:c,
+    text:'Controlled airspace (' + where + ') — 0 ft grid, no LAANC auto-approval here' };
+  return { level:'caution', ceiling:c.ceiling, cell:c,
+    text:'Controlled airspace (' + where + ') — authorization required, auto-approve up to ' + c.ceiling + ' ft' };
+}
+function renderDroneHud(){
+  const a = droneAirspaceSummary(map.center.lat, map.center.lng);
+  const air = $('dh-air');
+  air.className = 'dh-row lvl-' + a.level;
+  air.innerHTML = '<span class="dh-dot"></span>✈️ <b>' + a.ceiling + ' ft</b>&nbsp;max — ' + esc(a.text);
+  const w = $('dh-wind');
+  if(lastWx){
+    const lvl = windLevel(lastWx.windMph, lastWx.gustMph);
+    w.className = 'dh-row lvl-' + lvl;
+    w.innerHTML = '<span class="dh-dot"></span>💨 <b>' + Math.round(lastWx.windMph) + '</b>&nbsp;mph '
+      + windFrom(lastWx.windDeg) + ' · gusts <b>' + Math.round(lastWx.gustMph) + '</b>'
+      + ' · 🌡 ' + Math.round(lastWx.tempF) + '°F'
+      + (lvl === 'danger' ? ' — <b>too windy to launch</b>' : lvl === 'caution' ? ' — use caution' : ' — good to launch');
+  } else {
+    w.className = 'dh-row';
+    w.innerHTML = '<span class="dh-dot"></span>💨 fetching conditions…';
+  }
+}
+
+/* ---- mode toggle + refresh ---- */
+let droneMode = false;
+async function refreshDrone(){
+  if(!droneMode) return;
+  if(map.zoom >= DRONE_CFG.minFetchZoom){
+    try{
+      await airspaceSource.load(droneViewBBox(DRONE_CFG.fetchPadPct));
+      renderDroneSites();
+    }catch(e){ /* offline — cached cells keep drawing */ }
+  }
+  renderDroneHud();
+  map.requestDraw();
+}
+function setDroneMode(on){
+  droneMode = on;
+  document.body.classList.toggle('drone', on);
+  $('dronefab').classList.toggle('active', on);
+  $('dronehud').style.display = on ? '' : 'none';
+  if(on){
+    map.drawHook = drawAirspace;
+    refreshDrone();
+    toast('🚁 Drone Mode ON — colored grid = FAA altitude ceilings; tap the map for a spot check', 4200);
+  } else {
+    map.drawHook = null;
+    map.clearGroup('dronesite');
+    toast('Drone Mode off');
+  }
+  map.requestDraw(); updateAttrib();
+}
+PACK_ACTIVATE.drone = () => setDroneMode(true);
+settleFns.push(() => { if(droneMode) refreshDrone(); });
+$('dronefab').addEventListener('click', () => {
+  if(!droneMode && !Entitlements.isUnlocked('drone')){ openPaywall('drone'); return; }
+  setDroneMode(!droneMode);
+});
+function droneTapInfo(lat, lng){
+  const a = droneAirspaceSummary(lat, lng);
+  toast((a.level==='ok' ? '🟢 ' : a.level==='caution' ? '🟡 ' : '🔴 ') + a.text, 4600);
+}
+
+const DRONE_LEGEND = [
+  ['<div class="lg-h">🚁 Drone airspace overlay</div>'],
+  [sw('background:rgba(255,90,90,.55)'), '<b>Red grid</b> — 0 ft: controlled airspace, no LAANC auto-approval'],
+  [sw('background:rgba(255,176,58,.55)'), '<b>Orange / yellow grid</b> — authorization required; the number is the max auto-approve altitude (ft)'],
+  [sw('background:rgba(53,224,138,.4)'), '<b>Green grid</b> — auto-approve up to 400 ft (authorization still required)'],
+  [em('🛩️'), 'FAA recreational fixed site — approved hobby &amp; club field'],
+  ['<div class="lg-note">No colored grid = uncontrolled airspace (typical) — fly up to 400 ft. Advisory only: always check TFRs &amp; NOTAMs before launch.</div>'],
+];
+
+/* ---- 🛫 LAANC — the authorization seam ---------------------------------
+   LaancProvider interface (country-agnostic):
+     { id, name, country, live,
+       requestAuthorization({lat,lng,altFt,startISO,durationMin})
+         → Promise<{id,status,message}>,
+       getAuthorizationStatus(id) → Promise<{id,status}> }
+   Real LAANC authorizations can ONLY be issued by an FAA-approved USS
+   (e.g. Aloft, Airspace Link). SkyDog therefore ships a clearly-labeled
+   placeholder: it never contacts the FAA and never pretends approval.
+   When the owner signs a provider deal, implement this interface with
+   the partner's API and swap `laancProvider` — the UI needs no changes.
+   Whether authorization is REQUIRED is answered locally from the free
+   UASFM grid (LaancService.check) — that part works today.            */
+const LaancPlaceholder = {
+  id:'placeholder', name:'FAA-approved partner — coming soon', country:'US', live:false,
+  async requestAuthorization(req){
+    return { id:null, status:'unavailable',
+      message:'SkyDog can’t submit LAANC requests yet — an FAA-approved partner integration is coming. ' +
+              'Until then, request authorization free through Aloft Air Control or Airspace Link, ' +
+              'using the ceiling shown above.' };
+  },
+  async getAuthorizationStatus(id){ return { id, status:'unknown' }; }
+};
+let laancProvider = LaancPlaceholder;     /* swap point for the real USS partner */
+const LaancService = {
+  check(lat, lng, altFt){
+    const s = droneAirspaceSummary(lat, lng);
+    return {
+      required: !!s.cell,
+      ceilingFt: s.ceiling,
+      autoApprovable: !!s.cell && s.ceiling > 0 && altFt <= s.ceiling,
+      laancAvailable: !!(s.cell && s.cell.laanc),
+      airport: s.cell ? s.cell.apt : null,
+      airspace: s.cell ? s.cell.airspace : null,
+      overCeiling: altFt > s.ceiling
+    };
+  },
+  request(req){ return laancProvider.requestAuthorization(req); },
+  status(id){ return laancProvider.getAuthorizationStatus(id); }
+};
+
+function laancEvaluate(){
+  const lat = map.center.lat, lng = map.center.lng;
+  const altFt = +$('laancalt').value;
+  $('laancloc').textContent = '📍 ' + lat.toFixed(4) + ', ' + lng.toFixed(4) +
+    ' (map center) — move the map to check a different launch spot';
+  const v = LaancService.check(lat, lng, altFt);
+  let cls, html;
+  if(altFt > 400){
+    cls = 'danger';
+    html = '<b>⛔ Over the 400 ft limit</b> — recreational &amp; Part 107 flights cap at 400 ft AGL.';
+  } else if(!v.required){
+    cls = 'ok';
+    html = '<b>✅ No authorization required</b> — uncontrolled airspace (typical). Keep it at or under ' +
+      altFt + ' ft and check TFRs &amp; NOTAMs before launch.';
+  } else if(v.autoApprovable){
+    cls = 'caution';
+    html = '<b>⚠️ LAANC authorization required</b> — you\'re in controlled airspace' +
+      (v.airport ? ' near ' + esc(v.airport) : '') + '. Good news: ' + altFt +
+      ' ft is at or under this grid\'s ' + v.ceilingFt + ' ft ceiling, so LAANC can auto-approve it.';
+  } else {
+    cls = 'danger';
+    html = '<b>⛔ Not auto-approvable here</b> — this grid\'s ceiling is ' + v.ceilingFt +
+      ' ft' + (v.airport ? ' (near ' + esc(v.airport) + ')' : '') +
+      (v.ceilingFt === 0
+        ? '. Zero-ft grids need special FAA coordination — pick another spot or stay grounded.'
+        : '. Drop your altitude to ' + v.ceilingFt + ' ft or below for LAANC auto-approval.');
+  }
+  $('laancverdict').innerHTML = '<div class="laancbox ' + cls + '">' + html + '</div>';
+  $('laancresult').innerHTML = '';
+  return v;
+}
+function openFlightCheck(){
+  laancEvaluate();
+  openSheet('dronesheet');
+}
+$('laancalt').addEventListener('change', laancEvaluate);
+$('laancdur').addEventListener('change', laancEvaluate);
+$('dh-check').addEventListener('click', openFlightCheck);
+$('laancreq').addEventListener('click', async () => {
+  const res = await LaancService.request({
+    lat: map.center.lat, lng: map.center.lng,
+    altFt: +$('laancalt').value,
+    startISO: new Date().toISOString(),
+    durationMin: +$('laancdur').value
+  });
+  $('laancresult').innerHTML = '<div class="laancbox caution"><b>🚧 ' + esc(laancProvider.name) +
+    '</b><br>' + esc(res.message || 'Authorization is not available yet.') + '</div>';
+});
+
+/* debug/test handle for the drone pack */
+window.__sddrone = { get mode(){ return droneMode; }, setDroneMode, refreshDrone,
+  airspace: FaaAirspace, get source(){ return airspaceSource; },
+  droneAirspaceSummary, droneColor, pointInRing, tapInfo: droneTapInfo,
+  windLevel, windFrom, WX_CFG, DRONE_CFG, renderDroneHud, refreshWeather,
+  get wx(){ return lastWx; }, LaancService, get laancProvider(){ return laancProvider; },
+  laancEvaluate, openFlightCheck };
+
 /* ============================================================
    📱 NATIVE (iOS app) monetization — AdMob banner + StoreKit IAP.
    Runs ONLY inside the Capacitor app; a plain browser hits none of it.
@@ -2021,7 +2661,9 @@ const SkyGPSAds = {
   async init(){
     const AdMob = sdNativeAdMob();
     if (!AdMob){ console.log('[SkyGPSAds] Browser mode — native ads not attached.'); return; }
-    if (FISHPACK.unlocked()){ console.log('[SkyGPSAds] Fishing Pack owned — no ads.'); return; }
+    /* ADS ARE PERMANENT — the banner shows for every user, free or paid.
+       No purchase may hide it, so there is deliberately NO entitlement
+       check here and no purchase path calls remove(). */
     try{
       await AdMob.initialize({ initializeForTesting: ADMOB_TESTING });
       try{ await AdMob.requestTrackingAuthorization(); }catch(e){}
@@ -2046,53 +2688,72 @@ const SkyGPSAds = {
   }
 };
 
-/* ---- Fishing Pack as a ONE-TIME App Store purchase (unlocks pack + kills ads) ---- */
-const IAP_PRODUCT_ID = 'com.skydog.skygps.fishingpack';
-const IAP_KEY = 'sd-fishpack-iap';
-
-/* teach FISHPACK about the App Store unlock without touching the web paths */
-const _fpUnlockedWeb = FISHPACK.unlocked.bind(FISHPACK);
-FISHPACK.unlocked = function(){ return sdStore.get(IAP_KEY) === '1' || _fpUnlockedWeb(); };
-
-async function sdGrantFishpack(msg){
-  sdStore.set(IAP_KEY, '1');
-  FISHPACK._session = true;
-  await SkyGPSAds.remove();
+/* ---- 📦 App Store purchases for the pack system (StoreKit) --------------
+   Sellable today: the All Access subscription only. The legacy one-time
+   Fishing Pack product (v1.0 submission) is still recognized on restore
+   so early buyers keep what they paid for. Purchases NEVER touch ads. */
+function sdGrantPack(id, msg){
+  PACK_STATE[id].grantIap();
   closeSheets();
-  setFishingMode(true);
-  toast(msg || '🎉 Fishing Pack unlocked — tight lines!', 3600);
+  if(id === 'allaccess') activatePack(currentPay !== 'allaccess' ? currentPay : 'fishing');
+  else activatePack(id);
+  toast(msg || packDef(id).unlockToast, 3600);
+  /* ads intentionally untouched — the banner stays for everyone, always */
 }
 
-const SkyGPSIAP = {
-  price: '$4.99',
+const SkyGPSStore = {
+  /* every entitlement-bearing product: [packId, product] */
+  products(){
+    const out = [];
+    Object.values(PACKS_CONFIG.packs).forEach(d => { if(d.product) out.push([d.id, d.product]); });
+    out.push(['allaccess', PACKS_CONFIG.bundle.product]);
+    return out;
+  },
+  _syncOwned(ownedIds){
+    this.products().forEach(([id, prod]) => {
+      const st = PACK_STATE[id];
+      if (ownedIds.has(prod.ios)){
+        if (sdStore.get(st.keys.iap) !== '1') st.grantIap();
+      } else if (prod.type === 'subs' && sdStore.get(st.keys.iap) === '1'){
+        st.revokeIap(); st._session = false;      /* subscription lapsed */
+      }
+      /* one-time (non-consumable) purchases are never revoked */
+    });
+  },
   async init(){
     const Store = sdNativeStore();
     if (!Store) return;
-    try{
-      const res = await Store.getProducts({ productIdentifiers: [IAP_PRODUCT_ID], productType: 'inapp' });
-      const p = res && res.products && res.products[0];
-      if (p && p.priceString) this.price = p.priceString;
-    }catch(e){ console.log('[SkyGPSIAP] price load failed:', e); }
-    /* silent auto-restore: reinstall / new phone → unlock without a tap */
-    if (!(sdStore.get(IAP_KEY) === '1') && Store.getPurchases){
+    for (const type of ['subs', 'inapp']){
+      const ids = this.products().filter(([,p]) => p.type === type).map(([,p]) => p.ios);
+      if (!ids.length) continue;
+      try{
+        const res = await Store.getProducts({ productIdentifiers: ids, productType: type });
+        (res && res.products || []).forEach(p => {
+          const pid = p.identifier || p.productIdentifier;
+          const hit = this.products().find(([,pr]) => pr.ios === pid);
+          if (hit && p.priceString) PACK_STATE[hit[0]].iosPrice = p.priceString;
+        });
+      }catch(e){ console.log('[SkyGPSStore] price load failed ('+type+'):', e); }
+    }
+    /* silent entitlement sync: reinstall / new phone → unlock without a tap;
+       lapsed subscription → gracefully re-lock. Store errors change nothing
+       (offline grace: cached unlocks keep working). */
+    if (Store.getPurchases){
       try{
         const owned = await Store.getPurchases({ onlyCurrentEntitlements: true });
-        if (owned && owned.purchases && owned.purchases.some(t => t.productIdentifier === IAP_PRODUCT_ID)){
-          sdStore.set(IAP_KEY, '1'); FISHPACK._session = true;
-          await SkyGPSAds.remove();
-          console.log('[SkyGPSIAP] existing purchase found — restored automatically.');
-        }
-      }catch(e){ console.log('[SkyGPSIAP] entitlement check failed:', e); }
+        this._syncOwned(new Set((owned && owned.purchases || []).map(t => t.productIdentifier)));
+      }catch(e){ console.log('[SkyGPSStore] entitlement check skipped (offline?):', e); }
     }
   },
-  async buy(){
+  async buy(id){
+    const st = PACK_STATE[id], prod = (packDef(id) || {}).product;
     const Store = sdNativeStore();
+    if (!prod){ toast('That pack is part of All Access'); return; }
     if (!Store || !Store.purchaseProduct){ toast('Purchases work in the App Store version'); return; }
     try{
-      /* re-buying an owned non-consumable re-unlocks at $0, so this doubles as restore */
-      await Store.purchaseProduct({ productIdentifier: IAP_PRODUCT_ID, productType: 'inapp', quantity: 1 });
-      await sdGrantFishpack('🎉 Fishing Pack unlocked forever — ads gone, tight lines!');
-    }catch(e){ console.log('[SkyGPSIAP] purchase failed/cancelled:', e); }
+      await Store.purchaseProduct({ productIdentifier: prod.ios, productType: prod.type, quantity: 1 });
+      sdGrantPack(id, st.def.unlockToast);
+    }catch(e){ console.log('[SkyGPSStore] purchase failed/cancelled:', e); }
   },
   async restore(){
     const Store = sdNativeStore();
@@ -2100,41 +2761,44 @@ const SkyGPSIAP = {
     try{
       await Store.restorePurchases();
       const owned = await Store.getPurchases({ onlyCurrentEntitlements: true });
-      if (owned && owned.purchases && owned.purchases.some(t => t.productIdentifier === IAP_PRODUCT_ID)){
-        await sdGrantFishpack('✔ Purchases restored — Fishing Pack unlocked!');
+      const ids = new Set((owned && owned.purchases || []).map(t => t.productIdentifier));
+      this._syncOwned(ids);
+      if (ids.size){
+        closeSheets(); buildPackSheet();
+        toast('✔ Purchases restored — welcome back!');
       } else {
         toast('No previous purchase found on this Apple ID');
       }
-    }catch(e){ console.log('[SkyGPSIAP] restore failed:', e); toast("Restore didn't finish — try again"); }
+    }catch(e){ console.log('[SkyGPSStore] restore failed:', e); toast("Restore didn't finish — try again"); }
   }
 };
 
 if (SD_NATIVE){
-  /* Apple 3.1.1: no external purchase links in the app — swap the Stripe
-     paywall for the one-time App Store purchase. Web build untouched. */
+  /* Apple 3.1.1: no external purchase links and no code-redemption field
+     inside the iOS app — the paywall sells the App Store subscription. */
+  window.__sdNativePay = true;
   const _openPaywallWeb = openPaywall;
-  openPaywall = function(){
-    _openPaywallWeb();
+  openPaywall = function(packId){
+    _openPaywallWeb(packId);
     const sub = $('paysub');
     sub.removeAttribute('href'); sub.removeAttribute('target');
-    sub.textContent = '🔓 Unlock forever — ' + SkyGPSIAP.price + ' (one-time, removes ads)';
+    sub.textContent = '🔓 Unlock everything — ' + payPrice();
     $('paysubyr').style.display = 'none';
     $('paycode').style.display = 'none';
     $('payunlock').style.display = 'none';
-    const note = document.querySelector('#paysheet .lg-note');
-    if (note) note.textContent = 'One-time purchase through the App Store — unlocks the Fishing Pack forever and removes ads. GPS tracking, maps & discovery stay 100% free forever.';
+    $('paynote').textContent = 'Auto-renewing App Store subscription — cancel anytime in Settings. Unlocks every pack, current & future. GPS tracking, maps & discovery stay 100% free forever.';
     if (!$('payrestore')){
       const r = document.createElement('button');
       r.id = 'payrestore'; r.className = 'btn gray';
       r.style.cssText = 'display:block;width:100%;margin-top:8px';
       r.textContent = '↻ Restore Purchases';
-      r.addEventListener('click', () => SkyGPSIAP.restore());
+      r.addEventListener('click', () => SkyGPSStore.restore());
       document.querySelector('#paysheet .btnrow').insertAdjacentElement('afterend', r);
     }
   };
-  $('paysub').addEventListener('click', e => { e.preventDefault(); SkyGPSIAP.buy(); });
+  $('paysub').addEventListener('click', e => { e.preventDefault(); SkyGPSStore.buy('allaccess'); });
   $('paysubyr').addEventListener('click', e => { e.preventDefault(); });
-  SkyGPSIAP.init().then(() => SkyGPSAds.init());
+  SkyGPSStore.init().then(() => SkyGPSAds.init());
 }
 
 /* boot status + debug handle (used by automated tests, harmless in production) */
