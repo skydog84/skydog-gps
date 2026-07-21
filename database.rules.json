@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "trips": {
+      "$code": {
+        ".validate": "$code.matches(/^[A-Z2-9]{5}$/)",
+        "members": {
+          ".read": true,
+          "$member": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['name','lat','lng','ts','kind','color'])",
+            "name":  { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24" },
+            "lat":   { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+            "lng":   { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+            "ts":    { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+            "kind":  { ".validate": "newData.val() === 'person' || newData.val() === 'pet'" },
+            "color": { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{3,8}$/)" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

@@ -43,6 +43,22 @@ const FIX_NOMINATIM_MI = {
   address: { state: 'Michigan', county: 'Grand Traverse County', country: 'United States' },
 };
 
+/* minimal firebase compat stub (served for both firebase-app & firebase-database) */
+const FB_STUB = `window.firebase = window.firebase || (function(){
+  function mkRef(path){ return {
+    path: path,
+    child: function(p){ return mkRef(path + '/' + p); },
+    on: function(ev, cb){ (window.__fbCBs = window.__fbCBs || {})[path] = cb; },
+    off: function(){ window.__fbOffed = path; },
+    set: function(v){ (window.__fbWrites = window.__fbWrites || []).push({path: path, v: v}); return Promise.resolve(); },
+    remove: function(){ (window.__fbRemoves = window.__fbRemoves || []).push(path); return Promise.resolve(); },
+    onDisconnect: function(){ return {
+      remove: function(){ window.__fbOD = path; },
+      cancel: function(){ window.__fbODCancel = path; } }; }
+  }; }
+  return { initializeApp: function(){}, database: function(){ return { ref: mkRef }; } };
+})();`;
+
 let pass = 0, fail = 0;
 const failures = [];
 function T(name, cond, info){
@@ -53,7 +69,8 @@ function T(name, cond, info){
 async function main(){
   /* static server */
   const server = http.createServer((req, res) => {
-    const f = path.join(APP_DIR, req.url === '/' ? 'index.html' : decodeURIComponent(req.url.split('?')[0]));
+    const p = decodeURIComponent(req.url.split('?')[0]);
+    const f = path.join(APP_DIR, p === '/' ? 'index.html' : p);
     if (!f.startsWith(APP_DIR) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('nope'); }
     const ext = path.extname(f);
     res.writeHead(200, { 'Content-Type': ext === '.html' ? 'text/html' : ext === '.js' ? 'text/javascript' : ext === '.json' ? 'application/json' : 'application/octet-stream' });
@@ -94,6 +111,10 @@ async function main(){
     }
     if (url.includes('open-meteo')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{"elevation":[190]}' });
+    }
+    /* Firebase SDK stub — records writes/listeners so buddy tests are deterministic & offline */
+    if (url.includes('gstatic.com/firebasejs')) {
+      return route.fulfill({ status: 200, contentType: 'text/javascript', body: FB_STUB });
     }
     /* every tile/export request → tiny png (deterministic, fast) */
     return route.fulfill({ status: 200, contentType: 'image/png', body: PNG1 });
@@ -320,12 +341,95 @@ async function main(){
   T('trial is one-shot: button gone on next visit', await page.$eval('#paytrial', (el) => getComputedStyle(el).display === 'none'));
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
 
+  console.log('\n— 👥 Buddy Trip: helpers —');
+  T('buddy fab exists', (await page.$eval('#buddyfab', (el) => el.textContent.trim())) === '👥');
+  T('trip codes: 5 chars, no 0/O/1/I/L lookalikes', await page.evaluate(`(function(){
+    for (let i = 0; i < 50; i++){
+      const c = __BUDDY.buddyCode();
+      if (!/^[A-HJ-KM-NP-Z2-9]{5}$/.test(c) || /[OIL01]/.test(c)) return false;
+    }
+    return true;
+  })()`));
+  T('bearing math: N / E / SW', await page.evaluate(`(function(){
+    const me = { lat: 44.76, lng: -85.62 };
+    return __BUDDY.buddyBearing(me, { lat: 45.0, lng: -85.62 }) === 'N'
+        && __BUDDY.buddyBearing(me, { lat: 44.76, lng: -85.0 }) === 'E'
+        && __BUDDY.buddyBearing(me, { lat: 44.5, lng: -86.0 }) === 'SW';
+  })()`));
+  T('distance text: ft close-in, mi far, compass attached', await page.evaluate(`(function(){
+    const me = { lat: 44.76, lng: -85.62 };
+    const near = __BUDDY.buddyDistTxt(me, { lat: 44.7609, lng: -85.62 });
+    const far  = __BUDDY.buddyDistTxt(me, { lat: 45.2, lng: -85.62 });
+    return /^\\d+ ft N$/.test(near) && /mi N$/.test(far);
+  })()`));
+  T('buddy colors deterministic per member', await page.evaluate(
+    '__BUDDY.buddyColor("abc") === __BUDDY.buddyColor("abc") && /^#/.test(__BUDDY.buddyColor("abc"))'));
+
+  console.log('\n— 👥 Buddy Trip: consent gate —');
+  await page.click('#buddyfab');
+  T('fab opens buddy sheet', await page.$eval('#buddysheet', (el) => el.classList.contains('open')));
+  await page.fill('#buddyname', 'Tester');
+  await page.click('#buddystart');
+  T('no consent yet → consent sheet, trip NOT started', await page.$eval('#buddyconsent', (el) => el.classList.contains('open'))
+    && await page.evaluate('__BUDDY.BUDDY.active()') === false);
+  await page.click('#buddynope');
+  T('cancel consent → still no trip, nothing stored', await page.evaluate('__BUDDY.BUDDY.active()') === false
+    && await page.evaluate('localStorage.getItem("sd-buddy-consent")') === null);
+  await page.click('#buddyfab');
+  await page.click('#buddystart');
+  await page.click('#buddyagree');
+  await page.waitForFunction('__BUDDY.BUDDY.active() === true', null, { timeout: 5000 });
+  T('agree → consent persisted + trip live', await page.evaluate('localStorage.getItem("sd-buddy-consent")') === '1');
+
+  console.log('\n— 👥 Buddy Trip: live room —');
+  const tripCode = await page.evaluate('__BUDDY.BUDDY.code');
+  T('room code shown in sheet', (await page.$eval('#buddycodeshow', (el) => el.textContent)) === tripCode && /^[A-Z2-9]{5}$/.test(tripCode));
+  T('sharing pill visible', await page.$eval('#buddypill', (el) => getComputedStyle(el).display !== 'none'));
+  T('onDisconnect cleanup armed on MY member path', await page.evaluate('window.__fbOD') === 'trips/' + tripCode + '/members/' + (await page.evaluate('__BUDDY.BUDDY.memberId')));
+  T('subscribed to the room members path', await page.evaluate('!!(window.__fbCBs && window.__fbCBs["trips/' + tripCode + '/members"])'));
+  /* push two fake buddies (one fresh, one stale pet) through the stub's listener */
+  await page.evaluate(`(function(){
+    __BUDDY.BUDDY.notePos(44.76, -85.62);
+    const members = {};
+    members[__BUDDY.BUDDY.memberId] = { name: 'Tester', lat: 44.76, lng: -85.62, ts: Date.now(), kind: 'person', color: '#4aa3ff' };
+    members['ava1'] = { name: 'Ava', lat: 44.7609, lng: -85.62, ts: Date.now(), kind: 'person', color: '#ff7a59' };
+    members['rex1'] = { name: 'Rex', lat: 44.7700, lng: -85.62, ts: Date.now() - 90000, kind: 'pet', color: '#ffd166' };
+    window.__fbCBs['trips/' + __BUDDY.BUDDY.code + '/members']({ val: function(){ return members; } });
+  })()`);
+  T('2 buddy dots on map (self excluded)', await page.evaluate('__sdmap.countGroup("buddy")') === 2);
+  T('fresh buddy label: name + distance + bearing', await page.evaluate(`(function(){
+    const el = [...document.querySelectorAll('.bdymark .bname')].find(e => e.textContent.includes('Ava'));
+    return !!el && /\\d+ ft N/.test(el.textContent);
+  })()`));
+  T('stale pet: 🐾 + last seen + dimmed', await page.evaluate(`(function(){
+    const el = [...document.querySelectorAll('.bdymark')].find(e => e.textContent.includes('Rex'));
+    return !!el && el.classList.contains('stale') && el.textContent.includes('🐾') && /last seen \\d+s/.test(el.textContent);
+  })()`));
+  T('pill counts crew (2)', (await page.$eval('#buddycount', (el) => el.textContent)) === '2');
+  T('member list rows rendered (2)', await page.$$eval('#buddylist .buddyrow', (e) => e.length) === 2);
+
+  console.log('\n— 👥 Buddy Trip: end = privacy —');
+  await page.click('#buddyend');
+  T('end → trip inactive + pill gone', await page.evaluate('__BUDDY.BUDDY.active()') === false
+    && await page.$eval('#buddypill', (el) => getComputedStyle(el).display === 'none'));
+  T('end → my member removed from the room', await page.evaluate(
+    '(window.__fbRemoves || []).includes("trips/' + tripCode + '/members/" + __BUDDY.BUDDY.memberIdGet())'));
+  T('end → map cleared of buddy dots', await page.evaluate('__sdmap.countGroup("buddy")') === 0);
+  T('end → listener detached', await page.evaluate('window.__fbOffed') === 'trips/' + tripCode + '/members');
+
+  console.log('\n— 👥 Buddy Trip: invite link —');
+  await page.goto('http://localhost:' + PORT + '/?buddy=abmxz', { waitUntil: 'load' });
+  await page.waitForFunction('window.__SKYDOG_READY === true', null, { timeout: 10000 });
+  T('?buddy=CODE opens sheet with code prefilled', await page.$eval('#buddysheet', (el) => el.classList.contains('open'))
+    && (await page.$eval('#buddycode', (el) => el.value)) === 'ABMXZ');
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+
   console.log('\n— Fail-loud + shell —');
   await page.evaluate('window.dispatchEvent(new ErrorEvent("error", { message: "test-explosion" }))');
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v10', sw.includes("skydog-gps-v10") && !sw.includes("skydog-gps-v9"));
+  T('sw.js cache bumped to v11', sw.includes("skydog-gps-v11") && !sw.includes("skydog-gps-v10"));
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',

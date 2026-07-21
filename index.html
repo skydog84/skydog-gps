@@ -174,6 +174,25 @@
     background:#0d131c;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--accent);box-shadow:var(--shadow)}
   .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:1900;opacity:0;pointer-events:none;transition:opacity .25s}
   .backdrop.show{opacity:1;pointer-events:auto}
+  /* ---- Buddy Trip ---- */
+  #buddypill{position:absolute;top:calc(118px + var(--safe-top));left:50%;transform:translateX(-50%);z-index:1500;
+    background:#0d131c;border:1px solid #2b5f43;border-radius:999px;padding:7px 14px;font-size:12.5px;color:#35e08a;
+    box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
+  #buddypill b{font-weight:700}
+  #buddycodebox{background:#0d131c;border:1px dashed var(--line);border-radius:12px;padding:12px;text-align:center;
+    font-size:12px;color:var(--dim);letter-spacing:.08em}
+  #buddycodebox b{display:block;font-size:30px;letter-spacing:.35em;color:var(--accent);margin-top:2px;font-weight:800}
+  #buddypetrow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin:2px 0 4px;cursor:pointer}
+  .buddyrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .buddyrow:last-child{border-bottom:none}
+  .buddyrow .bsw{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
+  .buddyrow small{color:var(--dim);margin-left:auto;text-align:right}
+  .buddyrow.stale{opacity:.55}
+  .bdymark{transform:translateX(-50%);text-align:center;pointer-events:none}
+  .bdymark .bdot{width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 10px rgba(0,0,0,.6);margin:0 auto}
+  .bdymark.stale .bdot{opacity:.5;border-style:dashed}
+  .bdymark .bname{margin-top:3px;background:rgba(13,19,28,.85);border-radius:8px;padding:2px 7px;font-size:10.5px;
+    color:#fff;white-space:nowrap;border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -204,6 +223,7 @@
   <button class="fab" id="savedfab" title="Saved adventures">📁</button>
   <button class="fab" id="keyfab" title="Map key">🔑</button>
   <button class="fab" id="fishfab" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
+  <button class="fab" id="buddyfab" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="fab" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
   <button class="fab" id="clearfab" title="Clear pins">🧹</button>
   <button class="fab" id="installfab" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
@@ -215,6 +235,8 @@
 </div>
 
 <div id="spinner">Scanning the area…</div>
+
+<button id="buddypill" style="display:none">👥 sharing with <b id="buddycount">0</b></button>
 
 <div id="dock">
   <div id="hud">
@@ -306,6 +328,35 @@
     <button class="btn gray" id="paytrial">🎁 Try it free today</button>
   </div>
   <div class="lg-note">Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page &amp; receipt. Cancel anytime. GPS tracking, maps &amp; discovery stay 100% free forever.</div>
+</div>
+
+<div class="sheet" id="buddysheet">
+  <div class="grabber"></div>
+  <h3>👥 Buddy Trip</h3>
+  <div id="buddyoff">
+    <div class="lg-note" style="margin:0 0 12px">Share one code with your crew and everyone shows up live on everyone's map — with distance &amp; direction. 100% free, no accounts. Ends the second you end it.</div>
+    <input class="field" id="buddyname" placeholder="Your name (what buddies will see)" maxlength="20" autocomplete="off">
+    <label id="buddypetrow"><input type="checkbox" id="buddypet"> 🐾 This device is a pet / gear tracker</label>
+    <button class="btn green" id="buddystart" style="width:100%;margin:10px 0">🚀 Start a Buddy Trip</button>
+    <div style="display:flex;gap:8px">
+      <input class="field" id="buddycode" placeholder="Have a code? Enter it" maxlength="5" autocapitalize="characters" autocomplete="off" style="flex:1;margin:0">
+      <button class="btn blue" id="buddyjoin">Join</button>
+    </div>
+  </div>
+  <div id="buddyon" style="display:none">
+    <div id="buddycodebox">TRIP CODE <b id="buddycodeshow">—</b></div>
+    <button class="btn blue" id="buddyshare" style="width:100%;margin:10px 0">📤 Invite buddies — share the link</button>
+    <div id="buddylist"></div>
+    <button class="btn gray" id="buddyend" style="width:100%;margin-top:12px">⏹ End Trip — stop sharing</button>
+  </div>
+</div>
+
+<div class="sheet" id="buddyconsent">
+  <div class="grabber"></div>
+  <h3>📍 Share your live location?</h3>
+  <div class="lg-note" style="margin:0 0 14px;font-size:13px;line-height:1.5">You'll share your <b>live location</b> with everyone in this trip while it's running. It stops the instant you end the trip or close the app. Nothing is stored afterward.</div>
+  <button class="btn green" id="buddyagree" style="width:100%;margin-bottom:8px">✔ I understand — share while on this trip</button>
+  <button class="btn gray" id="buddynope" style="width:100%">Cancel</button>
 </div>
 
 <div id="toast"></div>
@@ -802,6 +853,7 @@ function showMe(lat, lng, acc){
     meMarker = map.addMarker({lat, lng, html:'<div class="memark"></div>', anchor:[9,9], group:'me', z:900});
   } else map.moveMarker(meMarker, lat, lng);
   map.setCircle({lat, lng, radiusM: acc || 30});
+  if(typeof BUDDY !== 'undefined') BUDDY.notePos(lat, lng);
 }
 function locate(fly){
   if(!navigator.geolocation){ toast('⚠️ No GPS available on this device'); return; }
@@ -1473,7 +1525,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','buddysheet','buddyconsent'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -1535,6 +1587,17 @@ function onFix(p){
     trk.distMi += d;
     const dtH = (pt.t - prev.t)/3600000;
     let mph = (speed!=null && isFinite(speed)) ? speed*2.23694 : (dtH>0 ? d/dtH : 0);
+    /* GPS spike clamp: nothing SkyDog rides gains 60+ mph between fixes.
+       A one-off jump that big is a glitch fix — drop the whole point (it
+       would also inflate distance & MAX MPH — the 129.1 bug). If the high
+       speed PERSISTS 3 fixes in a row it's real (e.g. tracking started
+       mid-drive), so let it through. */
+    if(mph > (trk.lastMph || 0) + 60){
+      trk.spikeN = (trk.spikeN || 0) + 1;
+      if(trk.spikeN < 3) return;
+    }
+    trk.spikeN = 0;
+    trk.lastMph = mph;
     if(mph >= 0 && mph < 130){                    // ignore GPS glitch speeds
       trk.maxMph = Math.max(trk.maxMph, mph);
       $('st-speed').textContent = mph.toFixed(1);
@@ -1698,6 +1761,236 @@ function renderTrips(){
   });
 }
 $('savedfab').addEventListener('click', () => { renderTrips(); openSheet('savedsheet'); });
+
+/* ============================================================
+   👥 BUDDY TRIP — live crew sharing via Firebase RTDB.
+   Room-code model, no accounts. 100% free forever (it's the
+   viral loop — never gate it). Firebase loads lazily, only when
+   a trip starts, so the core app stays instant & offline-first.
+   ============================================================ */
+const BUDDY_FB = {
+  apiKey: 'AIzaSyDpuKhmresn-CNkU6kBoED8DS6drLILsGs',
+  authDomain: 'skydog-gps.firebaseapp.com',
+  databaseURL: 'https://skydog-gps-default-rtdb.firebaseio.com',
+  projectId: 'skydog-gps',
+  storageBucket: 'skydog-gps.firebasestorage.app',
+  messagingSenderId: '129613717910',
+  appId: '1:129613717910:web:b4f584eebaf830b85a7db7'
+};
+const BUDDY_URL_BASE = 'https://skydog84.github.io/skydog-gps/';
+const BUDDY_COLORS = ['#4aa3ff','#ff7a59','#ffd166','#35e08a','#c792ea','#f78fb3','#5eead4','#f97316'];
+const BUDDY_STALE_MS = 60000;      // >60s without an update = stale dot
+const BUDDY_PUSH_MS  = 12000;      // how often we publish our position
+
+/* pure helpers (unit-tested) */
+function buddyCode(){
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';       // no 0/O/1/I/L lookalikes
+  let c = '';
+  const r = new Uint32Array(5);
+  (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(r) : r.forEach((_,i)=>r[i]=Math.floor(Math.random()*1e9));
+  for(let i=0;i<5;i++) c += A[r[i] % A.length];
+  return c;
+}
+function buddyBearing(a, b){
+  const toR = Math.PI/180;
+  const dL = (b.lng-a.lng)*toR;
+  const y = Math.sin(dL)*Math.cos(b.lat*toR);
+  const x = Math.cos(a.lat*toR)*Math.sin(b.lat*toR) - Math.sin(a.lat*toR)*Math.cos(b.lat*toR)*Math.cos(dL);
+  const deg = (Math.atan2(y,x)*180/Math.PI+360)%360;
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45)%8];
+}
+function buddyDistTxt(a, b){
+  const mi = haversineMi(a, b);
+  const txt = mi < 0.19 ? Math.round(mi*5280)+' ft' : mi.toFixed(mi<10?1:0)+' mi';
+  return txt+' '+buddyBearing(a, b);
+}
+function buddyColor(id){
+  let h = 0; for(const ch of String(id)) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  return BUDDY_COLORS[h % BUDDY_COLORS.length];
+}
+
+const BUDDY = {
+  code: null, memberId: null, ref: null, myRef: null,
+  markers: new Map(), members: {}, myPos: null,
+  _pushT: null, _uiT: null, _fb: null,
+
+  notePos(lat, lng){ this.myPos = {lat, lng}; },
+
+  memberIdGet(){
+    let id = sdStore.get('sd-buddy-id');
+    if(!id){ id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); sdStore.set('sd-buddy-id', id); }
+    return id;
+  },
+
+  /* lazy Firebase (compat build) — injected only on first use */
+  loadFirebase(){
+    if(this._fb) return this._fb;
+    this._fb = new Promise((res, rej) => {
+      if(window.firebase && firebase.database) return res(firebase);
+      const load = src => new Promise((r, j) => {
+        const s = document.createElement('script');
+        s.src = src; s.onload = r; s.onerror = () => j(new Error('offline'));
+        document.head.appendChild(s);
+      });
+      load('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js')
+        .then(() => load('https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js'))
+        .then(() => { firebase.initializeApp(BUDDY_FB); res(firebase); })
+        .catch(rej);
+    });
+    this._fb.catch(() => { this._fb = null; });
+    return this._fb;
+  },
+
+  active(){ return !!this.code; },
+
+  consentOK(){ return sdStore.get('sd-buddy-consent') === '1'; },
+
+  async start(code, isJoin){
+    const name = ($('buddyname').value || '').trim() || 'SkyDog';
+    sdStore.set('sd-buddy-name', name);
+    let fb;
+    try { fb = await this.loadFirebase(); }
+    catch(e){ toast('⚠️ No signal — buddy trips need a connection to start'); return; }
+    this.code = code;
+    this.memberId = this.memberIdGet();
+    this.ref = fb.database().ref('trips/'+code+'/members');
+    this.myRef = this.ref.child(this.memberId);
+    this.myRef.onDisconnect().remove();
+    this.pushPos(true);
+    this._pushT = setInterval(() => this.pushPos(), BUDDY_PUSH_MS);
+    this._uiT = setInterval(() => this.renderAll(), 5000);
+    this.ref.on('value', snap => { this.members = snap.val() || {}; this.renderAll(); });
+    $('buddyoff').style.display = 'none';
+    $('buddyon').style.display = '';
+    $('buddycodeshow').textContent = code;
+    $('buddypill').style.display = '';
+    toast(isJoin ? '👥 Joined! Your crew is on the map' : '🚀 Buddy Trip live — invite your crew!');
+  },
+
+  pushPos(now){
+    const send = p => {
+      if(!this.myRef) return;
+      this.notePos(p.coords.latitude, p.coords.longitude);
+      this.myRef.set({
+        name: sdStore.get('sd-buddy-name') || 'SkyDog',
+        lat: p.coords.latitude, lng: p.coords.longitude,
+        ts: Date.now(),
+        kind: $('buddypet').checked ? 'pet' : 'person',
+        color: buddyColor(this.memberId)
+      }).catch(()=>{});
+    };
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(send, ()=>{}, {
+      enableHighAccuracy: true, timeout: 10000, maximumAge: now ? 0 : BUDDY_PUSH_MS
+    });
+  },
+
+  renderAll(){
+    const ids = Object.keys(this.members).filter(id => id !== this.memberId);
+    /* map dots */
+    const seen = new Set();
+    for(const id of ids){
+      const m = this.members[id];
+      if(!m || m.lat == null) continue;
+      seen.add(id);
+      const stale = Date.now() - (m.ts||0) > BUDDY_STALE_MS;
+      const sub = this.myPos ? buddyDistTxt(this.myPos, m) : '';
+      const label = (m.kind==='pet' ? '🐾 ' : '') + esc(m.name||'?') + (sub ? ' · '+sub : '')
+        + (stale ? ' · last seen '+Math.round((Date.now()-(m.ts||0))/1000)+'s' : '');
+      const html = '<div class="bdymark'+(stale?' stale':'')+'"><div class="bdot" style="background:'
+        + esc(m.color||buddyColor(id)) + '"></div><div class="bname">'+label+'</div></div>';
+      let mk = this.markers.get(id);
+      if(!mk){
+        mk = map.addMarker({lat:m.lat, lng:m.lng, html, anchor:[0,10], group:'buddy', z:800});
+        this.markers.set(id, mk);
+      } else {
+        mk.el.innerHTML = html;
+        map.moveMarker(mk, m.lat, m.lng);
+      }
+    }
+    for(const [id, mk] of [...this.markers]){
+      if(!seen.has(id)){ mk.el.remove(); map.markers.splice(map.markers.indexOf(mk),1); this.markers.delete(id); }
+    }
+    map.requestDraw();
+    /* pill + list */
+    $('buddycount').textContent = ids.length;
+    const rows = ids.map(id => {
+      const m = this.members[id] || {};
+      const stale = Date.now() - (m.ts||0) > BUDDY_STALE_MS;
+      const sub = stale ? 'last seen '+Math.round((Date.now()-(m.ts||0))/1000)+'s'
+                        : (this.myPos && m.lat!=null ? buddyDistTxt(this.myPos, m) : 'locating…');
+      return '<div class="buddyrow'+(stale?' stale':'')+'"><span class="bsw" style="background:'+esc(m.color||'#888')+';color:'+esc(m.color||'#888')+'"></span>'
+        + (m.kind==='pet'?'🐾 ':'') + esc(m.name||'?') + '<small>'+esc(sub)+'</small></div>';
+    });
+    $('buddylist').innerHTML = rows.length ? rows.join('')
+      : '<div class="lg-note" style="margin:6px 0">Nobody here yet — share the link below. Buddies open it, tap Join, done.</div>';
+  },
+
+  async share(){
+    const url = BUDDY_URL_BASE + '?buddy=' + this.code;
+    const msg = '🐾 Join my SkyDog GPS Buddy Trip! Code ' + this.code + ' — open ' + url + ' and we\'ll see each other live on the map.';
+    if(navigator.share){ try{ await navigator.share({title:'SkyDog Buddy Trip', text: msg}); return; }catch(e){} }
+    try{ await navigator.clipboard.writeText(msg); toast('📋 Invite copied — text it to your crew'); }
+    catch(e){ toast('Code: '+this.code+' — '+url, 6000); }
+  },
+
+  end(silent){
+    if(this._pushT){ clearInterval(this._pushT); this._pushT = null; }
+    if(this._uiT){ clearInterval(this._uiT); this._uiT = null; }
+    if(this.ref){ try{ this.ref.off(); }catch(e){} }
+    if(this.myRef){ try{ this.myRef.onDisconnect().cancel(); this.myRef.remove(); }catch(e){} }
+    this.ref = this.myRef = this.code = null;
+    this.members = {};
+    map.clearGroup('buddy'); this.markers.clear();
+    $('buddypill').style.display = 'none';
+    $('buddyoff').style.display = '';
+    $('buddyon').style.display = 'none';
+    if(!silent){ toast('👋 Trip ended — location sharing stopped'); closeSheets(); }
+  }
+};
+
+/* consent gate: remember the action, ask once, then run it */
+let buddyPending = null;
+function buddyGate(fn){
+  if(BUDDY.consentOK()) return fn();
+  buddyPending = fn;
+  openSheet('buddyconsent');
+}
+$('buddyagree').addEventListener('click', () => {
+  sdStore.set('sd-buddy-consent', '1');
+  const fn = buddyPending; buddyPending = null;
+  closeSheets(); openSheet('buddysheet');
+  if(fn) fn();
+});
+$('buddynope').addEventListener('click', () => { buddyPending = null; closeSheets(); });
+
+$('buddyfab').addEventListener('click', () => {
+  $('buddyname').value = sdStore.get('sd-buddy-name') || '';
+  openSheet('buddysheet');
+});
+$('buddypill').addEventListener('click', () => openSheet('buddysheet'));
+$('buddystart').addEventListener('click', () => buddyGate(() => BUDDY.start(buddyCode(), false)));
+$('buddyjoin').addEventListener('click', () => {
+  const code = ($('buddycode').value || '').trim().toUpperCase();
+  if(!/^[A-Z2-9]{5}$/.test(code)){ toast('⚠️ Codes are 5 letters/numbers — ask your buddy'); return; }
+  buddyGate(() => BUDDY.start(code, true));
+});
+$('buddyshare').addEventListener('click', () => BUDDY.share());
+$('buddyend').addEventListener('click', () => BUDDY.end());
+window.addEventListener('pagehide', () => { if(BUDDY.active()) BUDDY.end(true); });
+
+/* arriving via an invite link? prefill & open */
+(function(){
+  const m = /[?&]buddy=([A-Za-z2-9]{5})\b/.exec(location.search);
+  if(!m) return;
+  $('buddycode').value = m[1].toUpperCase();
+  $('buddyname').value = sdStore.get('sd-buddy-name') || '';
+  openSheet('buddysheet');
+  toast('👥 You\'re invited! Enter your name and tap Join', 4000);
+})();
+
+/* test hooks */
+window.__BUDDY = { BUDDY, buddyCode, buddyBearing, buddyDistTxt, buddyColor };
 
 /* ============================================================
    📱 NATIVE (iOS app) monetization — AdMob banner + StoreKit IAP.
