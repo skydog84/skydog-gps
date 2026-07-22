@@ -222,6 +222,43 @@
   .laancbox.ok{border-color:#2b5f43;background:rgba(53,224,138,.07)}
   .laancbox.caution{border-color:#6e5a1f;background:rgba(255,176,58,.07)}
   .laancbox.danger{border-color:#6e2b2b;background:rgba(255,90,90,.07)}
+
+  /* ---- 🏔 ORV Trails mode ---- */
+  #orvchips{display:none;gap:7px;overflow-x:auto;padding:2px 2px 6px;pointer-events:auto;scrollbar-width:none}
+  #orvchips::-webkit-scrollbar{display:none}
+  #orvchips.on{display:flex}
+  #orvchips .chip{border-color:#5a4a1f;background:#221c0d}
+
+  /* ---- 🎡 Mode Wheel — core navigation (free for everyone) ----
+     A cyclic wheel of mode buttons anchored in the bottom-right thumb
+     corner. Flick to spin (momentum + firm snap detents), tap any
+     button to activate; the front slot is enlarged & glove-friendly. */
+  #modewheel{position:absolute;right:0;bottom:calc(96px + var(--safe-bottom));width:0;height:0;z-index:1001;overflow:visible}
+  #wheeltouch{position:absolute;right:0;bottom:0;width:210px;height:210px;transform:translate(0,0);
+    border-radius:210px 0 0 0;touch-action:none;pointer-events:auto}
+  .wfab{position:absolute;right:0;bottom:0;width:52px;height:52px;margin:-26px;border-radius:16px;
+    background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:22px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);
+    user-select:none;will-change:transform;transition:box-shadow .2s}
+  .wfab.front{border-color:var(--accent);box-shadow:0 0 0 3px rgba(53,224,138,.25),var(--shadow)}
+  .wfab.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
+  .wfab.locked::after{content:'🔒';position:absolute;right:-5px;top:-7px;font-size:13px;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
+  @media (prefers-reduced-motion: reduce){.wfab{transition:none}}
+
+  /* ---- 📍 My Spots ---- */
+  .spotrow{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .spotrow:last-child{border-bottom:none}
+  .spotrow .sem{font-size:20px;flex:none}
+  .spotrow .snm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .spotrow .snt{color:var(--dim);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .spotrow button{margin-left:auto;flex:none;border:0;border-radius:9px;padding:8px 10px;font-size:12px;
+    font-weight:800;cursor:pointer;background:var(--panel);border:1px solid var(--line);color:var(--text)}
+  #spoticons{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  #spoticons button{width:44px;height:44px;border-radius:12px;font-size:21px;background:var(--panel);
+    border:1px solid var(--line);cursor:pointer}
+  #spoticons button.sel{border-color:var(--accent);background:rgba(53,224,138,.12)}
+  .spotmark{filter:drop-shadow(0 2px 4px rgba(0,0,0,.7));font-size:26px;line-height:1;text-align:center;user-select:none}
 </style>
 </head>
 <body>
@@ -244,6 +281,7 @@
   </div>
   <div id="chips"></div>
   <div id="fishchips"></div>
+  <div id="orvchips"></div>
 </div>
 
 <div id="fabs">
@@ -251,13 +289,22 @@
   <button class="fab" id="locatefab" title="My location">🎯</button>
   <button class="fab" id="savedfab" title="Saved adventures">📁</button>
   <button class="fab" id="keyfab" title="Map key">🔑</button>
-  <button class="fab" id="fishfab" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
-  <button class="fab" id="dronefab" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
-  <button class="fab" id="packsfab" title="Feature Packs — optional add-ons">🎒</button>
-  <button class="fab" id="buddyfab" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="fab" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
   <button class="fab" id="clearfab" title="Clear pins">🧹</button>
   <button class="fab" id="installfab" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
+</div>
+
+<!-- 🎡 Mode Wheel — every MODE lives here (non-mode controls stay in #fabs above).
+     Buttons keep their historic ids so unlock flows & tests stay stable;
+     the wheel JS lays them out on the arc and handles flick/snap/tap. -->
+<div id="modewheel">
+  <div id="wheeltouch"></div>
+  <button class="wfab" id="fishfab" data-mode="fishing" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
+  <button class="wfab" id="dronefab" data-mode="drone" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
+  <button class="wfab" id="orvfab" data-mode="orv" title="ORV Trails — snowmobile, ORV &amp; motorcycle trails">🏔</button>
+  <button class="wfab" id="buddyfab" data-mode="buddy" title="Buddy Trip — see your crew live on the map">👥</button>
+  <button class="wfab" id="spotsfab" data-mode="spots" title="My Spots — save your own places on the map">➕</button>
+  <button class="wfab" id="packsfab" data-mode="store" title="Feature Packs — optional add-ons">🎒</button>
 </div>
 
 <div id="zoomctl">
@@ -424,6 +471,33 @@
   <div class="lg-note" style="margin:0 0 14px;font-size:13px;line-height:1.5">You'll share your <b>live location</b> with everyone in this trip while it's running. It stops the instant you end the trip or close the app. Nothing is stored afterward.</div>
   <button class="btn green" id="buddyagree" style="width:100%;margin-bottom:8px">✔ I understand — share while on this trip</button>
   <button class="btn gray" id="buddynope" style="width:100%">Cancel</button>
+</div>
+
+<div class="sheet" id="spotsheet">
+  <div class="grabber"></div>
+  <h3>📍 My Spots</h3>
+  <div class="lg-note" style="margin:0 0 12px">Your own saved places — stored only on this phone, no account needed. Tap a spot on the map to edit or delete it.</div>
+  <div class="btnrow" style="margin-bottom:10px">
+    <button class="btn green" id="spotdrop">📍 Pin my location</button>
+    <button class="btn blue" id="spottap">👆 Tap map to place</button>
+  </div>
+  <label id="spotshowrow" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin:2px 0 8px;cursor:pointer">
+    <input type="checkbox" id="spotshow" checked> 👁 Show my spots on the map
+  </label>
+  <div id="spotlist"></div>
+</div>
+
+<div class="sheet" id="spoteditsheet">
+  <div class="grabber"></div>
+  <h3 id="spotedittitle">📍 Save this spot</h3>
+  <input class="field" id="spotname" placeholder="Name it — e.g. Secret walleye hole" maxlength="40">
+  <div id="spoticons"></div>
+  <input class="field" id="spotnotes" placeholder="Notes (optional)" maxlength="120">
+  <div class="btnrow">
+    <button class="btn red" id="spotdelete" style="display:none">🗑 Delete</button>
+    <button class="btn gray" id="spotcancel">Cancel</button>
+    <button class="btn green" id="spotsave">💾 Save</button>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -882,6 +956,7 @@ function updateAttrib(){
   const parts = [BASES[map.base].attrib];
   map.overlays.forEach(k => { if(OVERLAYS[k]) parts.push(OVERLAYS[k].attrib); });
   if(window.__sddrone && __sddrone.mode){ parts.push('✈ FAA UAS data'); parts.push('☁ Open-Meteo'); }
+  if(window.__sdorv && __sdorv.mode){ parts.push('🏔 Michigan DNR trails'); }
   $('attrib').textContent = [...new Set(parts)].join(' · ');
 }
 function buildLayerSheet(){
@@ -1182,6 +1257,9 @@ function openLegend(){
   if(window.__sddrone && __sddrone.mode){
     DRONE_LEGEND.forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
   }
+  if(window.__sdorv && __sdorv.mode){
+    ORV_LEGEND.forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
+  }
   APP_SYMBOLS.forEach(r => { html += r.length===1 ? r[0] : row(r[0], r[1]); });
   html += '<div class="lg-note">Tip: hit 🗺️ to change map style or stack overlays — this key updates to match whatever is on screen.</div>';
   $('legendbody').innerHTML = html;
@@ -1460,6 +1538,21 @@ const PACKS_CONFIG = {
       storeKey:'sd-dronepack',
       web:{ codePrefix:'DRONE' },
       unlockToast:'🚁 Drone Mode unlocked — clear skies!'
+    },
+    orv: {
+      id:'orv', icon:'🏔', name:'ORV Trails',
+      tagline:'Michigan snowmobile, ORV & motorcycle trails with rider intel',
+      features:[
+        ['🛷','<b>Live DNR trail network</b> — snowmobile, ORV/ATV &amp; motorcycle trails right on the map'],
+        ['🚧','<b>Open/closed at a glance</b> — closed trails go gray, DNR temporary closures flash red'],
+        ['⛽','<b>Pit stops</b> — gas, food &amp; rest points along the network'],
+        ['🛻','<b>Loading &amp; landing zones</b> — trailer spots, staging areas &amp; trailheads']
+      ],
+      sellable:false,                 /* included in All Access — not sold separately */
+      product:null,                   /* no separate store product while bundle-only */
+      storeKey:'sd-orvpack',
+      web:{ codePrefix:'ORV' },
+      unlockToast:'🏔 ORV Trails unlocked — ride safe!'
     }
   },
   /* THE one product on sale: cheap, unlocks everything, keeps the crowd */
@@ -1717,6 +1810,8 @@ map.onTap = ll => {
   if(inspectMode){ identify(ll.lat, ll.lng); return true; }
   if(fishingMode) showDepthAt(ll.lat, ll.lng);   /* depth readout rides along, never blocks */
   if(window.__sddrone && __sddrone.mode) __sddrone.tapInfo(ll.lat, ll.lng);   /* airspace spot check rides along too */
+  if(window.__sdorv && __sdorv.mode && __sdorv.tapInfo(ll.lat, ll.lng)) return true;   /* trail info popup */
+  if(window.__sdspots && __sdspots.placing){ __sdspots.placeAt(ll.lat, ll.lng); return true; }   /* 📍 tap-to-place */
   return false;
 };
 
@@ -1757,7 +1852,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -2504,6 +2599,7 @@ function setDroneMode(on){
   $('dronefab').classList.toggle('active', on);
   $('dronehud').style.display = on ? '' : 'none';
   if(on){
+    if(window.__sdorv && __sdorv.mode) __sdorv.setOrvMode(false);   /* one drawHook owner at a time */
     map.drawHook = drawAirspace;
     refreshDrone();
     toast('🚁 Drone Mode ON — colored grid = FAA altitude ceilings; tap the map for a spot check', 4200);
@@ -2631,6 +2727,622 @@ window.__sddrone = { get mode(){ return droneMode; }, setDroneMode, refreshDrone
   windLevel, windFrom, WX_CFG, DRONE_CFG, renderDroneHud, refreshWeather,
   get wx(){ return lastWx; }, LaancService, get laancProvider(){ return laancProvider; },
   laancEvaluate, openFlightCheck };
+
+/* =====================================================================
+   🏔 ORV TRAILS PACK — feature module (entitlement id: "orv")
+   "Trail Mode": the Michigan DNR trail network (snowmobile / ORV / ATV /
+   motorcycle) painted on the map, plus owner-curated rider intel points
+   (pit stops, loading zones, landing zones). Layers toggle individually.
+   Self-contained: delete this section and the app runs untouched.
+   ===================================================================== */
+const ORV_CFG = {
+  minFetchZoom: 9,        /* trails are dense — never sweep at state scale  */
+  fetchPadPct: 0.25,      /* fetch this much past the viewport (pan slack)  */
+  cacheMins: 24*60,       /* DNR layers change rarely — daily refresh       */
+  maxPages: 3,            /* ArcGIS pagination cap per layer (2000 ea)      */
+  simplifyZoom: 11,       /* below this zoom, stride-thin dense polylines   */
+  tapTolPx: 14,           /* trail tap tolerance, screen pixels             */
+  snowSeason: 'Dec 1 – Mar 31',
+  /* high-contrast cores + dark casings — chosen to survive bright sun &
+     snow glare on every base map. Closed trails go neutral gray + dashes. */
+  styles: {
+    snow:     { core:'#ff3df0', casing:'rgba(24,2,26,.85)',  w:3.5 },
+    orv:      { core:'#ff8a00', casing:'rgba(30,12,0,.85)',  w:3.5 },
+    moto:     { core:'#33a1ff', casing:'rgba(0,14,30,.85)',  w:3   },
+    closed:   { core:'#a7b0b8', casing:'rgba(10,12,14,.7)',  w:2.5, dash:[7,6] },
+    closures: { core:'#ff2d2d', casing:'rgba(40,0,0,.9)',    w:5,   dash:[9,7] }
+  }
+};
+
+/* ---- layer registry — data-driven & extensible ------------------------
+   Every on/off toggle in Trail Mode lives here. Adding a category later
+   (warming huts, scenic overlooks, ranger points…) = ONE entry here plus,
+   for point layers, a matching ORV_POINT_CATS entry. Nothing else. */
+const ORV_LAYERS = {
+  snow:     { label:'🛷 Snowmobile',   on:true, kind:'trail' },
+  orv:      { label:'🚜 ORV / ATV',    on:true, kind:'trail' },
+  moto:     { label:'🏍 Motorcycle',   on:true, kind:'trail' },
+  closures: { label:'🚧 Closures',     on:true, kind:'trail' },
+  pit:      { label:'⛽ Pit stops',     on:true, kind:'point' },
+  load:     { label:'🛻 Loading zones', on:true, kind:'point' },
+  land:     { label:'🅿️ Landing zones', on:true, kind:'point' }
+};
+const ORV_POINT_CATS = {
+  pit:  { icon:'⛽',  label:'Pit stop — gas / food / rest' },
+  load: { icon:'🛻', label:'Loading zone — trailer load/unload' },
+  land: { icon:'🅿️', label:'Landing zone — staging / parking / trailhead' }
+  /* new category = one line here + one ORV_LAYERS entry, e.g.
+     hut: { icon:'🛖', label:'Warming hut' }                              */
+};
+
+/* ================== OWNER-EDITED DATA — ORV_POINTS ==================
+   YOUR rider intel. One line per stop:
+     { cat:'pit'|'load'|'land', name:'…', lat:0.0, lng:0.0, notes:'…' }
+   Get lat/lng from a long-press in Google Maps (or the ❓ tool here).
+   The entries below are EXAMPLES near Traverse City — replace them.
+   ==================================================================== */
+const ORV_POINTS = [
+  { cat:'pit',  name:'EXAMPLE — replace me: Gas & Grub',      lat:44.7631, lng:-85.6206, notes:'Example entry only — swap in a real gas/food stop' },
+  { cat:'load', name:'EXAMPLE — replace me: Keystone staging', lat:44.7106, lng:-85.6350, notes:'Example entry only — swap in a real trailer load/unload spot' },
+  { cat:'land', name:'EXAMPLE — replace me: Supply Rd lot',    lat:44.6870, lng:-85.4640, notes:'Example entry only — swap in a real staging/parking/trailhead' }
+];
+
+/* ---- TrailSource interface — the region seam --------------------------
+   { id, region, attrib, load(bbox)→Promise, trails:Map, trailAt(...) }.
+   Michigan DNR today; another state drops in later by implementing the
+   same surface and swapping `trailSource` — nothing above this changes. */
+const MichiganDnrTrails = {
+  id:'mi-dnr', region:'Michigan', attrib:'🏔 Michigan DNR',
+  base:'https://gisagodnr.state.mi.us/arcgis/rest/services/DNR/DNRTrailsOPENDATA/FeatureServer',
+  /* DNR layer ids verified live 2026-07-22 (keyless, free, maxRecordCount 2000) */
+  layerDefs: [
+    { key:'snow',     layer:15, label:'Snowmobile trail' },
+    { key:'orv',      layer:11, label:'ORV route' },
+    { key:'orv',      layer:12, label:'ORV trail' },
+    { key:'moto',     layer:13, label:'Motorcycle trail' },
+    { key:'closures', layer:0,  label:'DNR temporary closure' }
+  ],
+  trails: new Map(),          /* "layer:OBJECTID" -> {key,label,name,open,paths,bbox} */
+  _fetched: [], _busy: false,
+  _covered(bbox){
+    const now = Date.now();
+    this._fetched = this._fetched.filter(f => now - f.at < ORV_CFG.cacheMins*60000);
+    return this._fetched.some(f =>
+      bbox[0]>=f.bbox[0] && bbox[1]>=f.bbox[1] && bbox[2]<=f.bbox[2] && bbox[3]<=f.bbox[3]);
+  },
+  _name(at){
+    for(const k of Object.keys(at)){
+      if(/name/i.test(k) && at[k] && String(at[k]).trim()) return String(at[k]).trim();
+    }
+    return '';
+  },
+  _open(at){
+    for(const k of Object.keys(at)){
+      if(/openclosedstatus/i.test(k) && at[k]) return !/closed/i.test(String(at[k]));
+    }
+    return true;                      /* no status field → assume open */
+  },
+  async _query(def, bbox, cb){
+    for(let page=0; page<ORV_CFG.maxPages; page++){
+      const q = this.base + '/' + def.layer + '/query?f=json&where=1%3D1'
+        + '&geometryType=esriGeometryEnvelope&inSR=4326&outSR=4326'
+        + '&spatialRel=esriSpatialRelIntersects'
+        + '&geometry=' + [bbox[1],bbox[0],bbox[3],bbox[2]].map(v => v.toFixed(4)).join('%2C')
+        + '&outFields=*&geometryPrecision=5&orderByFields=OBJECTID'
+        + '&returnGeometry=true&resultRecordCount=2000&resultOffset=' + (page*2000);
+      const res = await fetch(q, {headers:{'Accept':'application/json'}});
+      if(!res.ok) throw new Error('trails HTTP ' + res.status);
+      const d = await res.json();
+      (d.features || []).forEach(cb);
+      if(!d.exceededTransferLimit) break;
+    }
+  },
+  async load(bbox){
+    if(this._busy || this._covered(bbox)) return false;
+    this._busy = true;
+    try{
+      for(const def of this.layerDefs){
+        await this._query(def, bbox, f => {
+          const at = f.attributes || {}, g = f.geometry || {};
+          if(!g.paths || !g.paths.length) return;
+          let s=90, w=180, n=-90, e=-180;
+          g.paths.forEach(p => p.forEach(pt => {
+            w=Math.min(w,pt[0]); e=Math.max(e,pt[0]); s=Math.min(s,pt[1]); n=Math.max(n,pt[1]);
+          }));
+          this.trails.set(def.layer + ':' + (at.OBJECTID|0), {
+            key: def.key, label: def.label, name: this._name(at) || def.label,
+            open: def.key === 'closures' ? false : this._open(at),
+            paths: g.paths, bbox: [s,w,n,e]
+          });
+        });
+      }
+      this._fetched.push({bbox, at: Date.now()});
+      if(this.trails.size > 8000){ this.trails.clear(); this._fetched = []; }
+      return true;
+    } finally { this._busy = false; }
+  },
+  /* nearest trail to (lat,lng) within tolDeg — checks every segment */
+  trailAt(lat, lng, tolDeg){
+    let best = null, bestD = tolDeg;
+    const cosLat = Math.cos(lat * Math.PI/180);
+    for(const t of this.trails.values()){
+      if(lat < t.bbox[0]-tolDeg || lat > t.bbox[2]+tolDeg || lng < t.bbox[1]-tolDeg || lng > t.bbox[3]+tolDeg) continue;
+      if(ORV_LAYERS[t.key] && !ORV_LAYERS[t.key].on) continue;
+      for(const path of t.paths){
+        for(let i=1; i<path.length; i++){
+          const d = segDistDeg(lat, lng, path[i-1], path[i], cosLat);
+          if(d < bestD){ bestD = d; best = t; }
+        }
+      }
+    }
+    return best;
+  }
+};
+let trailSource = MichiganDnrTrails;      /* region seam — swap/add per state */
+
+/* point → segment distance in "adjusted degrees" (lng scaled by cos lat) */
+function segDistDeg(lat, lng, a, b, cosLat){
+  const ax = a[0]*cosLat, ay = a[1], bx = b[0]*cosLat, by = b[1];
+  const px = lng*cosLat, py = lat;
+  const dx = bx-ax, dy = by-ay;
+  const L2 = dx*dx + dy*dy;
+  const t = L2 ? clamp(((px-ax)*dx + (py-ay)*dy) / L2, 0, 1) : 0;
+  const qx = ax + t*dx, qy = ay + t*dy;
+  return Math.hypot(px-qx, py-qy);
+}
+
+/* ---- painting the trail network on the SDMap canvas (via map.drawHook) ---- */
+function orvStyleFor(t){
+  if(t.key === 'closures') return ORV_CFG.styles.closures;
+  if(!t.open) return ORV_CFG.styles.closed;
+  return ORV_CFG.styles[t.key] || ORV_CFG.styles.orv;
+}
+function drawOrvTrails(ctx, ws, ox, oy){
+  const vb = droneViewBBox(0.05);
+  const stride = map.zoom < ORV_CFG.simplifyZoom - 1 ? 4 : map.zoom < ORV_CFG.simplifyZoom ? 2 : 1;
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  /* two passes: normal trails first, closures painted on top */
+  for(const pass of [0, 1]){
+    for(const t of trailSource.trails.values()){
+      if((t.key === 'closures') !== (pass === 1)) continue;
+      if(ORV_LAYERS[t.key] && !ORV_LAYERS[t.key].on) continue;
+      if(t.bbox[2] < vb[0] || t.bbox[0] > vb[2] || t.bbox[3] < vb[1] || t.bbox[1] > vb[3]) continue;
+      const st = orvStyleFor(t);
+      const trace = () => {
+        ctx.beginPath();
+        for(const path of t.paths){
+          for(let i=0; i<path.length; i += (i+stride >= path.length ? 1 : stride)){
+            const [px, py] = map.project(path[i][1], path[i][0], ws);
+            if(i === 0) ctx.moveTo(px-ox, py-oy); else ctx.lineTo(px-ox, py-oy);
+          }
+        }
+      };
+      ctx.setLineDash([]);
+      trace(); ctx.strokeStyle = st.casing; ctx.lineWidth = st.w + 2.5; ctx.stroke();
+      if(st.dash) ctx.setLineDash(st.dash);
+      trace(); ctx.strokeStyle = st.core; ctx.lineWidth = st.w; ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/* ---- owner intel points as markers ---- */
+function renderOrvPoints(){
+  map.clearGroup('orvpoint');
+  ORV_POINTS.forEach(p => {
+    const cat = ORV_POINT_CATS[p.cat];
+    if(!cat || (ORV_LAYERS[p.cat] && !ORV_LAYERS[p.cat].on)) return;
+    if(!isFinite(p.lat) || !isFinite(p.lng)) return;
+    map.addMarker({ lat: p.lat, lng: p.lng, html: '<div class="poimark">'+cat.icon+'</div>', group: 'orvpoint',
+      popup: popupHTML(p.name, cat.label, p.lat, p.lng, p.notes || '') });
+  });
+}
+
+/* ---- layer toggle chips (data-driven from ORV_LAYERS) ---- */
+function buildOrvChips(){
+  const wrap = $('orvchips');
+  wrap.innerHTML = '';
+  Object.entries(ORV_LAYERS).forEach(([key, def]) => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (def.on ? ' active' : '');
+    c.textContent = def.label;
+    c.addEventListener('click', () => {
+      def.on = !def.on;
+      c.classList.toggle('active', def.on);
+      if(def.kind === 'point') renderOrvPoints();
+      map.requestDraw();
+    });
+    wrap.appendChild(c);
+  });
+}
+
+/* ---- trail tap → quick info popup ---- */
+function orvTapInfo(lat, lng){
+  const tolDeg = ORV_CFG.tapTolPx * map.metersPerPixel() / 111320;
+  const t = trailSource.trailAt(lat, lng, tolDeg);
+  if(!t) return false;
+  map.clearGroup('orvinfo');
+  let extra;
+  if(t.key === 'closures') extra = '⛔ DNR temporary closure — this stretch is shut; detour around it';
+  else if(!t.open) extra = '🚧 Closed right now' + (t.key === 'snow' ? ' (snowmobile season: ' + ORV_CFG.snowSeason + ')' : '');
+  else extra = '✅ Open' + (t.key === 'snow' ? ' in season (' + ORV_CFG.snowSeason + ')' : '') + ' — ' + trailSource.region + ' DNR data';
+  const m = map.addMarker({ lat, lng, html:'<div class="poimark">🏔</div>', group:'orvinfo',
+    popup: popupHTML(t.name, t.label, lat, lng, extra) });
+  map.openPopup(m);
+  return true;
+}
+
+/* ---- mode toggle + refresh ---- */
+let orvMode = false;
+async function refreshOrv(){
+  if(!orvMode) return;
+  if(map.zoom >= ORV_CFG.minFetchZoom){
+    try{ await trailSource.load(droneViewBBox(ORV_CFG.fetchPadPct)); }
+    catch(e){ /* offline — cached trails keep drawing */ }
+  }
+  map.requestDraw();
+}
+function setOrvMode(on){
+  orvMode = on;
+  document.body.classList.toggle('orv', on);
+  $('orvfab').classList.toggle('active', on);
+  $('orvchips').classList.toggle('on', on);
+  if(on){
+    if(window.__sddrone && __sddrone.mode) __sddrone.setDroneMode(false);   /* one drawHook owner at a time */
+    map.drawHook = drawOrvTrails;
+    buildOrvChips();
+    renderOrvPoints();
+    refreshOrv();
+    toast(map.zoom < ORV_CFG.minFetchZoom
+      ? '🏔 Trail Mode ON — zoom in to load the DNR trail network'
+      : '🏔 Trail Mode ON — trails load as you explore; tap any trail for details', 4200);
+  } else {
+    map.drawHook = null;
+    map.clearGroup('orvpoint');
+    map.clearGroup('orvinfo');
+    toast('Trail Mode off');
+  }
+  map.requestDraw(); updateAttrib();
+}
+PACK_ACTIVATE.orv = () => setOrvMode(true);
+settleFns.push(() => { if(orvMode) refreshOrv(); });
+$('orvfab').addEventListener('click', () => {
+  if(!orvMode && !Entitlements.isUnlocked('orv')){ openPaywall('orv'); return; }
+  setOrvMode(!orvMode);
+});
+
+const ORV_LEGEND = [
+  ['<div class="lg-h">🏔 ORV Trails overlay</div>'],
+  [sw('background:#ff3df0'), '<b>Magenta</b> — snowmobile trails (season: Dec 1 – Mar 31)'],
+  [sw('background:#ff8a00'), '<b>Orange</b> — ORV / ATV routes &amp; trails'],
+  [sw('background:#33a1ff'), '<b>Blue</b> — motorcycle trails'],
+  [sw('background:repeating-linear-gradient(90deg,#a7b0b8 0 6px,transparent 6px 11px)'), '<b>Gray dashed</b> — trail closed right now'],
+  [sw('background:repeating-linear-gradient(90deg,#ff2d2d 0 8px,transparent 8px 14px)'), '<b>Red dashed</b> — DNR temporary closure'],
+  [em('⛽'), 'Pit stop — gas / food / rest'],
+  [em('🛻'), 'Loading zone — trailer load/unload'],
+  [em('🅿️'), 'Landing zone — staging / parking / trailhead'],
+  ['<div class="lg-note">Trail data © Michigan DNR (advisory — obey posted signs &amp; local rules). Pit/loading/landing intel is SkyDog-curated.</div>'],
+];
+
+/* debug/test handle for the ORV pack */
+window.__sdorv = { get mode(){ return orvMode; }, setOrvMode, refreshOrv,
+  trails: MichiganDnrTrails, get source(){ return trailSource; },
+  ORV_CFG, ORV_LAYERS, ORV_POINTS, ORV_POINT_CATS,
+  tapInfo: orvTapInfo, trailAt: (lat,lng,tol) => trailSource.trailAt(lat,lng,tol),
+  buildOrvChips, renderOrvPoints, drawOrvTrails, orvStyleFor, segDistDeg };
+
+/* =====================================================================
+   📍 MY SPOTS — free for everyone. Your own pins: name + icon + notes.
+   Phone-local only (persisted via the guarded sdStore wrapper) — no
+   accounts, no cloud, nothing leaves the device.
+   ===================================================================== */
+const SPOT_ICONS = ['📍','⭐','🎣','🦌','⛺','🔥','🛶','⛽','🅿️','🏠'];
+const MYSPOTS = {
+  key: 'sd-myspots',
+  list: [],
+  load(){
+    try{ this.list = JSON.parse(sdStore.get(this.key) || '[]'); }catch(e){ this.list = []; }
+    if(!Array.isArray(this.list)) this.list = [];
+  },
+  save(){ sdStore.set(this.key, JSON.stringify(this.list)); },
+  add(s){
+    s.id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    this.list.push(s); this.save(); return s;
+  },
+  update(id, patch){
+    const s = this.list.find(x => x.id === id);
+    if(!s) return null;
+    Object.assign(s, patch); this.save(); return s;
+  },
+  remove(id){ this.list = this.list.filter(x => x.id !== id); this.save(); },
+  get(id){ return this.list.find(x => x.id === id) || null; }
+};
+MYSPOTS.load();
+
+let spotsShow = true, spotPlacing = false, spotEditingId = null, spotPending = null;
+
+function spotPopup(s){
+  return '<div class="poptitle">'+esc(s.icon || '📍')+' '+esc(s.name || 'My spot')+'</div>'
+    + '<div class="popsub">my spot</div>'
+    + (s.notes ? '<div style="font-size:11px;color:var(--dim);margin-bottom:8px">'+esc(s.notes)+'</div>' : '')
+    + '<div class="popbtns">'
+    + '<button class="popbtn go" onclick="window.__sdspots.editUI(\''+s.id+'\')">✏️ Edit</button>'
+    + '<a class="popbtn nav" href="'+gmapsDir(s.lat, s.lng)+'" target="_blank" rel="noopener">🚗 Drive</a>'
+    + '</div>';
+}
+function renderSpots(){
+  map.clearGroup('myspot');
+  if(!spotsShow) return;
+  MYSPOTS.list.forEach(s => {
+    map.addMarker({ lat: s.lat, lng: s.lng, html:'<div class="spotmark">'+esc(s.icon || '📍')+'</div>',
+      group:'myspot', popup: spotPopup(s) });
+  });
+}
+function buildSpotList(){
+  const wrap = $('spotlist');
+  if(!MYSPOTS.list.length){
+    wrap.innerHTML = '<div class="empty">No spots yet — pin your launch, your honey hole, your secret trailhead…</div>';
+    return;
+  }
+  wrap.innerHTML = MYSPOTS.list.map(s =>
+    '<div class="spotrow" data-id="'+s.id+'">'
+    + '<span class="sem">'+esc(s.icon || '📍')+'</span>'
+    + '<span style="min-width:0"><span class="snm">'+esc(s.name || 'My spot')+'</span>'
+    + (s.notes ? '<br><span class="snt">'+esc(s.notes)+'</span>' : '') + '</span>'
+    + '<button data-act="go">🔍</button><button data-act="edit">✏️</button>'
+    + '</div>').join('');
+  wrap.querySelectorAll('.spotrow button').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = b.closest('.spotrow').dataset.id, s = MYSPOTS.get(id);
+      if(!s) return;
+      if(b.dataset.act === 'go'){ closeSheets(); map.flyTo(s.lat, s.lng, 15); }
+      else openSpotEdit(id);
+    });
+  });
+}
+function buildSpotIcons(sel){
+  const wrap = $('spoticons');
+  wrap.innerHTML = '';
+  SPOT_ICONS.forEach(ic => {
+    const b = document.createElement('button');
+    b.textContent = ic;
+    if(ic === sel) b.classList.add('sel');
+    b.addEventListener('click', () => {
+      wrap.querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+      b.classList.add('sel');
+    });
+    wrap.appendChild(b);
+  });
+}
+function openSpotEdit(id){
+  spotEditingId = id;
+  const s = id ? MYSPOTS.get(id) : null;
+  $('spotedittitle').textContent = s ? '✏️ Edit spot' : '📍 Save this spot';
+  $('spotname').value = s ? (s.name || '') : '';
+  $('spotnotes').value = s ? (s.notes || '') : '';
+  buildSpotIcons(s ? (s.icon || '📍') : '📍');
+  $('spotdelete').style.display = s ? '' : 'none';
+  openSheet('spoteditsheet');
+}
+function spotPlaceAt(lat, lng){
+  spotPlacing = false;
+  spotPending = {lat, lng};
+  openSpotEdit(null);
+}
+$('spotsfab').addEventListener('click', () => { buildSpotList(); $('spotshow').checked = spotsShow; openSheet('spotsheet'); });
+$('spotshow').addEventListener('change', () => { spotsShow = $('spotshow').checked; renderSpots(); });
+$('spotdrop').addEventListener('click', () => {
+  closeSheets();
+  if(!navigator.geolocation){ spotPlaceAt(map.center.lat, map.center.lng); return; }
+  toast('📡 Grabbing your GPS fix…');
+  navigator.geolocation.getCurrentPosition(
+    p => spotPlaceAt(p.coords.latitude, p.coords.longitude),
+    () => { toast('📡 No GPS fix — pinning the map center instead', 3200); spotPlaceAt(map.center.lat, map.center.lng); },
+    {enableHighAccuracy: true, timeout: 8000, maximumAge: 15000});
+});
+$('spottap').addEventListener('click', () => {
+  closeSheets();
+  spotPlacing = true;
+  toast('👆 Tap the map where you want your spot', 3600);
+});
+$('spotcancel').addEventListener('click', () => { spotPending = null; spotEditingId = null; closeSheets(); });
+$('spotdelete').addEventListener('click', () => {
+  if(spotEditingId){ MYSPOTS.remove(spotEditingId); renderSpots(); toast('🗑 Spot deleted'); }
+  spotEditingId = null; spotPending = null;
+  closeSheets();
+});
+$('spotsave').addEventListener('click', () => {
+  const icon = ($('spoticons').querySelector('button.sel') || {}).textContent || '📍';
+  const name = $('spotname').value.trim() || 'My spot';
+  const notes = $('spotnotes').value.trim();
+  if(spotEditingId){
+    MYSPOTS.update(spotEditingId, {name, icon, notes});
+    toast('💾 Spot updated');
+  } else if(spotPending){
+    MYSPOTS.add({lat: spotPending.lat, lng: spotPending.lng, name, icon, notes});
+    toast('📍 Spot saved — it lives on this phone only');
+  }
+  spotEditingId = null; spotPending = null;
+  renderSpots();
+  closeSheets();
+});
+renderSpots();   /* saved spots reappear on every boot */
+
+/* debug/test handle for My Spots */
+window.__sdspots = { MYSPOTS, SPOT_ICONS, renderSpots, buildSpotList, spotPopup,
+  get placing(){ return spotPlacing; }, set placing(v){ spotPlacing = !!v; },
+  placeAt: spotPlaceAt, editUI: (id) => openSpotEdit(id),
+  get show(){ return spotsShow; }, setShow(v){ spotsShow = !!v; renderSpots(); } };
+
+/* =====================================================================
+   🎡 MODE WHEEL — free core navigation. Every MODE lives on a cyclic
+   wheel anchored in the bottom-right thumb corner: flick to spin
+   (momentum + firm snap detents), tap any button to activate it.
+   Packs auto-appear from PACKS_CONFIG; locked packs wear a 🔒 and tap
+   through to the paywall (which spotlights that pack). Non-mode
+   controls (locate, map style…) stay OUTSIDE the wheel, one tap away.
+   ===================================================================== */
+const WHEEL_CFG = {
+  stepDeg: 33,            /* detent spacing on the arc                     */
+  radius: 128,            /* px from the corner anchor to button centers   */
+  frontDeg: -135,         /* the enlarged "front" slot points up-left      */
+  frontScale: 1.42,       /* glove-friendly front button                   */
+  friction: 0.93,         /* momentum decay per frame                      */
+  snapMs: 240             /* settle-to-detent animation time               */
+};
+/* pack buttons not present in the HTML are created here — a future pack
+   added to PACKS_CONFIG lands on the wheel with zero extra wiring */
+Object.values(PACKS_CONFIG.packs).forEach(d => {
+  if(document.querySelector('#modewheel [data-mode="'+d.id+'"]')) return;
+  const b = document.createElement('button');
+  b.className = 'wfab'; b.id = d.id + 'fab'; b.dataset.mode = d.id;
+  b.textContent = d.icon; b.title = d.name;
+  b.addEventListener('click', () => {
+    if(!Entitlements.isUnlocked(d.id)){ openPaywall(d.id); return; }
+    activatePack(d.id);
+  });
+  $('modewheel').appendChild(b);
+});
+const WHEEL_ITEMS = (() => {
+  const items = [];
+  Object.values(PACKS_CONFIG.packs).forEach(d => {
+    const btn = document.querySelector('#modewheel [data-mode="'+d.id+'"]');
+    if(btn) items.push({ id: d.id, btn, pack: true });
+  });
+  items.push({ id:'buddy', btn: $('buddyfab'), pack: false });
+  items.push({ id:'spots', btn: $('spotsfab'), pack: false });
+  items.push({ id:'store', btn: $('packsfab'), pack: false });
+  return items;
+})();
+
+let wheelPos = 0, wheelAnim = 0, wheelLastDetent = 0;
+function wheelTick(){
+  try{
+    const H = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics;
+    if(H && H.impact) H.impact({ style:'LIGHT' });
+  }catch(e){}
+}
+function wheelDelta(i){
+  const N = WHEEL_ITEMS.length;
+  let d = (i - wheelPos) % N;
+  if(d > N/2) d -= N;
+  if(d < -N/2) d += N;
+  return d;
+}
+function wheelLayout(){
+  const N = WHEEL_ITEMS.length;
+  const det = Math.round(wheelPos);
+  if(det !== wheelLastDetent){ wheelLastDetent = det; wheelTick(); }
+  WHEEL_ITEMS.forEach((it, i) => {
+    const d = wheelDelta(i);
+    const a = (WHEEL_CFG.frontDeg + d * WHEEL_CFG.stepDeg) * Math.PI / 180;
+    const x = WHEEL_CFG.radius * Math.cos(a), y = WHEEL_CFG.radius * Math.sin(a);
+    const ad = Math.abs(d);
+    const front = ad < 0.5;
+    const scale = front ? WHEEL_CFG.frontScale - (WHEEL_CFG.frontScale - 1) * ad * 2 : Math.max(0.78, 1 - ad * 0.09);
+    it.btn.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
+    it.btn.style.opacity = ad > 2.6 ? 0 : 1;
+    it.btn.style.pointerEvents = ad > 2.6 ? 'none' : 'auto';
+    it.btn.style.zIndex = String(100 - Math.round(ad * 10));
+    it.btn.classList.toggle('front', front);
+    if(it.pack) it.btn.classList.toggle('locked', !Entitlements.isUnlocked(it.id));
+  });
+}
+function wheelSettle(){
+  cancelAnimationFrame(wheelAnim); wheelAnim = 0;
+  wheelPos = ((Math.round(wheelPos) % WHEEL_ITEMS.length) + WHEEL_ITEMS.length) % WHEEL_ITEMS.length;
+  wheelLayout();
+}
+function wheelGlideTo(target){
+  cancelAnimationFrame(wheelAnim);
+  const from = wheelPos, delta = target - from, t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / WHEEL_CFG.snapMs);
+    const e = t < .5 ? 2*t*t : -1 + (4 - 2*t)*t;
+    wheelPos = from + delta * e;
+    wheelLayout();
+    if(t < 1) wheelAnim = requestAnimationFrame(step);
+    else { wheelAnim = 0; wheelSettle(); }
+  };
+  wheelAnim = requestAnimationFrame(step);
+}
+function wheelSpinTo(id){
+  const i = WHEEL_ITEMS.findIndex(it => it.id === id);
+  if(i < 0) return;
+  wheelGlideTo(wheelPos + wheelDelta(i));
+}
+/* flick physics: momentum + snap, never free-floating */
+(function(){
+  const wheelEl = $('modewheel');
+  const anchor = () => {
+    const r = wheelEl.getBoundingClientRect();
+    return { x: r.left, y: r.top };     /* 0×0 container — its point IS the corner anchor */
+  };
+  let tracking = null, dragged = 0;
+  const angOf = (e, c) => Math.atan2(e.clientY - c.y, e.clientX - c.x);
+  wheelEl.addEventListener('pointerdown', e => {
+    const c = anchor();
+    tracking = { c, a: angOf(e, c), t: performance.now(), v: 0 };
+    dragged = 0;
+    cancelAnimationFrame(wheelAnim); wheelAnim = 0;
+  });
+  wheelEl.addEventListener('pointermove', e => {
+    if(!tracking) return;
+    const a = angOf(e, tracking.c);
+    let da = a - tracking.a;
+    if(da > Math.PI) da -= 2*Math.PI;
+    if(da < -Math.PI) da += 2*Math.PI;
+    const now = performance.now();
+    const dSlots = da * 180 / Math.PI / WHEEL_CFG.stepDeg;
+    if(Math.abs(dSlots) > 0.01){
+      wheelPos -= dSlots;
+      dragged += Math.abs(dSlots);
+      tracking.v = -dSlots / Math.max(1, now - tracking.t) * 16;   /* slots per frame */
+      tracking.a = a; tracking.t = now;
+      if(dragged > 0.12) wheelEl.setPointerCapture(e.pointerId);
+      wheelLayout();
+    }
+  });
+  const end = () => {
+    if(!tracking) return;
+    let v = clamp(tracking.v, -1.2, 1.2);
+    tracking = null;
+    if(Math.abs(v) < 0.02){ wheelGlideTo(Math.round(wheelPos)); return; }
+    const coast = () => {
+      wheelPos += v; v *= WHEEL_CFG.friction;
+      wheelLayout();
+      if(Math.abs(v) > 0.02) wheelAnim = requestAnimationFrame(coast);
+      else wheelGlideTo(Math.round(wheelPos));
+    };
+    wheelAnim = requestAnimationFrame(coast);
+  };
+  wheelEl.addEventListener('pointerup', end);
+  wheelEl.addEventListener('pointercancel', end);
+  /* a flick that lands on a button must spin, not click */
+  wheelEl.addEventListener('click', e => {
+    if(dragged > 0.25){ e.stopPropagation(); e.preventDefault(); dragged = 0; }
+  }, true);
+  /* tapping any visible button also brings it to the front */
+  WHEEL_ITEMS.forEach(it => it.btn.addEventListener('click', () => wheelSpinTo(it.id)));
+})();
+wheelLayout();
+/* subtle one-time hint so the wheel gets discovered */
+if(!sdStore.get('sd-wheel-hint')){
+  sdStore.set('sd-wheel-hint', '1');
+  setTimeout(() => toast('🎡 New: your modes live on the corner wheel — flick to spin, tap to go', 5200), 1200);
+}
+
+/* debug/test handle for the wheel */
+window.__sdwheel = { WHEEL_CFG,
+  get pos(){ return wheelPos; },
+  get order(){ return WHEEL_ITEMS.map(it => it.id); },
+  get front(){ return WHEEL_ITEMS[((Math.round(wheelPos) % WHEEL_ITEMS.length) + WHEEL_ITEMS.length) % WHEEL_ITEMS.length].id; },
+  delta: wheelDelta, layout: wheelLayout, settle: wheelSettle,
+  spinTo: wheelSpinTo, spinBy: (n) => { wheelPos += n; wheelLayout(); }, glideTo: wheelGlideTo,
+  jumpTo: (id) => { const i = WHEEL_ITEMS.findIndex(it => it.id === id);
+    if(i >= 0){ cancelAnimationFrame(wheelAnim); wheelAnim = 0; wheelPos = i; wheelLayout(); } } };
 
 /* ============================================================
    📱 NATIVE (iOS app) monetization — AdMob banner + StoreKit IAP.
