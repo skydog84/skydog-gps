@@ -55,6 +55,32 @@ const FIX_FIXEDSITES = { features: [
 ] };
 const FIX_WEATHER = { current: { temperature_2m: 72.4, wind_speed_10m: 8.3, wind_direction_10m: 270, wind_gusts_10m: 12.1 } };
 
+/* Michigan DNR trails (gisagodnr.state.mi.us) — polylines near Traverse City.
+   Layer 15 = snowmobile (one open, one closed) · 11 = ORV route · 12 = ORV trail
+   · 13 = motorcycle · 0 = temporary closures. */
+const FIX_DNR_SNOW = { features: [
+  { attributes: { OBJECTID: 1, SnowmobileName: 'Blue Bear Trail', OpenClosedStatusSnowmobile: 'Open' },
+    geometry: { paths: [[[-85.61, 44.755], [-85.60, 44.76], [-85.59, 44.765]]] } },
+  { attributes: { OBJECTID: 2, SnowmobileName: 'Old Logging Run', OpenClosedStatusSnowmobile: 'Closed' },
+    geometry: { paths: [[[-85.62, 44.77], [-85.61, 44.775], [-85.60, 44.78]]] } },
+] };
+const FIX_DNR_ORVROUTE = { features: [
+  { attributes: { OBJECTID: 10, NAME: 'Sand Lakes Route' },
+    geometry: { paths: [[[-85.58, 44.75], [-85.57, 44.755], [-85.56, 44.75]]] } },
+] };
+const FIX_DNR_ORVTRAIL = { features: [
+  { attributes: { OBJECTID: 20, NAME: 'Kalkaska ORV Trail' },
+    geometry: { paths: [[[-85.55, 44.76], [-85.54, 44.765]]] } },
+] };
+const FIX_DNR_MOTO = { features: [
+  { attributes: { OBJECTID: 30, NAME: 'Leetsville Cycle Loop' },
+    geometry: { paths: [[[-85.53, 44.77], [-85.52, 44.775]]] } },
+] };
+const FIX_DNR_CLOSURES = { features: [
+  { attributes: { OBJECTID: 40, NAME: 'Bridge Out — Boardman crossing' },
+    geometry: { paths: [[[-85.575, 44.758], [-85.57, 44.76]]] } },
+] };
+
 /* minimal firebase compat stub (served for both firebase-app & firebase-database) */
 const FB_STUB = `window.firebase = window.firebase || (function(){
   function mkRef(path){ return {
@@ -109,6 +135,7 @@ async function main(){
 
   let overpassMode = 'beaches';
   let faaHits = 0;
+  let dnrHits = 0;
   await ctx.route('**/*', (route) => {
     const url = route.request().url();
     if (url.startsWith('http://localhost:' + PORT)) return route.continue();
@@ -128,6 +155,19 @@ async function main(){
     }
     if (url.includes('Recreational_Flyer_Fixed_Sites')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_FIXEDSITES) });
+    }
+    /* Michigan DNR trails — dispatch on the FeatureServer layer id */
+    if (url.includes('gisagodnr.state.mi.us')) {
+      dnrHits++;
+      const lm = /FeatureServer\/(\d+)\/query/.exec(url);
+      const layer = lm ? lm[1] : '';
+      const body = layer === '15' ? FIX_DNR_SNOW
+        : layer === '11' ? FIX_DNR_ORVROUTE
+        : layer === '12' ? FIX_DNR_ORVTRAIL
+        : layer === '13' ? FIX_DNR_MOTO
+        : layer === '0' ? FIX_DNR_CLOSURES
+        : { features: [] };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     }
     if (url.includes('open-meteo') && url.includes('/v1/forecast')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_WEATHER) });
@@ -236,8 +276,8 @@ async function main(){
   T('valid code unlocks + enables mode', await page.evaluate('__sdfish.mode') === true
     && !(await page.$eval('#paysheet', (el) => el.classList.contains('open'))));
   T('license persisted on device', await page.evaluate('localStorage.getItem("sd-fishpack")') === 'FISH-VT71');
-  T('storage holds ONLY license keys (trips stay in-memory)', await page.evaluate(
-    'Object.keys(localStorage).every((k) => k.startsWith("sd-fishpack"))'));
+  T('storage holds ONLY license keys + wheel hint (trips stay in-memory)', await page.evaluate(
+    'Object.keys(localStorage).every((k) => k.startsWith("sd-fishpack") || k === "sd-wheel-hint")'));
   T('toggle on: mode true', await page.evaluate('__sdfish.mode') === true);
   T('toggle on: fab lit', await page.$eval('#fishfab', (el) => el.classList.contains('active')));
   T('toggle on: body.fishing set', await page.evaluate('document.body.classList.contains("fishing")'));
@@ -391,6 +431,7 @@ async function main(){
     '__BUDDY.buddyColor("abc") === __BUDDY.buddyColor("abc") && /^#/.test(__BUDDY.buddyColor("abc"))'));
 
   console.log('\n— 👥 Buddy Trip: consent gate —');
+  await page.evaluate('__sdwheel.jumpTo("buddy")');   /* spin the wheel so 👥 is tappable */
   await page.click('#buddyfab');
   T('fab opens buddy sheet', await page.$eval('#buddysheet', (el) => el.classList.contains('open')));
   await page.fill('#buddyname', 'Tester');
@@ -400,6 +441,7 @@ async function main(){
   await page.click('#buddynope');
   T('cancel consent → still no trip, nothing stored', await page.evaluate('__BUDDY.BUDDY.active()') === false
     && await page.evaluate('localStorage.getItem("sd-buddy-consent")') === null);
+  await page.evaluate('__sdwheel.jumpTo("buddy")');
   await page.click('#buddyfab');
   await page.click('#buddystart');
   await page.click('#buddyagree');
@@ -450,8 +492,8 @@ async function main(){
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
 
   console.log('\n— 🎒 Packs system (one paywall) —');
-  T('packs config: fishing + drone + All Access bundle', await page.evaluate(
-    '!!(__sdpacks.PACKS_CONFIG.packs.fishing && __sdpacks.PACKS_CONFIG.packs.drone && __sdpacks.PACKS_CONFIG.bundle)'));
+  T('packs config: fishing + drone + orv + All Access bundle', await page.evaluate(
+    '!!(__sdpacks.PACKS_CONFIG.packs.fishing && __sdpacks.PACKS_CONFIG.packs.drone && __sdpacks.PACKS_CONFIG.packs.orv && __sdpacks.PACKS_CONFIG.bundle)'));
   T('All Access is the ONE sellable product ($2.99/mo sub)', await page.evaluate(`(function(){
     const C = __sdpacks.PACKS_CONFIG;
     const separately = Object.values(C.packs).some(p => p.sellable);
@@ -462,14 +504,15 @@ async function main(){
     '__sdpacks.PACKS_CONFIG.packs.fishing.product.ios === "com.skydog.skygps.fishingpack" && __sdpacks.PACKS_CONFIG.packs.fishing.product.type === "inapp"'));
   await page.click('#packsfab');
   T('🎒 fab opens the store sheet', await page.$eval('#packsheet', (el) => el.classList.contains('open')));
-  T('store lists every pack (2 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 2);
+  T('store lists every pack (3 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 3);
   T('one subscribe button at the bundle price', (await page.$eval('#packsub', (el) => el.textContent)).includes('$2.99'));
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
-  T('all-access entitlement unlocks every pack', await page.evaluate(`(function(){
+  T('all-access entitlement unlocks every pack (incl ORV)', await page.evaluate(`(function(){
     localStorage.setItem('sd-allaccess-iap', '1');
-    const ok = __sdpacks.Entitlements.isUnlocked('drone') && __sdpacks.Entitlements.isUnlocked('fishing');
+    const ok = __sdpacks.Entitlements.isUnlocked('drone') && __sdpacks.Entitlements.isUnlocked('fishing')
+      && __sdpacks.Entitlements.isUnlocked('orv');
     localStorage.setItem('sd-allaccess-iap', '0');
-    return ok && !__sdpacks.Entitlements.isUnlocked('drone');
+    return ok && !__sdpacks.Entitlements.isUnlocked('orv');
   })()`));
 
   console.log('\n— 🚁 Drone Pack: gating + unlock —');
@@ -553,6 +596,173 @@ async function main(){
   T('toggle off: hud hidden + sites cleared', await page.$eval('#dronehud', (el) => getComputedStyle(el).display === 'none')
     && await page.evaluate('__sdmap.countGroup("dronesite")') === 0);
 
+  console.log('\n— 🎡 Mode Wheel (free core navigation) —');
+  await page.evaluate('__sdwheel.jumpTo("fishing")');
+  T('wheel holds every mode in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
+    === JSON.stringify(['fishing', 'drone', 'orv', 'buddy', 'spots', 'store']));
+  T('every configured pack auto-appears on the wheel', await page.evaluate(
+    'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
+  T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
+    && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(5)') === -1);
+  T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
+    __sdwheel.spinBy(1.4);
+    const drifting = __sdwheel.pos;
+    __sdwheel.settle();
+    return Math.abs(drifting - 1.4) < 1e-9 && __sdwheel.pos === 1 && __sdwheel.front === 'drone';
+  })()`));
+  T('locked pack wears a 🔒, unlocked pack does not', await page.$eval('#orvfab', (el) => el.classList.contains('locked'))
+    && await page.$eval('#dronefab', (el) => !el.classList.contains('locked')));
+  T('non-mode controls stay OUTSIDE the wheel (one tap)', await page.evaluate(
+    'document.querySelectorAll("#fabs .fab").length === 7 && !!document.querySelector("#fabs #locatefab") && !document.querySelector("#fabs #fishfab")'));
+  T('wheel discovery hint is one-shot', await page.evaluate('localStorage.getItem("sd-wheel-hint")') === '1');
+
+  console.log('\n— 🏔 ORV Trails: gating + unlock —');
+  T('orv fab exists on the wheel', (await page.$eval('#orvfab', (el) => el.textContent.trim())) === '🏔');
+  T('orv pack config: bundle-only, ORV- codes, sd-orvpack', await page.evaluate(`(function(){
+    const p = __sdpacks.PACKS_CONFIG.packs.orv;
+    return p && p.sellable === false && p.storeKey === 'sd-orvpack' && p.web.codePrefix === 'ORV' && p.product === null;
+  })()`));
+  await page.evaluate('__sdwheel.jumpTo("orv")');
+  await page.click('#orvfab');
+  T('locked: orv fab opens the paywall spotlighting ORV', await page.evaluate('__sdorv.mode') === false
+    && await page.$eval('#paysheet', (el) => el.classList.contains('open'))
+    && (await page.$eval('#paytitle', (el) => el.textContent)).includes('ORV'));
+  T('orv checksum rejects bad codes', await page.evaluate(
+    '!__sdpacks.packCodeOK("ORV", "ORV-AAAA") && !__sdpacks.packCodeOK("ORV", "nope") && !__sdpacks.packCodeOK("ORV", "")'));
+  await page.fill('#paycode', 'orv-aa2a'); /* lowercase on purpose — must normalize */
+  await page.click('#payunlock');
+  T('valid ORV code unlocks + enables Trail Mode', await page.evaluate('__sdorv.mode') === true
+    && !(await page.$eval('#paysheet', (el) => el.classList.contains('open'))));
+  T('orv license persisted on device', await page.evaluate('localStorage.getItem("sd-orvpack")') === 'ORV-AA2A');
+  T('orv fab lit + layer chips shown', await page.$eval('#orvfab', (el) => el.classList.contains('active'))
+    && await page.$eval('#orvchips', (el) => getComputedStyle(el).display === 'flex'));
+  T('attribution credits Michigan DNR', await page.$eval('#attrib', (el) => /Michigan DNR/.test(el.textContent)));
+
+  console.log('\n— 🏔 Trail network: fetch, cache & zoom gate —');
+  await page.evaluate('__sdmap.setView(44.76, -85.58, 12)');
+  await page.evaluate('__sdorv.refreshOrv()');
+  T('DNR trails cached across all 5 layers (6 features)', await page.evaluate('__sdorv.trails.trails.size') === 6);
+  T('snowmobile trail parsed: name + open', await page.evaluate(`(function(){
+    const t = [...__sdorv.trails.trails.values()].find((x) => x.name === 'Blue Bear Trail');
+    return !!t && t.key === 'snow' && t.open === true;
+  })()`));
+  T('closed snowmobile trail flagged closed', await page.evaluate(`(function(){
+    const t = [...__sdorv.trails.trails.values()].find((x) => x.name === 'Old Logging Run');
+    return !!t && t.open === false;
+  })()`));
+  T('temporary closure always renders closed', await page.evaluate(`(function(){
+    const t = [...__sdorv.trails.trails.values()].find((x) => x.key === 'closures');
+    return !!t && t.open === false && t.name.includes('Bridge Out');
+  })()`));
+  const dnr0 = dnrHits;
+  await page.evaluate('__sdorv.refreshOrv()');
+  T('trail cache — second refresh skips refetch', dnrHits === dnr0);
+  await page.evaluate('__sdmap.setView(42.0, -84.0, 8)');
+  await page.evaluate('__sdorv.refreshOrv()');
+  T('zoom gate — no fetch below minFetchZoom', dnrHits === dnr0
+    && await page.evaluate('__sdorv.ORV_CFG.minFetchZoom') === 9);
+  await page.evaluate('__sdmap.setView(44.76, -85.58, 12)');
+  T('trail styles: distinct high-contrast cores + dashed closed/closures', await page.evaluate(`(function(){
+    const S = __sdorv.ORV_CFG.styles;
+    const cores = [S.snow.core, S.orv.core, S.moto.core];
+    return new Set(cores).size === 3 && !!S.closed.dash && !!S.closures.dash
+      && __sdorv.orvStyleFor({key:'snow', open:false}).dash && __sdorv.orvStyleFor({key:'closures'}) === S.closures;
+  })()`));
+  T('trailAt finds the line under a tap', await page.evaluate(
+    '(__sdorv.trailAt(44.76, -85.60, 0.002) || {}).name') === 'Blue Bear Trail');
+  T('tap a trail → info popup with name + type', await page.evaluate(`(function(){
+    const hit = __sdorv.tapInfo(44.76, -85.60);
+    const body = document.getElementById('popupbody').innerHTML;
+    return hit === true && body.includes('Blue Bear Trail') && body.includes('Snowmobile');
+  })()`));
+  T('layer registry data-driven: 7 toggle chips (4 trail + 3 point)', await page.$$eval('#orvchips .chip', (e) => e.length) === 7
+    && await page.evaluate('Object.keys(__sdorv.ORV_LAYERS).length') === 7
+    && await page.evaluate('Object.keys(__sdorv.ORV_POINT_CATS).length') === 3);
+  T('owner points pinned with popups (3 seeded examples)', await page.evaluate('__sdmap.countGroup("orvpoint")') === 3
+    && await page.evaluate(`(function(){
+      const m = __sdmap.markers.find((x) => x.group === 'orvpoint' && x.popup && x.popup.includes('Gas'));
+      return !!m && m.popup.includes('Pit stop');
+    })()`));
+  T('point layer toggle hides just that category', await page.evaluate(`(function(){
+    __sdorv.ORV_LAYERS.pit.on = false;
+    __sdorv.renderOrvPoints();
+    const hidden = __sdmap.countGroup('orvpoint') === 2;
+    __sdorv.ORV_LAYERS.pit.on = true;
+    __sdorv.renderOrvPoints();
+    return hidden && __sdmap.countGroup('orvpoint') === 3;
+  })()`));
+  T('trail layer toggle skips taps on that layer', await page.evaluate(`(function(){
+    __sdorv.ORV_LAYERS.snow.on = false;
+    const missed = __sdorv.trailAt(44.76, -85.60, 0.002) === null;
+    __sdorv.ORV_LAYERS.snow.on = true;
+    return missed;
+  })()`));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  await page.evaluate('__sdwheel.jumpTo("orv")');
+  await page.click('#orvfab'); /* trail mode off */
+  T('toggle off: points + info cleared, drawHook released', await page.evaluate('__sdorv.mode') === false
+    && await page.evaluate('__sdmap.countGroup("orvpoint")') === 0
+    && await page.evaluate('__sdmap.drawHook === null'));
+  T('drone & orv never fight over the canvas hook', await page.evaluate(`(function(){
+    __sdorv.setOrvMode(true);
+    __sddrone.setDroneMode(true);        /* drone kicks orv off the hook */
+    const droneOwns = !__sdorv.mode && __sddrone.mode;
+    __sdorv.setOrvMode(true);            /* orv kicks drone back off */
+    const orvOwns = __sdorv.mode && !__sddrone.mode;
+    __sdorv.setOrvMode(false);
+    return droneOwns && orvOwns;
+  })()`));
+
+  console.log('\n— 📍 My Spots (free for everyone) —');
+  T('spots fab on the wheel', (await page.$eval('#spotsfab', (el) => el.textContent.trim())) === '➕');
+  await page.evaluate('__sdwheel.jumpTo("spots")');
+  await page.click('#spotsfab');
+  T('➕ opens My Spots sheet with empty state', await page.$eval('#spotsheet', (el) => el.classList.contains('open'))
+    && (await page.$eval('#spotlist', (el) => el.textContent)).includes('No spots yet'));
+  await page.click('#spottap');
+  T('tap-to-place arms placement mode', await page.evaluate('__sdspots.placing') === true
+    && !(await page.$eval('#spotsheet', (el) => el.classList.contains('open'))));
+  await page.evaluate('__sdspots.placeAt(44.761, -85.615)');
+  T('placement opens the save form', await page.$eval('#spoteditsheet', (el) => el.classList.contains('open'))
+    && await page.evaluate('__sdspots.placing') === false);
+  await page.fill('#spotname', 'Walleye Hole');
+  await page.fill('#spotnotes', 'drops to 40 ft off the point');
+  await page.evaluate(`(function(){ [...document.querySelectorAll('#spoticons button')].find((b) => b.textContent === '🎣').click(); })()`);
+  await page.click('#spotsave');
+  T('spot saved + pinned on the map', await page.evaluate('__sdspots.MYSPOTS.list.length') === 1
+    && await page.evaluate('__sdmap.countGroup("myspot")') === 1);
+  T('persisted via sdStore only (sd-myspots)', await page.evaluate(`(function(){
+    const l = JSON.parse(localStorage.getItem('sd-myspots'));
+    return l.length === 1 && l[0].name === 'Walleye Hole' && l[0].icon === '🎣' && l[0].notes.includes('40 ft');
+  })()`));
+  T('spot popup offers edit + drive', await page.evaluate(`(function(){
+    const m = __sdmap.markers.find((x) => x.group === 'myspot');
+    return !!m && m.popup.includes('Edit') && m.popup.includes('Drive') && m.popup.includes('Walleye Hole');
+  })()`));
+  await page.evaluate(`__sdspots.editUI(__sdspots.MYSPOTS.list[0].id)`);
+  T('edit prefills the form + shows delete', (await page.$eval('#spotname', (el) => el.value)) === 'Walleye Hole'
+    && await page.$eval('#spotdelete', (el) => getComputedStyle(el).display !== 'none'));
+  await page.fill('#spotname', 'Walleye Hole West');
+  await page.click('#spotsave');
+  T('edit saves in place (no duplicate)', await page.evaluate('__sdspots.MYSPOTS.list.length') === 1
+    && await page.evaluate('__sdspots.MYSPOTS.list[0].name') === 'Walleye Hole West');
+  T('spots layer toggles off/on', await page.evaluate(`(function(){
+    __sdspots.setShow(false);
+    const off = __sdmap.countGroup('myspot') === 0;
+    __sdspots.setShow(true);
+    return off && __sdmap.countGroup('myspot') === 1;
+  })()`));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction('window.__SKYDOG_READY === true', null, { timeout: 10000 });
+  T('spots survive app restart (phone-local)', await page.evaluate('__sdspots.MYSPOTS.list.length') === 1
+    && await page.evaluate('__sdmap.countGroup("myspot")') === 1);
+  await page.evaluate(`__sdspots.editUI(__sdspots.MYSPOTS.list[0].id)`);
+  await page.click('#spotdelete');
+  T('delete removes spot, pin & storage', await page.evaluate('__sdspots.MYSPOTS.list.length') === 0
+    && await page.evaluate('__sdmap.countGroup("myspot")') === 0
+    && await page.evaluate('localStorage.getItem("sd-myspots")') === '[]');
+
   console.log('\n— 📢 Ads stay for everyone —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
   T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
@@ -564,7 +774,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v12', sw.includes("skydog-gps-v12") && !sw.includes("skydog-gps-v11"));
+  T('sw.js cache bumped to v13', sw.includes("skydog-gps-v13") && !sw.includes("skydog-gps-v12"));
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',
