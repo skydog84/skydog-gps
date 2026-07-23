@@ -774,7 +774,11 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v13', sw.includes("skydog-gps-v13") && !sw.includes("skydog-gps-v12"));
+  T('sw.js cache bumped to v15', sw.includes("skydog-gps-v15") && !sw.includes("skydog-gps-v14"));
+  T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
+  })());
   T('still zero unexpected page errors', consoleErrors.length === 0, consoleErrors.join(' | '));
   T('single self-contained file (no CDN/script src)', !/<script[^>]+src=/.test(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8')));
   T('localStorage touched only inside guarded sdStore (2 refs)',
