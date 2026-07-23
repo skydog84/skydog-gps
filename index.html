@@ -2144,7 +2144,7 @@ function buddyColor(id){
 const BUDDY = {
   code: null, memberId: null, ref: null, myRef: null,
   markers: new Map(), members: {}, myPos: null,
-  _pushT: null, _uiT: null, _fb: null,
+  _pushT: null, _uiT: null, _fb: null, _onVal: null,
 
   notePos(lat, lng){ this.myPos = {lat, lng}; },
 
@@ -2177,6 +2177,20 @@ const BUDDY = {
 
   consentOK(){ return sdStore.get('sd-buddy-consent') === '1'; },
 
+  /* Returning to the foreground. Backgrounding (e.g. to text the invite) can
+     drop the socket, firing our server-side onDisconnect — which removes us
+     from the room — and throttling the push timer. Re-arm the cleanup, re-post
+     our position, and re-attach the room listener so the crew reappears. */
+  resume(){
+    if(!this.active() || !this.myRef) return;
+    try{ this.myRef.onDisconnect().remove(); }catch(e){}
+    this.pushPos(true);
+    if(this.ref && this._onVal){
+      try{ this.ref.off('value', this._onVal); }catch(e){}
+      this.ref.on('value', this._onVal);
+    }
+  },
+
   async start(code, isJoin){
     const name = ($('buddyname').value || '').trim() || 'SkyDog';
     sdStore.set('sd-buddy-name', name);
@@ -2191,7 +2205,8 @@ const BUDDY = {
     this.pushPos(true);
     this._pushT = setInterval(() => this.pushPos(), BUDDY_PUSH_MS);
     this._uiT = setInterval(() => this.renderAll(), 5000);
-    this.ref.on('value', snap => { this.members = snap.val() || {}; this.renderAll(); });
+    this._onVal = snap => { this.members = snap.val() || {}; this.renderAll(); };
+    this.ref.on('value', this._onVal);
     $('buddyoff').style.display = 'none';
     $('buddyon').style.display = '';
     $('buddycodeshow').textContent = code;
@@ -2272,6 +2287,7 @@ const BUDDY = {
     if(this.ref){ try{ this.ref.off(); }catch(e){} }
     if(this.myRef){ try{ this.myRef.onDisconnect().cancel(); this.myRef.remove(); }catch(e){} }
     this.ref = this.myRef = this.code = null;
+    this._onVal = null;
     this.members = {};
     map.clearGroup('buddy'); this.markers.clear();
     $('buddypill').style.display = 'none';
@@ -2309,16 +2325,27 @@ $('buddyjoin').addEventListener('click', () => {
 });
 $('buddyshare').addEventListener('click', () => BUDDY.share());
 $('buddyend').addEventListener('click', () => BUDDY.end());
-window.addEventListener('pagehide', () => { if(BUDDY.active()) BUDDY.end(true); });
+/* Backgrounding the app to send the invite must NOT end the trip (that was the
+   old bug). Only an explicit "End trip" tears it down. Coming back to the
+   foreground re-arms our presence instead. */
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && BUDDY.active()) BUDDY.resume();
+});
 
-/* arriving via an invite link? prefill & open */
+/* arriving via an invite link? prefill & open — and if this phone has already
+   consented on a past trip, join straight from the link (one less tap). */
 (function(){
   const m = /[?&]buddy=([A-Za-z2-9]{5})\b/.exec(location.search);
   if(!m) return;
-  $('buddycode').value = m[1].toUpperCase();
+  const code = m[1].toUpperCase();
+  $('buddycode').value = code;
   $('buddyname').value = sdStore.get('sd-buddy-name') || '';
-  openSheet('buddysheet');
-  toast('👥 You\'re invited! Enter your name and tap Join', 4000);
+  if(BUDDY.consentOK()){
+    BUDDY.start(code, true);
+  } else {
+    openSheet('buddysheet');
+    toast('👥 You\'re invited! Enter your name and tap Join', 4000);
+  }
 })();
 
 /* test hooks */

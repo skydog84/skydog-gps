@@ -475,6 +475,27 @@ async function main(){
   T('pill counts crew (2)', (await page.$eval('#buddycount', (el) => el.textContent)) === '2');
   T('member list rows rendered (2)', await page.$$eval('#buddylist .buddyrow', (e) => e.length) === 2);
 
+  console.log('\n— 👥 Buddy Trip: background/foreground survival —');
+  /* Regression: backgrounding to send the invite must NOT tear the trip down. */
+  const rmBefore = await page.evaluate('(window.__fbRemoves || []).length');
+  await page.evaluate('window.dispatchEvent(new Event("pagehide"))');
+  T('pagehide keeps the trip alive (no teardown on backgrounding)',
+    await page.evaluate('__BUDDY.BUDDY.active()') === true
+    && await page.evaluate('(window.__fbRemoves || []).length') === rmBefore);
+  /* Regression: returning to the foreground re-arms presence. */
+  const myMemberPath = 'trips/' + tripCode + '/members/' + (await page.evaluate('__BUDDY.BUDDY.memberId'));
+  await page.evaluate('window.__fbOD = null; window.__fbOffed = null;');
+  await page.evaluate(`(function(){
+    try { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); } catch(e){}
+    document.dispatchEvent(new Event('visibilitychange'));
+  })()`);
+  await page.waitForFunction('window.__fbOD !== null', null, { timeout: 3000 });
+  T('foreground resume re-arms onDisconnect on my member',
+    await page.evaluate('window.__fbOD') === myMemberPath);
+  T('foreground resume re-attaches the room listener',
+    await page.evaluate('window.__fbOffed') === 'trips/' + tripCode + '/members'
+    && await page.evaluate('!!(window.__fbCBs && window.__fbCBs["trips/' + tripCode + '/members"])'));
+
   console.log('\n— 👥 Buddy Trip: end = privacy —');
   await page.click('#buddyend');
   T('end → trip inactive + pill gone', await page.evaluate('__BUDDY.BUDDY.active()') === false
@@ -485,11 +506,23 @@ async function main(){
   T('end → listener detached', await page.evaluate('window.__fbOffed') === 'trips/' + tripCode + '/members');
 
   console.log('\n— 👥 Buddy Trip: invite link —');
+  /* First-timer (no consent yet): the link prefills + opens the join sheet, and does NOT auto-join. */
+  await page.evaluate('localStorage.removeItem("sd-buddy-consent")');
   await page.goto('http://localhost:' + PORT + '/?buddy=abmxz', { waitUntil: 'load' });
   await page.waitForFunction('window.__SKYDOG_READY === true', null, { timeout: 10000 });
-  T('?buddy=CODE opens sheet with code prefilled', await page.$eval('#buddysheet', (el) => el.classList.contains('open'))
-    && (await page.$eval('#buddycode', (el) => el.value)) === 'ABMXZ');
+  T('invite (no consent) opens sheet with code prefilled, no auto-join',
+    await page.$eval('#buddysheet', (el) => el.classList.contains('open'))
+    && (await page.$eval('#buddycode', (el) => el.value)) === 'ABMXZ'
+    && await page.evaluate('__BUDDY.BUDDY.active()') === false);
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  /* Returning user (already consented): the link joins the room straight from the tap. */
+  await page.evaluate('localStorage.setItem("sd-buddy-consent", "1")');
+  await page.goto('http://localhost:' + PORT + '/?buddy=abqrs', { waitUntil: 'load' });
+  await page.waitForFunction('window.__SKYDOG_READY === true', null, { timeout: 10000 });
+  await page.waitForFunction('window.__BUDDY && __BUDDY.BUDDY.active() === true', null, { timeout: 5000 });
+  T('invite (consented) auto-joins the room from the link',
+    (await page.evaluate('__BUDDY.BUDDY.code')) === 'ABQRS');
+  await page.evaluate('__BUDDY.BUDDY.end(true)');
 
   console.log('\n— 🎒 Packs system (one paywall) —');
   T('packs config: fishing + drone + orv + All Access bundle', await page.evaluate(
@@ -774,7 +807,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v15', sw.includes("skydog-gps-v15") && !sw.includes("skydog-gps-v14"));
+  T('sw.js cache bumped to v16', sw.includes("skydog-gps-v16") && !sw.includes("skydog-gps-v15"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
