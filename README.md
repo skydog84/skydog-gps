@@ -6,7 +6,7 @@
 <p align="center"><b>Powered by SkyDog AI</b> — your adventure tracker for trails, beaches, waves & wheels.</p>
 
 <p align="center">
-  <a href="https://skydog84.github.io/skydog-gps/"><b>▶ OPEN THE APP (free)</b></a>
+  <a href="https://skydoggps.com"><b>▶ OPEN THE APP (free)</b></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/skydog84/skydog-gps/archive/refs/heads/main.zip">⬇ Download</a>
 </p>
@@ -27,7 +27,7 @@
 
 ## Put it on your phone
 
-1. Open **https://skydog84.github.io/skydog-gps/** in Safari (iPhone) or Chrome (Android)
+1. Open **https://skydoggps.com** in Safari (iPhone) or Chrome (Android)
 2. Tap **Share → Add to Home Screen**
 3. It installs with the SkyDog AI logo as its icon and runs full-screen like a real app
 

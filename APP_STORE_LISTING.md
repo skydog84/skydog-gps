@@ -95,9 +95,9 @@ All "None" → lands at **4+**. "Does this app contain third-party advertising?"
 
 ## URLs
 
-- **Support URL:** https://skydog84.github.io/skydog-gps/support.html
-- **Privacy Policy URL:** https://skydog84.github.io/skydog-gps/privacy-policy.html
-- **Marketing URL:** https://skydog84.github.io/skydog-gps/ (optional)
+- **Support URL:** https://skydoggps.com/support.html
+- **Privacy Policy URL:** https://skydoggps.com/privacy-policy.html
+- **Marketing URL:** https://skydoggps.com/ (optional)
 
 ## App Privacy (nutrition label)
 
