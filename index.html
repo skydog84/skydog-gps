@@ -2144,7 +2144,7 @@ function buddyColor(id){
 const BUDDY = {
   code: null, memberId: null, ref: null, myRef: null,
   markers: new Map(), members: {}, myPos: null,
-  _pushT: null, _uiT: null, _fb: null, _onVal: null,
+  _pushT: null, _uiT: null, _fb: null, _onVal: null, _locWarned: false,
 
   notePos(lat, lng){ this.myPos = {lat, lng}; },
 
@@ -2202,6 +2202,16 @@ const BUDDY = {
     this.ref = fb.database().ref('trips/'+code+'/members');
     this.myRef = this.ref.child(this.memberId);
     this.myRef.onDisconnect().remove();
+    this._locWarned = false;
+    /* Register presence IMMEDIATELY — before GPS answers (or if it never does).
+       Without this, a phone with location blocked silently never appears in
+       the room and the crew has no idea why. With it, they at least show up
+       as "locating…" and the count is honest. */
+    this.myRef.set({
+      name, ts: Date.now(),
+      kind: $('buddypet').checked ? 'pet' : 'person',
+      color: buddyColor(this.memberId)
+    }).catch(()=>{});
     this.pushPos(true);
     this._pushT = setInterval(() => this.pushPos(), BUDDY_PUSH_MS);
     this._uiT = setInterval(() => this.renderAll(), 5000);
@@ -2227,7 +2237,16 @@ const BUDDY = {
       }).catch(()=>{});
     };
     if(!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(send, ()=>{}, {
+    navigator.geolocation.getCurrentPosition(send, () => {
+      /* GPS said no (permission denied / no fix). Fail LOUD, not silent:
+         keep our presence heartbeat alive so the crew still sees us as
+         "locating…", and tell this phone why nobody can see it. */
+      if(this.myRef) this.myRef.update({ ts: Date.now() }).catch(()=>{});
+      if(!this._locWarned){
+        this._locWarned = true;
+        toast('⚠️ SkyDog can\'t read your location — your crew can\'t see you. Allow Location for this site in your phone settings.', 7000);
+      }
+    }, {
       enableHighAccuracy: true, timeout: 10000, maximumAge: now ? 0 : BUDDY_PUSH_MS
     });
   },
@@ -2287,7 +2306,7 @@ const BUDDY = {
     if(this.ref){ try{ this.ref.off(); }catch(e){} }
     if(this.myRef){ try{ this.myRef.onDisconnect().cancel(); this.myRef.remove(); }catch(e){} }
     this.ref = this.myRef = this.code = null;
-    this._onVal = null;
+    this._onVal = null; this._locWarned = false;
     this.members = {};
     map.clearGroup('buddy'); this.markers.clear();
     $('buddypill').style.display = 'none';

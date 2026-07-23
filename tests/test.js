@@ -89,6 +89,7 @@ const FB_STUB = `window.firebase = window.firebase || (function(){
     on: function(ev, cb){ (window.__fbCBs = window.__fbCBs || {})[path] = cb; },
     off: function(){ window.__fbOffed = path; },
     set: function(v){ (window.__fbWrites = window.__fbWrites || []).push({path: path, v: v}); return Promise.resolve(); },
+    update: function(v){ (window.__fbWrites = window.__fbWrites || []).push({path: path, v: v, update: true}); return Promise.resolve(); },
     remove: function(){ (window.__fbRemoves = window.__fbRemoves || []).push(path); return Promise.resolve(); },
     onDisconnect: function(){ return {
       remove: function(){ window.__fbOD = path; },
@@ -453,6 +454,12 @@ async function main(){
   T('room code shown in sheet', (await page.$eval('#buddycodeshow', (el) => el.textContent)) === tripCode && /^[A-Z2-9]{5}$/.test(tripCode));
   T('sharing pill visible', await page.$eval('#buddypill', (el) => getComputedStyle(el).display !== 'none'));
   T('onDisconnect cleanup armed on MY member path', await page.evaluate('window.__fbOD') === 'trips/' + tripCode + '/members/' + (await page.evaluate('__BUDDY.BUDDY.memberId')));
+  /* Regression: joining registers presence IMMEDIATELY, before GPS answers —
+     a phone with location blocked must still appear in the room. */
+  T('presence registered instantly (first write: name, no GPS required)', await page.evaluate(`(function(){
+    const mine = (window.__fbWrites || []).filter(w => w.path === 'trips/' + __BUDDY.BUDDY.code + '/members/' + __BUDDY.BUDDY.memberId && !w.update);
+    return mine.length > 0 && typeof mine[0].v.name === 'string' && mine[0].v.name.length > 0 && mine[0].v.lat === undefined && typeof mine[0].v.ts === 'number';
+  })()`));
   T('subscribed to the room members path', await page.evaluate('!!(window.__fbCBs && window.__fbCBs["trips/' + tripCode + '/members"])'));
   /* push two fake buddies (one fresh, one stale pet) through the stub's listener */
   await page.evaluate(`(function(){
@@ -474,6 +481,21 @@ async function main(){
   })()`));
   T('pill counts crew (2)', (await page.$eval('#buddycount', (el) => el.textContent)) === '2');
   T('member list rows rendered (2)', await page.$$eval('#buddylist .buddyrow', (e) => e.length) === 2);
+  /* Regression: a buddy whose GPS hasn't answered (no lat yet — e.g. location
+     blocked) still counts in the pill and shows as "locating…" in the list. */
+  await page.evaluate(`(function(){
+    const members = {};
+    members[__BUDDY.BUDDY.memberId] = { name: 'Tester', lat: 44.76, lng: -85.62, ts: Date.now(), kind: 'person', color: '#4aa3ff' };
+    members['ava1'] = { name: 'Ava', lat: 44.7609, lng: -85.62, ts: Date.now(), kind: 'person', color: '#ff7a59' };
+    members['rex1'] = { name: 'Rex', lat: 44.7700, lng: -85.62, ts: Date.now() - 90000, kind: 'pet', color: '#ffd166' };
+    members['nog1'] = { name: 'NoGps', ts: Date.now(), kind: 'person', color: '#35e08a' };
+    window.__fbCBs['trips/' + __BUDDY.BUDDY.code + '/members']({ val: function(){ return members; } });
+  })()`);
+  T('GPS-less buddy still counts in the pill (3)', (await page.$eval('#buddycount', (el) => el.textContent)) === '3');
+  T('GPS-less buddy listed as locating…, no map dot', await page.evaluate(`(function(){
+    const row = [...document.querySelectorAll('#buddylist .buddyrow')].find(e => e.textContent.includes('NoGps'));
+    return !!row && row.textContent.includes('locating…') && __sdmap.countGroup('buddy') === 2;
+  })()`));
 
   console.log('\n— 👥 Buddy Trip: background/foreground survival —');
   /* Regression: backgrounding to send the invite must NOT tear the trip down. */
@@ -807,7 +829,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v16', sw.includes("skydog-gps-v16") && !sw.includes("skydog-gps-v15"));
+  T('sw.js cache bumped to v17', sw.includes("skydog-gps-v17") && !sw.includes("skydog-gps-v16"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
