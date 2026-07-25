@@ -772,6 +772,38 @@ async function main(){
     return ok;
   })()`));
 
+  console.log('\n— 🔍 Search-first header (UI refresh 2026-07-25) —');
+  T('big wordmark retired — no #logo block in the header', await page.evaluate('!document.getElementById("logo")'));
+  T('small dog icon (28px) lives inside the search hero', await page.evaluate(`(function(){
+    const b = document.querySelector('#searchwrap #brandbtn img');
+    return !!b && getComputedStyle(b).width === '28px';
+  })()`));
+  T('search bar is the hero: full row width', await page.evaluate(`(function(){
+    const tw = document.getElementById('topbar').clientWidth;
+    const sw = document.getElementById('searchwrap').getBoundingClientRect().width;
+    return sw >= tw * 0.95;
+  })()`));
+  T('header height budget: brand row ≤ 46px (space returned to the map)', await page.evaluate(
+    'document.getElementById("brandrow").offsetHeight <= 46'));
+  await page.click('#brandbtn');
+  T('tap the dog → about sheet: branding, version, support + privacy', await page.evaluate(`(function(){
+    const open = document.getElementById('aboutsheet').classList.contains('open');
+    const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
+      && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.1');
+    const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
+    const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
+    const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
+    return open && brand && ver && dog && s && p;
+  })()`));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  T('store sheet carries the retired branding line', await page.evaluate(
+    'document.getElementById("packsheet").textContent.includes("Powered by SkyDog AI")'));
+  await page.evaluate('document.getElementById("searchbox").value = "boardman lake"');
+  await page.evaluate('(function(){ document.getElementById("searchbtn").click(); })()');
+  await page.waitForFunction('document.getElementById("toast").textContent.includes("No results")', null, { timeout: 5000 });
+  T('searchbox still searches (wired end-to-end through fetch)', true);
+
   console.log('\n— 🎡 Wheel absorbs the right-side tools (UI refresh 2026-07-25) —');
   T('floating #fabs column is gone — right edge of the map is clear', await page.evaluate(
     '!document.getElementById("fabs")'));
@@ -1178,7 +1210,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v22', sw.includes("skydog-gps-v22") && !sw.includes("skydog-gps-v21"));
+  T('sw.js cache bumped to v23 (UI refresh ships fresh)', sw.includes("skydog-gps-v23") && !sw.includes("skydog-gps-v22") && !sw.includes("skydog-gps-v21"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
