@@ -244,7 +244,11 @@ async function main(){
     return t.some(x => x.includes('Restrooms')) && t.some(x => x.includes('Ice Cream')) && t.some(x => x.includes('Farmers Mkt'));
   })()`));
   T('chips carry gentle glow animation', await page.$eval('#chips .chip', (el) => getComputedStyle(el).animationName) === 'chipGlow');
-  T('fabs carry gentle glow animation', await page.$eval('.fab', (el) => getComputedStyle(el).animationName) === 'chipGlow');
+  T('utility tools ride the wheel with the subtler .util look', await page.evaluate(`(function(){
+    const utils = document.querySelectorAll('#modewheel .wfab.util');
+    return utils.length === 7 && getComputedStyle(document.getElementById('layerfab')).width === '46px'
+      && getComputedStyle(document.getElementById('fishfab')).width === '52px';
+  })()`));
   T('active chip glow suppressed', await page.evaluate(`(function(){
     const c = document.querySelector('#chips .chip'); c.classList.add('active');
     const ok = getComputedStyle(c).animationName === 'none'; c.classList.remove('active'); return ok;
@@ -280,6 +284,7 @@ async function main(){
   T('fish chips hidden by default', await page.$eval('#fishchips', (el) => getComputedStyle(el).display) === 'none');
 
   console.log('\n— 💰 Fishing Pack paywall —');
+  await page.evaluate('__sdwheel.jumpTo("fishing")');
   await page.click('#fishfab');
   T('locked: fab opens paywall, not mode', await page.evaluate('__sdfish.mode') === false
     && await page.$eval('#paysheet', (el) => el.classList.contains('open')));
@@ -345,6 +350,7 @@ async function main(){
   console.log('\n— 🎣 Legend integration —');
   await page.evaluate('__sdmap.setView(44.76, -85.62, 12)');
   await page.click('#fishfab'); /* on, in MI */
+  await page.evaluate('__sdwheel.jumpTo("key")');
   await page.click('#keyfab');
   const legendHTML = await page.$eval('#legendbody', (el) => el.innerHTML);
   T('legend shows DNR depth contours', legendHTML.includes('Lake Depth Contours'));
@@ -400,6 +406,7 @@ async function main(){
   T('links open in new tab', /target="_blank"/.test(fishHTML) && /rel="noopener"/.test(fishHTML));
   T('sheet title names the lake', (await page.$eval('#fishtitle', (el) => el.textContent)).includes('Boardman Lake'));
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  await page.evaluate('__sdwheel.jumpTo("fishing")');
   await page.click('#fishfab'); /* off */
   T('popup fish button hidden when mode off', await page.evaluate(`(function(){
     const b = document.querySelector('#popupbody .popbtn.fish');
@@ -596,6 +603,7 @@ async function main(){
   })()`));
   T('legacy fishing one-time product still honored', await page.evaluate(
     '__sdpacks.PACKS_CONFIG.packs.fishing.product.ios === "com.skydog.skygps.fishingpack" && __sdpacks.PACKS_CONFIG.packs.fishing.product.type === "inapp"'));
+  await page.evaluate('__sdwheel.jumpTo("store")');
   await page.click('#packsfab');
   T('🎒 fab opens the store sheet', await page.$eval('#packsheet', (el) => el.classList.contains('open')));
   T('store lists every pack (3 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 3);
@@ -611,6 +619,7 @@ async function main(){
 
   console.log('\n— 🚁 Drone Pack: gating + unlock —');
   T('drone fab exists', (await page.$eval('#dronefab', (el) => el.textContent.trim())) === '🚁');
+  await page.evaluate('__sdwheel.jumpTo("drone")');
   await page.click('#dronefab');
   T('locked: drone fab opens the paywall, not the mode', await page.evaluate('__sddrone.mode') === false
     && await page.$eval('#paysheet', (el) => el.classList.contains('open'))
@@ -692,13 +701,14 @@ async function main(){
 
   console.log('\n— 🎡 Mode Wheel (free core navigation) —');
   await page.evaluate('__sdwheel.jumpTo("fishing")');
-  T('wheel holds every mode in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
-    === JSON.stringify(['fishing', 'drone', 'orv', 'buddy', 'spots', 'store']));
+  T('wheel holds every mode + tool in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
+    === JSON.stringify(['fishing', 'drone', 'orv', 'buddy', 'spots', 'store',
+                        'layer', 'locate', 'saved', 'key', 'what', 'clear']));
   T('every configured pack auto-appears on the wheel', await page.evaluate(
     'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
   T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
     && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
-  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(5)') === -1);
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(11)') === -1);
   T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
     __sdwheel.spinBy(1.4);
     const drifting = __sdwheel.pos;
@@ -707,9 +717,41 @@ async function main(){
   })()`));
   T('locked pack wears a 🔒, unlocked pack does not', await page.$eval('#orvfab', (el) => el.classList.contains('locked'))
     && await page.$eval('#dronefab', (el) => !el.classList.contains('locked')));
-  T('non-mode controls stay OUTSIDE the wheel (one tap)', await page.evaluate(
-    'document.querySelectorAll("#fabs .fab").length === 7 && !!document.querySelector("#fabs #locatefab") && !document.querySelector("#fabs #fishfab")'));
   T('wheel discovery hint is one-shot', await page.evaluate('localStorage.getItem("sd-wheel-hint")') === '1');
+
+  console.log('\n— 🎡 Wheel absorbs the right-side tools (UI refresh 2026-07-25) —');
+  T('floating #fabs column is gone — right edge of the map is clear', await page.evaluate(
+    '!document.getElementById("fabs")'));
+  T('all 7 historic tool ids live ON the wheel', await page.evaluate(`(function(){
+    return ['layerfab','locatefab','savedfab','keyfab','whatfab','clearfab','installfab']
+      .every((id) => !!document.querySelector('#modewheel #' + id + '.wfab.util'));
+  })()`));
+  T('detents tighten as the wheel fills (min 24°)', await page.evaluate(
+    '__sdwheel.stepDeg < __sdwheel.WHEEL_CFG.stepDeg && __sdwheel.stepDeg >= 24'));
+  T('hidden installfab stays OFF the ring; rebuild adds it when installable', await page.evaluate(`(function(){
+    const btn = document.getElementById('installfab');
+    const off = !__sdwheel.order.includes('install');
+    btn.style.display = ''; __sdwheel.rebuild();
+    const on = __sdwheel.order.includes('install');
+    btn.style.display = 'none'; __sdwheel.rebuild();
+    return off && on && !__sdwheel.order.includes('install');
+  })()`));
+  await page.evaluate('__sdwheel.jumpTo("layer")');
+  await page.click('#layerfab');
+  T('🗺️ still opens the layer sheet from the wheel', await page.$eval('#layersheet', (el) => el.classList.contains('open')));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  await page.evaluate('__sdwheel.jumpTo("what")');
+  await page.click('#whatfab');
+  T('❓ inspect toggles on from the wheel', await page.$eval('#whatfab', (el) => el.classList.contains('active')));
+  await page.click('#whatfab');
+  T('❓ inspect toggles back off', await page.$eval('#whatfab', (el) => !el.classList.contains('active')));
+  await page.evaluate('__sdwheel.jumpTo("saved")');
+  await page.click('#savedfab');
+  T('📁 still opens saved adventures from the wheel', await page.$eval('#savedsheet', (el) => el.classList.contains('open')));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  await page.evaluate('__sdwheel.jumpTo("clear")');
+  await page.click('#clearfab');
+  T('🧹 still clears pins from the wheel', await page.evaluate('__sdmap.countGroup("poi")') === 0);
 
   console.log('\n— 🏔 ORV Trails: gating + unlock —');
   T('orv fab exists on the wheel', (await page.$eval('#orvfab', (el) => el.textContent.trim())) === '🏔');

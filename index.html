@@ -115,16 +115,8 @@
   .popbtn.fish{display:none;width:100%;margin-top:6px;background:#12314d;color:#bfe0ff}
   body.fishing .popbtn.fish{display:block}
 
-  /* ---------- Right FABs + zoom ---------- */
-  #fabs{position:absolute;right:10px;top:50%;transform:translateY(-60%);z-index:1000;display:flex;flex-direction:column;gap:10px}
-  .fab{width:46px;height:46px;border-radius:14px;background:var(--panel);border:1px solid var(--line);color:var(--text);
-    font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);user-select:none}
-  .fab:active{transform:scale(.94)}
-  .fab.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
-  .fab{animation:chipGlow 2.8s ease-in-out infinite}
-  .fab:nth-child(even){animation-delay:-1.4s}
-  .fab.active{animation:none}
-  @media (prefers-reduced-motion: reduce){.fab{animation:none}}
+  /* (the old right-side #fabs column is gone — every tool now rides the
+     mode wheel as a .wfab.util so the map's right edge stays clear) */
 
   /* map key / legend */
   .lg-h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px}
@@ -265,6 +257,11 @@
   .wfab.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
   .wfab.locked::after{content:'🔒';position:absolute;right:-5px;top:-7px;font-size:13px;
     filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
+  /* utility (ex-fab) tools: same wheel, subtler ring/tint so modes vs
+     tools read at a glance; front slot ring goes blue instead of green */
+  .wfab.util{width:46px;height:46px;margin:-23px;font-size:19px;background:#0c141d;border-color:#26344a}
+  .wfab.util.front{border-color:#57b6ff;box-shadow:0 0 0 3px rgba(87,182,255,.22),var(--shadow)}
+  .wfab.util.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
   @media (prefers-reduced-motion: reduce){.wfab{transition:none}}
 
   /* ---- 📍 My Spots ---- */
@@ -305,19 +302,11 @@
   <div id="orvchips"></div>
 </div>
 
-<div id="fabs">
-  <button class="fab" id="layerfab" title="Map style">🗺️</button>
-  <button class="fab" id="locatefab" title="My location">🎯</button>
-  <button class="fab" id="savedfab" title="Saved adventures">📁</button>
-  <button class="fab" id="keyfab" title="Map key">🔑</button>
-  <button class="fab" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
-  <button class="fab" id="clearfab" title="Clear pins">🧹</button>
-  <button class="fab" id="installfab" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
-</div>
-
-<!-- 🎡 Mode Wheel — every MODE lives here (non-mode controls stay in #fabs above).
-     Buttons keep their historic ids so unlock flows & tests stay stable;
-     the wheel JS lays them out on the arc and handles flick/snap/tap. -->
+<!-- 🎡 Mode Wheel — EVERYTHING lives here (owner request 2026-07-25:
+     right side of the map stays clear). Modes first, then the utility
+     tools (ex-#fabs) with their historic ids so unlock flows & tests
+     stay stable; the wheel JS lays them out on the arc and handles
+     flick/snap/tap. Utility buttons wear .util for a subtler look. -->
 <div id="modewheel">
   <div id="wheeltouch"></div>
   <button class="wfab" id="fishfab" data-mode="fishing" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
@@ -326,6 +315,13 @@
   <button class="wfab" id="buddyfab" data-mode="buddy" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="wfab" id="spotsfab" data-mode="spots" title="My Spots — save your own places on the map">➕</button>
   <button class="wfab" id="packsfab" data-mode="store" title="Feature Packs — optional add-ons">🎒</button>
+  <button class="wfab util" id="layerfab" title="Map style">🗺️</button>
+  <button class="wfab util" id="locatefab" title="My location">🎯</button>
+  <button class="wfab util" id="savedfab" title="Saved adventures">📁</button>
+  <button class="wfab util" id="keyfab" title="Map key">🔑</button>
+  <button class="wfab util" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
+  <button class="wfab util" id="clearfab" title="Clear pins">🧹</button>
+  <button class="wfab util" id="installfab" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
 </div>
 
 <div id="zoomctl">
@@ -3574,21 +3570,35 @@ window.__sdspots = { MYSPOTS, SPOT_ICONS, renderSpots, buildSpotList, spotPopup,
   get show(){ return spotsShow; }, setShow(v){ spotsShow = !!v; renderSpots(); } };
 
 /* =====================================================================
-   🎡 MODE WHEEL — free core navigation. Every MODE lives on a cyclic
-   wheel anchored in the bottom-right thumb corner: flick to spin
-   (momentum + firm snap detents), tap any button to activate it.
-   Packs auto-appear from PACKS_CONFIG; locked packs wear a 🔒 and tap
-   through to the paywall (which spotlights that pack). Non-mode
-   controls (locate, map style…) stay OUTSIDE the wheel, one tap away.
+   🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility
+   tool lives on a cyclic wheel anchored in the bottom-right thumb
+   corner: flick to spin (momentum + firm snap detents), tap any button
+   to activate it. Packs auto-appear from PACKS_CONFIG; locked packs
+   wear a 🔒 and tap through to the paywall (which spotlights that
+   pack). The old floating right-side #fabs column is GONE (owner
+   request 2026-07-25) — its seven tools ride the wheel as .util items
+   with their historic ids, so the map's right edge stays wide open.
    ===================================================================== */
 const WHEEL_CFG = {
-  stepDeg: 33,            /* detent spacing on the arc                     */
+  stepDeg: 33,            /* detent spacing on the arc (few items)         */
+  minStepDeg: 24,         /* floor as the wheel fills up (13+ items)       */
+  shrinkPerItem: 1.5,     /* stepDeg shed per item beyond 8                */
+  maxVisDeg: 95,          /* arc half-width that stays visible/tappable    */
   radius: 128,            /* px from the corner anchor to button centers   */
   frontDeg: -135,         /* the enlarged "front" slot points up-left      */
   frontScale: 1.42,       /* glove-friendly front button                   */
   friction: 0.93,         /* momentum decay per frame                      */
   snapMs: 240             /* settle-to-detent animation time               */
 };
+/* utility (ex-fab) tools that ride the wheel after the modes.
+   installfab only joins while it's actually installable (display!=='none'). */
+const WHEEL_UTILS = ['layer', 'locate', 'saved', 'key', 'what', 'clear', 'install'];
+/* effective detent spacing: tightens as the wheel fills, never below the
+   glove-friendly floor — one flick still reaches anything within a spin */
+function wheelStepDeg(){
+  const over = Math.max(0, WHEEL_ITEMS.length - 8);
+  return Math.max(WHEEL_CFG.minStepDeg, WHEEL_CFG.stepDeg - over * WHEEL_CFG.shrinkPerItem);
+}
 /* pack buttons not present in the HTML are created here — a future pack
    added to PACKS_CONFIG lands on the wheel with zero extra wiring */
 Object.values(PACKS_CONFIG.packs).forEach(d => {
@@ -3602,7 +3612,8 @@ Object.values(PACKS_CONFIG.packs).forEach(d => {
   });
   $('modewheel').appendChild(b);
 });
-const WHEEL_ITEMS = (() => {
+let WHEEL_ITEMS = [];
+function wheelBuildItems(){
   const items = [];
   Object.values(PACKS_CONFIG.packs).forEach(d => {
     const btn = document.querySelector('#modewheel [data-mode="'+d.id+'"]');
@@ -3611,8 +3622,13 @@ const WHEEL_ITEMS = (() => {
   items.push({ id:'buddy', btn: $('buddyfab'), pack: false });
   items.push({ id:'spots', btn: $('spotsfab'), pack: false });
   items.push({ id:'store', btn: $('packsfab'), pack: false });
-  return items;
-})();
+  WHEEL_UTILS.forEach(id => {
+    const btn = $(id + 'fab');
+    if(btn && btn.style.display !== 'none') items.push({ id, btn, pack: false, util: true });
+  });
+  WHEEL_ITEMS = items;
+}
+wheelBuildItems();
 
 let wheelPos = 0, wheelAnim = 0, wheelLastDetent = 0;
 function wheelTick(){
@@ -3629,19 +3645,20 @@ function wheelDelta(i){
   return d;
 }
 function wheelLayout(){
-  const N = WHEEL_ITEMS.length;
   const det = Math.round(wheelPos);
   if(det !== wheelLastDetent){ wheelLastDetent = det; wheelTick(); }
+  const step = wheelStepDeg();
+  const visAd = WHEEL_CFG.maxVisDeg / step;   /* slots that fit the visible arc */
   WHEEL_ITEMS.forEach((it, i) => {
     const d = wheelDelta(i);
-    const a = (WHEEL_CFG.frontDeg + d * WHEEL_CFG.stepDeg) * Math.PI / 180;
+    const a = (WHEEL_CFG.frontDeg + d * step) * Math.PI / 180;
     const x = WHEEL_CFG.radius * Math.cos(a), y = WHEEL_CFG.radius * Math.sin(a);
     const ad = Math.abs(d);
     const front = ad < 0.5;
     const scale = front ? WHEEL_CFG.frontScale - (WHEEL_CFG.frontScale - 1) * ad * 2 : Math.max(0.78, 1 - ad * 0.09);
     it.btn.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
-    it.btn.style.opacity = ad > 2.6 ? 0 : 1;
-    it.btn.style.pointerEvents = ad > 2.6 ? 'none' : 'auto';
+    it.btn.style.opacity = ad > visAd ? 0 : 1;
+    it.btn.style.pointerEvents = ad > visAd ? 'none' : 'auto';
     it.btn.style.zIndex = String(100 - Math.round(ad * 10));
     it.btn.classList.toggle('front', front);
     if(it.pack) it.btn.classList.toggle('locked', !Entitlements.isUnlocked(it.id));
@@ -3692,7 +3709,7 @@ function wheelSpinTo(id){
     if(da > Math.PI) da -= 2*Math.PI;
     if(da < -Math.PI) da += 2*Math.PI;
     const now = performance.now();
-    const dSlots = da * 180 / Math.PI / WHEEL_CFG.stepDeg;
+    const dSlots = da * 180 / Math.PI / wheelStepDeg();
     if(Math.abs(dSlots) > 0.01){
       wheelPos -= dSlots;
       dragged += Math.abs(dSlots);
@@ -3722,8 +3739,22 @@ function wheelSpinTo(id){
     if(dragged > 0.25){ e.stopPropagation(); e.preventDefault(); dragged = 0; }
   }, true);
   /* tapping any visible button also brings it to the front */
-  WHEEL_ITEMS.forEach(it => it.btn.addEventListener('click', () => wheelSpinTo(it.id)));
+  window.__wheelHookTaps = () => WHEEL_ITEMS.forEach(it => {
+    if(it.btn.__wheelTap) return;
+    it.btn.__wheelTap = true;
+    it.btn.addEventListener('click', () => wheelSpinTo(it.id));
+  });
+  __wheelHookTaps();
 })();
+/* rebuild after an item joins/leaves (e.g. installfab becomes installable) */
+function wheelRebuild(){
+  const frontId = WHEEL_ITEMS.length ? WHEEL_ITEMS[((Math.round(wheelPos) % WHEEL_ITEMS.length) + WHEEL_ITEMS.length) % WHEEL_ITEMS.length].id : null;
+  wheelBuildItems();
+  window.__wheelHookTaps && __wheelHookTaps();
+  const i = WHEEL_ITEMS.findIndex(it => it.id === frontId);
+  wheelPos = i >= 0 ? i : 0;
+  wheelLayout();
+}
 wheelLayout();
 /* subtle one-time hint so the wheel gets discovered */
 if(!sdStore.get('sd-wheel-hint')){
@@ -3736,6 +3767,8 @@ window.__sdwheel = { WHEEL_CFG,
   get pos(){ return wheelPos; },
   get order(){ return WHEEL_ITEMS.map(it => it.id); },
   get front(){ return WHEEL_ITEMS[((Math.round(wheelPos) % WHEEL_ITEMS.length) + WHEEL_ITEMS.length) % WHEEL_ITEMS.length].id; },
+  get stepDeg(){ return wheelStepDeg(); },
+  rebuild: wheelRebuild,
   delta: wheelDelta, layout: wheelLayout, settle: wheelSettle,
   spinTo: wheelSpinTo, spinBy: (n) => { wheelPos += n; wheelLayout(); }, glideTo: wheelGlideTo,
   jumpTo: (id) => { const i = WHEEL_ITEMS.findIndex(it => it.id === id);
@@ -3921,23 +3954,28 @@ window.__SKYDOG_READY = true;
   var deferred = null;
   var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  /* the install button rides the mode wheel — joining/leaving reshuffles it */
+  function setInstallable(on){
+    btn.style.display = on ? '' : 'none';
+    if(window.__sdwheel) __sdwheel.rebuild();
+  }
 
   // Android/Chrome/Edge: capture the native install prompt and reveal the button
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferred = e;
-    if(!standalone) btn.style.display = '';
+    if(!standalone) setInstallable(true);
   });
 
   // iOS Safari has no beforeinstallprompt — show the button with manual steps
-  if(isIOS && !standalone) btn.style.display = '';
+  if(isIOS && !standalone) setInstallable(true);
 
   btn.addEventListener('click', function(){
     if(deferred){
       deferred.prompt();
       deferred.userChoice.then(function(c){
         if(c && c.outcome === 'accepted') toast('Installing SkyDog’s GPS…');
-        deferred = null; btn.style.display = 'none';
+        deferred = null; setInstallable(false);
       });
     } else if(isIOS){
       toast('Tap the Share button, then “Add to Home Screen”', 4000);
@@ -3947,7 +3985,7 @@ window.__SKYDOG_READY = true;
   });
 
   window.addEventListener('appinstalled', function(){
-    btn.style.display = 'none';
+    setInstallable(false);
     toast('SkyDog’s GPS added to your phone 🐾');
   });
 })();
