@@ -1,6 +1,6 @@
 /* SkyDog GPS service worker — caches the app shell so it opens instantly
    (and offline). Map tiles & live searches always go to the network. */
-const CACHE = 'skydog-gps-v19';
+const CACHE = 'skydog-gps-v20';
 const SHELL = ['.', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon.png'];
 
 self.addEventListener('install', e => {
@@ -17,6 +17,20 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;           // tiles/APIs: straight to network
+  const isShell = e.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('/index.html');
+  if (isShell) {
+    /* app shell: network-first so updates land on the very next visit; cache = offline fallback */
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      }).catch(() =>
+        caches.match(e.request, { ignoreSearch: true }).then(hit => hit || caches.match('index.html'))
+      )
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(hit =>
       hit || fetch(e.request).then(res => {

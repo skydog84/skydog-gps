@@ -586,6 +586,8 @@ const INTRO = {
   panDoneAt: 0.58,                    // fraction of the dive by which panning is finished
   zoomInPow: 2.2,                     // ease-in strength at the start (higher = slower liftoff)
   zoomOutPow: 3.6,                    // ease-out strength at the end (higher = slower, longer final descent)
+  skipGraceMs: 900,                   // taps in the first moments can't skip (stops double-taps from killing the show)
+  startBase: 'sat',                   // basemap at launch — 'sat' = satellite Earth view
   fixWaitMs: 8000,                    // max wait for a GPS fix after first touch (ms)
   fallback: { lat: 44.25, lng: -84.6, zoom: 12 }   // Michigan default if GPS fails
 };
@@ -599,7 +601,7 @@ class SDMap {
     this.center = {lat:INTRO.startLat, lng:INTRO.startLng};   // whole-USA launch view (cinematic intro)
     this.zoom = INTRO.startZoom;
     this.minZoom = INTRO.minZoom; this.maxZoom = 19;
-    this.base = 'street';
+    this.base = INTRO.startBase;
     this.overlays = new Set();   // active OVERLAYS keys
     this.tiles = new Map();      // url -> {img, ok, failed}
     this.markers = [];
@@ -690,6 +692,7 @@ class SDMap {
     const skip = e => {
       if(this._cineToken !== token){ cleanup(); return; }   // superseded — let the touch through
       e.stopPropagation(); e.preventDefault();
+      if(performance.now() - t0 < INTRO.skipGraceMs) return;   // too early — swallow the tap, keep flying
       finish();
     };
     this.el.addEventListener('pointerdown', skip, true);
@@ -1082,6 +1085,7 @@ locate(false);   // warm fix on load, silent, no jump
 
 /* ---------- 🎬 cinematic intro — first map touch launches the dive, once ---------- */
 (function(){
+  updateAttrib();                       // startup basemap may not be the old default (satellite launch view)
   const hint = $('introhint');
   let armed = true;
   const disarm = () => { armed = false; if(hint) hint.remove(); };
