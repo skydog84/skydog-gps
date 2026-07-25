@@ -171,6 +171,10 @@
     background:#0d131c;border:1px solid var(--line);color:var(--text);padding:10px 16px;border-radius:12px;font-size:13.5px;
     box-shadow:var(--shadow);opacity:0;transition:opacity .25s;pointer-events:none;max-width:86vw;text-align:center}
   #toast.show{opacity:1}
+  #introhint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(162px + var(--safe-bottom));z-index:2900;
+    background:#0d131c;border:1px solid var(--line);color:var(--text);padding:10px 16px;border-radius:999px;font-size:13.5px;
+    box-shadow:var(--shadow);pointer-events:none;max-width:86vw;text-align:center;animation:introPulse 2.2s ease-in-out infinite}
+  @keyframes introPulse{0%,100%{opacity:.55;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
   #spinner{position:absolute;top:calc(120px + var(--safe-top));left:50%;transform:translateX(-50%);z-index:1500;display:none;
     background:#0d131c;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--accent);box-shadow:var(--shadow)}
   .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:1900;opacity:0;pointer-events:none;transition:opacity .25s}
@@ -501,6 +505,8 @@
   </div>
 </div>
 
+<div id="introhint">🐾 Tap anywhere to fly to your location</div>
+
 <div id="toast"></div>
 
 <script>
@@ -568,15 +574,31 @@ const OVERLAYS = {
     url:(z,x,y)=>'https://tile.waymarkedtrails.org/hiking/'+z+'/'+x+'/'+y+'.png' }
 };
 
+/* =====================================================================
+   🎬 CINEMATIC INTRO ZOOM — tune the feel here
+   ===================================================================== */
+const INTRO = {
+  startLat: 39.5,  startLng: -98.35,  // launch view: whole USA with Earth-curve context
+  startZoom: 3,                       // 3 ≈ full US on a phone; try 2.5 for more planet
+  minZoom: 2,                         // how far out manual zoom can go
+  diveMs: 8000,                       // dive duration (ms)
+  diveZoom: 17,                       // how close the dive ends
+  panDoneAt: 0.58,                    // fraction of the dive by which panning is finished
+  zoomInPow: 2.2,                     // ease-in strength at the start (higher = slower liftoff)
+  zoomOutPow: 3.6,                    // ease-out strength at the end (higher = slower, longer final descent)
+  fixWaitMs: 8000,                    // max wait for a GPS fix after first touch (ms)
+  fallback: { lat: 44.25, lng: -84.6, zoom: 12 }   // Michigan default if GPS fails
+};
+
 class SDMap {
   constructor(container){
     this.el = container;
     this.canvas = $('mapcanvas');
     this.ctx = this.canvas.getContext('2d');
     this.pane = $('markerpane');
-    this.center = {lat:44.25, lng:-84.6};   // Michigan default until GPS locks
-    this.zoom = 7;
-    this.minZoom = 3; this.maxZoom = 19;
+    this.center = {lat:INTRO.startLat, lng:INTRO.startLng};   // whole-USA launch view (cinematic intro)
+    this.zoom = INTRO.startZoom;
+    this.minZoom = INTRO.minZoom; this.maxZoom = 19;
     this.base = 'street';
     this.overlays = new Set();   // active OVERLAYS keys
     this.tiles = new Map();      // url -> {img, ok, failed}
@@ -637,6 +659,51 @@ class SDMap {
       this.zoom = from.z+(to.z-from.z)*e;
       this.requestDraw();
       if(t<1) this._anim = requestAnimationFrame(step); else this._anim = null;
+    };
+    this._anim = requestAnimationFrame(step);
+  }
+  /* 🎬 Cinematic dive — pan finishes early with an ease-out (all drift happens
+     while zoomed way out); zoom eases in-out over the FULL duration for the
+     "falling from orbit" feel. Any touch (or wheel) mid-flight skips to the end. */
+  flyToCinematic(lat, lng, targetZoom = INTRO.diveZoom, ms = INTRO.diveMs, panDoneAt = INTRO.panDoneAt){
+    const from = {lat:this.center.lat, lng:this.center.lng, z:this.zoom};
+    const to = {lat: clamp(lat,-85,85), lng, z: clamp(targetZoom, this.minZoom, this.maxZoom)};
+    if(this._anim) cancelAnimationFrame(this._anim);
+    const token = this._cineToken = (this._cineToken || 0) + 1;
+    const t0 = performance.now();
+    const easeOutCubic = t => 1 - Math.pow(1-t, 3);
+    /* asymmetric ease: slow liftoff, then a long stretched-out final descent so
+       tiles at state level and below get time to load (tune via zoomIn/OutPow) */
+    const zoomEase = t => t < .5 ? 0.5*Math.pow(2*t, INTRO.zoomInPow)
+                                 : 1 - 0.5*Math.pow(2-2*t, INTRO.zoomOutPow);
+    const cleanup = () => {
+      this.el.removeEventListener('pointerdown', skip, true);
+      this.el.removeEventListener('wheel', skip, true);
+    };
+    const finish = () => {
+      cleanup();
+      if(this._anim){ cancelAnimationFrame(this._anim); this._anim = null; }
+      this.center = {lat:to.lat, lng:to.lng};
+      this.zoom = to.z;
+      this.requestDraw();
+    };
+    const skip = e => {
+      if(this._cineToken !== token){ cleanup(); return; }   // superseded — let the touch through
+      e.stopPropagation(); e.preventDefault();
+      finish();
+    };
+    this.el.addEventListener('pointerdown', skip, true);
+    this.el.addEventListener('wheel', skip, {capture:true, passive:false});
+    const step = (now) => {
+      if(this._cineToken !== token){ cleanup(); return; }   // another animation took over
+      const t = clamp((now-t0)/ms, 0, 1);
+      const p = easeOutCubic(clamp(t / panDoneAt, 0, 1));   // pan locks on target early
+      const z = zoomEase(t);                                // zoom rides the whole flight
+      this.center = {lat: from.lat + (to.lat-from.lat)*p,
+                     lng: from.lng + (to.lng-from.lng)*p};
+      this.zoom = from.z + (to.z-from.z)*z;
+      this.requestDraw();
+      if(t < 1) this._anim = requestAnimationFrame(step); else finish();
     };
     this._anim = requestAnimationFrame(step);
   }
@@ -1012,6 +1079,41 @@ function locate(fly){
 }
 $('locatefab').addEventListener('click', () => locate(true));
 locate(false);   // warm fix on load, silent, no jump
+
+/* ---------- 🎬 cinematic intro — first map touch launches the dive, once ---------- */
+(function(){
+  const hint = $('introhint');
+  let armed = true;
+  const disarm = () => { armed = false; if(hint) hint.remove(); };
+  const dive = (lat, lng, z) => map.flyToCinematic(lat, lng, z, INTRO.diveMs, INTRO.panDoneAt);
+  const fallbackDive = msg => { toast(msg, 3200); dive(INTRO.fallback.lat, INTRO.fallback.lng, INTRO.fallback.zoom); };
+
+  function launch(){
+    if(meMarker){ dive(meMarker.lat, meMarker.lng, INTRO.diveZoom); return; }   // warm fix already in
+    if(!navigator.geolocation){ fallbackDive('⚠️ No GPS available on this device'); return; }
+    toast('🛰️ Locking onto you…', INTRO.fixWaitMs);
+    let done = false;
+    const timer = setTimeout(() => { if(!done){ done = true; fallbackDive('⚠️ Couldn’t get a GPS fix'); } }, INTRO.fixWaitMs);
+    navigator.geolocation.getCurrentPosition(p => {
+      if(done) return; done = true; clearTimeout(timer);
+      showMe(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+      dive(p.coords.latitude, p.coords.longitude, INTRO.diveZoom);
+    }, err => {
+      if(done) return; done = true; clearTimeout(timer);
+      fallbackDive(err.code===1 ? '⚠️ Location permission denied — allow it in settings' : '⚠️ Couldn’t get a GPS fix');
+    }, {enableHighAccuracy:true, timeout: INTRO.fixWaitMs, maximumAge: 60000});
+  }
+
+  /* capture-phase so it runs before _bindPointer; lives on the map container so
+     search bar / FABs / sheets (siblings of #map) never trigger it */
+  map.el.addEventListener('pointerdown', function firstTouch(e){
+    map.el.removeEventListener('pointerdown', firstTouch, true);
+    if(!armed) return;
+    e.stopPropagation(); e.preventDefault();   // this touch starts the movie, not a drag
+    disarm();
+    launch();
+  }, true);
+})();
 
 /* ---------- popup content ---------- */
 function popupHTML(name, sub, lat, lng, extra){
