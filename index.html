@@ -97,6 +97,10 @@
 
   #chips{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 6px;pointer-events:auto;scrollbar-width:none}
   #chips::-webkit-scrollbar{display:none}
+  /* 🔁 cyclic rows: when a chip row overflows, its chips are absolutely
+     placed on an endless loop — flick to spin, it never dead-ends */
+  .cyc{position:relative;overflow:hidden;touch-action:pan-y}
+  .cyc .chip{position:absolute;left:0;top:2px;margin:0;will-change:transform}
   .chip{flex:0 0 auto;display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
     color:var(--text);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);user-select:none}
   .chip.active{background:var(--accent);color:#04140b;border-color:var(--accent)}
@@ -1267,12 +1271,136 @@ async function discover(cat){
   }catch(e){ toast('⚠️ Area scan failed — try again in a few seconds'); }
   finally{ $('spinner').style.display='none'; }
 }
+/* =====================================================================
+   🔁 CYCLIC CHIP ROWS — "the trails/parking/overlooks row keeps
+   spinning around" (owner request 2026-07-25). Any chip row that
+   overflows the screen wraps around forever: flick it with momentum
+   (same feel as the mode wheel), it snaps so a chip is never half-cut
+   at the left edge, and taps still hit the same handlers. Rows that
+   FIT on screen are left in native flex — no fake spinning. The
+   helper wraps AFTER the data-driven builders populate a row and
+   re-wraps when a mode toggles a row on.
+   ===================================================================== */
+const CYC_CFG = { gap: 7, padX: 2, padTop: 2, padBot: 6, friction: 0.93, snapMs: 240 };
+const cycRows = {};
+function makeCyclicRow(el){
+  if(el.__cyc){ el.__cyc.refresh(); return el.__cyc; }
+  const S = {
+    el, on: false, off: 0, W: 0, chips: [], xs: [], ws: [], anim: 0, moved: 0, tr: null,
+    stop(){ cancelAnimationFrame(S.anim); S.anim = 0; },
+    reset(){
+      S.stop(); S.on = false; S.off = 0;
+      el.classList.remove('cyc'); el.style.height = '';
+      [...el.children].forEach(c => { c.style.transform = ''; });
+    },
+    refresh(){
+      S.reset();
+      S.chips = [...el.children];
+      if(!S.chips.length || getComputedStyle(el).display === 'none') return;
+      S.ws = S.chips.map(c => c.offsetWidth);
+      S.xs = []; let x = 0;
+      S.ws.forEach(w => { S.xs.push(x); x += w + CYC_CFG.gap; });
+      S.W = x;                                   /* loop length incl the wrap gap */
+      if(S.W - CYC_CFG.gap <= el.clientWidth - CYC_CFG.padX * 2) return;   /* fits — stay native */
+      el.style.height = (S.chips[0].offsetHeight + CYC_CFG.padTop + CYC_CFG.padBot) + 'px';
+      el.classList.add('cyc');
+      S.on = true;
+      S.layout();
+    },
+    layout(){
+      S.chips.forEach((c, i) => {
+        const w = S.ws[i];
+        let p = (S.xs[i] - S.off) % S.W;
+        if(p < 0) p += S.W;
+        if(p > S.W - w) p -= S.W;                /* slide out the left edge, re-enter right */
+        c.style.transform = 'translateX(' + (p + CYC_CFG.padX).toFixed(1) + 'px)';
+      });
+    },
+    norm(){ S.off = ((S.off % S.W) + S.W) % S.W; S.layout(); },
+    jump(off){ S.stop(); S.off = off; S.norm(); },
+    /* nearest chip-start to an offset — the snap target (left edge never half-cuts a chip) */
+    nearest(off){
+      const o = ((off % S.W) + S.W) % S.W;
+      let best = o, bd = Infinity;
+      S.xs.forEach(xv => [xv - S.W, xv, xv + S.W].forEach(cand => {
+        const d = Math.abs(cand - o); if(d < bd){ bd = d; best = cand; }
+      }));
+      return off + (best - o);
+    },
+    leftIndex(){
+      const o = ((S.off % S.W) + S.W) % S.W;
+      let best = 0, bd = Infinity;
+      S.xs.forEach((xv, i) => [xv - S.W, xv, xv + S.W].forEach(cand => {
+        const d = Math.abs(cand - o); if(d < bd){ bd = d; best = i; }
+      }));
+      return best;
+    },
+    glideTo(target){
+      S.stop();
+      const from = S.off, delta = target - from, t0 = performance.now();
+      if(!delta){ S.norm(); return; }
+      const step = (now) => {
+        const t = Math.min(1, (now - t0) / CYC_CFG.snapMs);
+        const e = t < .5 ? 2*t*t : -1 + (4 - 2*t)*t;
+        S.off = from + delta * e; S.layout();
+        if(t < 1) S.anim = requestAnimationFrame(step);
+        else { S.anim = 0; S.norm(); }
+      };
+      S.anim = requestAnimationFrame(step);
+    },
+    snap(){ S.glideTo(S.nearest(S.off)); }
+  };
+  /* flick physics: drag spins, momentum coasts, then a firm snap */
+  el.addEventListener('pointerdown', e => {
+    if(!S.on) return;
+    S.stop(); S.moved = 0;
+    S.tr = { x: e.clientX, t: performance.now(), v: 0 };
+  });
+  el.addEventListener('pointermove', e => {
+    if(!S.on || !S.tr) return;
+    const dx = e.clientX - S.tr.x;
+    if(!dx) return;
+    const now = performance.now();
+    S.off -= dx; S.moved += Math.abs(dx);
+    S.tr.v = -dx / Math.max(1, now - S.tr.t) * 16;    /* px per frame */
+    S.tr.x = e.clientX; S.tr.t = now;
+    if(S.moved > 6){ try{ el.setPointerCapture(e.pointerId); }catch(_){} }
+    S.layout();
+  });
+  const cycEnd = () => {
+    if(!S.on || !S.tr) return;
+    let v = clamp(S.tr.v, -60, 60);
+    S.tr = null;
+    if(Math.abs(v) < 2){ S.snap(); return; }
+    const coast = () => {
+      S.off += v; v *= CYC_CFG.friction; S.layout();
+      if(Math.abs(v) > 2) S.anim = requestAnimationFrame(coast);
+      else S.snap();
+    };
+    S.anim = requestAnimationFrame(coast);
+  };
+  el.addEventListener('pointerup', cycEnd);
+  el.addEventListener('pointercancel', cycEnd);
+  /* a flick that ends on a chip must spin, not tap */
+  el.addEventListener('click', e => {
+    if(S.moved > 6){ e.stopPropagation(); e.preventDefault(); S.moved = 0; }
+  }, true);
+  el.__cyc = S;
+  if(el.id) cycRows[el.id] = S;
+  S.refresh();
+  return S;
+}
+window.addEventListener('resize', () => Object.values(cycRows).forEach(r => r.refresh()));
+/* debug/test handle for cyclic rows */
+window.__sdcyc = { rows: cycRows, make: makeCyclicRow, CYC_CFG };
+
 CATS.forEach(cat => {
   const b = document.createElement('button');
   b.className = 'chip'; b.textContent = cat.label;
   b.addEventListener('click', () => discover(cat));
   $('chips').appendChild(b);
 });
+makeCyclicRow($('chips'));   /* 12 chips never fit a phone — spin forever */
 $('clearfab').addEventListener('click', () => {
   map.clearGroup('poi'); map.clearGroup('search'); map.clearGroup('inspect'); map.setTrack([]);
   toast('Map cleared');
@@ -1985,6 +2113,7 @@ function setFishingMode(on){
   document.body.classList.toggle('fishing', on);
   $('fishfab').classList.toggle('active', on);
   $('fishchips').classList.toggle('on', on);
+  if(on) makeCyclicRow($('fishchips'));   /* re-wrap now that it's visible */
   if(on){
     map.overlays.add('fishdepth'); map.overlays.add('fishchart');
     const svc = fishServiceFor(map.center);
@@ -3266,6 +3395,7 @@ function setOrvMode(on){
     if(window.__sddrone && __sddrone.mode) __sddrone.setDroneMode(false);   /* one drawHook owner at a time */
     map.drawHook = drawOrvTrails;
     buildOrvChips();
+    makeCyclicRow($('orvchips'));   /* re-wrap after the builder repopulates */
     renderOrvPoints();
     refreshOrv();
     toast(map.zoom < ORV_CFG.minFetchZoom

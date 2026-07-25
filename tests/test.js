@@ -307,6 +307,12 @@ async function main(){
   T('toggle on: mode true', await page.evaluate('__sdfish.mode') === true);
   T('toggle on: fab lit', await page.$eval('#fishfab', (el) => el.classList.contains('active')));
   T('toggle on: body.fishing set', await page.evaluate('document.body.classList.contains("fishing")'));
+  T('fish chip row wrap state matches its overflow', await page.evaluate(`(function(){
+    const r = __sdcyc.rows.fishchips;
+    if(!r) return false;
+    const need = r.W - __sdcyc.CYC_CFG.gap > r.el.clientWidth - __sdcyc.CYC_CFG.padX * 2;
+    return r.on === need;
+  })()`));
   T('toggle on: fish chips shown (4)', await page.$eval('#fishchips', (el) => getComputedStyle(el).display) === 'flex'
     && (await page.$$eval('#fishchips .chip', (e) => e.length)) === 4);
   T('toggle on: depth overlays active', await page.evaluate('__sdmap.overlays.has("fishdepth") && __sdmap.overlays.has("fishchart")'));
@@ -719,6 +725,53 @@ async function main(){
     && await page.$eval('#dronefab', (el) => !el.classList.contains('locked')));
   T('wheel discovery hint is one-shot', await page.evaluate('localStorage.getItem("sd-wheel-hint")') === '1');
 
+  console.log('\n— 🔁 Cyclic chip rows (UI refresh 2026-07-25) —');
+  T('discovery row overflows the phone → wraps around', await page.evaluate(
+    '__sdcyc.rows.chips && __sdcyc.rows.chips.on === true'));
+  T('flick past the last chip shows the first (never dead-ends)', await page.evaluate(`(function(){
+    const r = __sdcyc.rows.chips, n = r.xs.length;
+    r.jump(r.xs[n - 1]);                                   /* last chip at the left edge */
+    const last = r.leftIndex() === n - 1;
+    r.jump(r.off + r.ws[n - 1] + __sdcyc.CYC_CFG.gap);     /* one more chip forward → wraps */
+    const wrapped = r.leftIndex() === 0;
+    r.jump(0);
+    return last && wrapped;
+  })()`));
+  T('spin backwards from the first chip lands on the last', await page.evaluate(`(function(){
+    const r = __sdcyc.rows.chips, n = r.xs.length;
+    r.jump(0);
+    r.jump(r.off - (r.ws[n - 1] + __sdcyc.CYC_CFG.gap));
+    const ok = r.leftIndex() === n - 1;
+    r.jump(0); return ok;
+  })()`));
+  T('snap target is always a chip start (no half-cut at the left edge)', await page.evaluate(`(function(){
+    const r = __sdcyc.rows.chips;
+    const t = ((r.nearest(r.xs[2] + r.ws[2] * 0.4) % r.W) + r.W) % r.W;
+    return r.xs.includes(Math.round(t * 100) / 100);
+  })()`));
+  T('taps still hit the same handlers on a wrapped row', await page.evaluate(`(function(){
+    const r = __sdcyc.rows.chips;
+    r.jump(r.xs[3]);                                       /* spin somewhere first */
+    let fired = false;
+    const chip = document.querySelector('#chips .chip');
+    const h = () => { fired = true; };
+    chip.addEventListener('click', h);
+    chip.click();
+    chip.removeEventListener('click', h);
+    r.jump(0);
+    return fired;
+  })()`));
+  T('a row that fits on screen stays native (no fake spinning)', await page.evaluate(`(function(){
+    const el = document.createElement('div');
+    el.id = 'cyctmp'; el.style.cssText = 'display:flex;gap:7px;width:400px';
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = 'only';
+    el.appendChild(b); document.body.appendChild(el);
+    const r = __sdcyc.make(el);
+    const ok = r.on === false && !el.classList.contains('cyc');
+    el.remove(); delete __sdcyc.rows.cyctmp;
+    return ok;
+  })()`));
+
   console.log('\n— 🎡 Wheel absorbs the right-side tools (UI refresh 2026-07-25) —');
   T('floating #fabs column is gone — right edge of the map is clear', await page.evaluate(
     '!document.getElementById("fabs")'));
@@ -815,6 +868,16 @@ async function main(){
   T('layer registry data-driven: 7 toggle chips (4 trail + 3 point)', await page.$$eval('#orvchips .chip', (e) => e.length) === 7
     && await page.evaluate('Object.keys(__sdorv.ORV_LAYERS).length') === 7
     && await page.evaluate('Object.keys(__sdorv.ORV_POINT_CATS).length') === 3);
+  T('orv chip row wraps around + chip taps still toggle layers', await page.evaluate(`(function(){
+    const r = __sdcyc.rows.orvchips;
+    if(!r || !r.on) return false;                        /* 7 chips overflow a phone */
+    const chip = document.querySelector('#orvchips .chip');
+    const was = chip.classList.contains('active');
+    chip.click();
+    const flipped = chip.classList.contains('active') !== was;
+    chip.click();                                        /* restore */
+    return flipped;
+  })()`));
   T('owner points pinned with popups (3 seeded examples)', await page.evaluate('__sdmap.countGroup("orvpoint")') === 3
     && await page.evaluate(`(function(){
       const m = __sdmap.markers.find((x) => x.group === 'orvpoint' && x.popup && x.popup.includes('Gas'));
