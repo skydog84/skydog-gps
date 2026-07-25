@@ -1089,7 +1089,7 @@ function buildLayerSheet(){
       const on = map.toggleOverlay(key);
       updateAttrib(); buildLayerSheet();
       if(key === 'parcels' && on){
-        toast(!REGRID.token
+        toast(!REGRID.active()
           ? '🏡 Property data isn’t connected yet — check back soon!'
           : REGRID.trialNote
           ? '🏡 Preview mode — parcel data is live in the demo counties: search “Dallas”, zoom in & tap any lot!'
@@ -1715,7 +1715,7 @@ const PACKS_CONFIG = {
     price:'$2.99/mo', priceNote:'subscription',
     product:{ ios:'com.skydog.skygps.allaccess.monthly', type:'subs' },
     storeKey:'sd-allaccess',
-    web:{ codePrefix:'SKY',
+    web:{ codePrefix:'SKY', signedOnly:true,   /* Fort SkyDog B2: SKY codes must carry an Ed25519 signature — the public checksum is forgeable and is retired for anything that costs money */
       /* ↓ paste the NEW $2.99/mo Stripe payment link here when created —
          the old fishing-only links charged $4.99 and are retired */
       stripeUrl:null, stripeUrlAnnual:null, annualLabel:null },
@@ -1738,7 +1738,7 @@ function makePackState(def){
   return {
     def, _session:false, iosPrice:null,
     keys:{ code: def.storeKey, trial: def.storeKey+'-trial', iap: def.storeKey+'-iap' },
-    codeOK(c){ return packCodeOK(def.web.codePrefix, c); },
+    codeOK(c){ return def.web.signedOnly ? false : packCodeOK(def.web.codePrefix, c); },   /* legacy checksum only for already-issued promo prefixes (FISH/DRONE/ORV) */
     unlocked(){ return this._session || sdStore.get(this.keys.iap)==='1' || this.codeOK(sdStore.get(this.keys.code)); },
     redeem(c){
       if(!this.codeOK(c)) return false;
@@ -1775,6 +1775,72 @@ const Entitlements = {
     return null;
   }
 };
+
+/* =====================================================================
+   🔏 Fort SkyDog B2 — Ed25519-SIGNED unlock codes (SKY-…)
+   The v1.0 checksum (packCodeOK) is public math: anyone reading this
+   file can mint codes. Fine for free promo FISH codes — NOT fine once
+   codes are sold. New SKY codes are:  SKY-<base32 payload>-<base32 sig>
+   where payload = "packid|YYYYMM" (expiry month, UTC) and sig is an
+   Ed25519 signature minted ONLY by the Cloudflare Worker (see worker/),
+   which holds the private key as a server secret. The PUBLIC key below
+   is harmless in source — it can only verify, never mint. While it is
+   '' every SKY code is rejected (fail closed) until the Worker ships.
+   Honesty note: this stops code-forging (money). It does not — cannot —
+   stop someone from console-tampering entitlements on their OWN device;
+   that cheats only themselves and no server or other user trusts it. */
+const SkySigned = {
+  pubkey: '',                          /* base64 raw 32-byte Ed25519 public key — paste from worker/generate-keys.mjs output */
+  storeKey: 'sd-allaccess-signed',
+  _b32(s){                             /* RFC4648 base32 (no padding) → bytes */
+    const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = 0, val = 0; const out = [];
+    for(const ch of s){
+      const i = A.indexOf(ch); if(i < 0) return null;
+      val = (val << 5) | i; bits += 5;
+      if(bits >= 8){ out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+    }
+    return new Uint8Array(out);
+  },
+  _b64(b){ const bin = atob(b); const u = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; },
+  parse(code){
+    const m = /^SKY-([A-Z2-7]+)-([A-Z2-7]+)$/.exec(String(code || '').toUpperCase().replace(/\s+/g, ''));
+    if(!m) return null;
+    const payload = this._b32(m[1]), sig = this._b32(m[2]);
+    if(!payload || !sig || sig.length !== 64 || !payload.length) return null;
+    return { payload, sig };
+  },
+  async verify(code, pubkeyOverride){
+    try{
+      const pub = pubkeyOverride || this.pubkey;
+      const p = this.parse(code);
+      if(!pub || !p || !(window.crypto && crypto.subtle)) return null;
+      const key = await crypto.subtle.importKey('raw', this._b64(pub), { name:'Ed25519' }, false, ['verify']);
+      if(!(await crypto.subtle.verify({ name:'Ed25519' }, key, p.sig, p.payload))) return null;
+      const f = /^([a-z]+)\|(\d{6})$/.exec(new TextDecoder().decode(p.payload));
+      if(!f || !PACK_STATE[f[1]]) return null;
+      const d = new Date(); const ym = d.getUTCFullYear() * 100 + (d.getUTCMonth() + 1);
+      if(parseInt(f[2], 10) < ym) return null;                    /* expired */
+      return { packId: f[1], exp: f[2] };
+    }catch(e){ return null; }    /* no Ed25519 support / garbage input → stays locked, never crashes */
+  },
+  async redeem(code){
+    const ok = await this.verify(code);
+    if(!ok) return null;
+    sdStore.set(this.storeKey, String(code).toUpperCase().replace(/\s+/g, ''));
+    PACK_STATE[ok.packId]._session = true;
+    return ok;
+  },
+  /* every boot: re-verify the stored signed code so expiry actually bites */
+  async boot(){
+    const stored = sdStore.get(this.storeKey);
+    if(!stored) return;
+    const ok = await this.verify(stored);
+    if(ok) PACK_STATE[ok.packId]._session = true;
+    else sdStore.set(this.storeKey, '');       /* expired or tampered → drop it */
+  }
+};
+SkySigned.boot();
 
 /* ---- paywall sheet: sells All Access, spotlights the pack you tapped ---- */
 let currentPay = 'allaccess';           /* which pack drew them in (activation target) */
@@ -1816,8 +1882,13 @@ $('paysubyr').addEventListener('click', e => {
   if(window.__sdNativePay) return;
   if(!$('paysubyr').getAttribute('href')) e.preventDefault();
 });
-$('payunlock').addEventListener('click', () => {
-  const granted = Entitlements.redeemAny($('paycode').value);
+$('payunlock').addEventListener('click', async () => {
+  /* legacy checksum promo codes first (FISH/DRONE/ORV), then signed SKY codes */
+  let granted = Entitlements.redeemAny($('paycode').value);
+  if(!granted){
+    const signed = await SkySigned.redeem($('paycode').value);
+    if(signed) granted = signed.packId;
+  }
   if(granted){
     $('paycode').value = '';
     closeSheets();
@@ -1825,7 +1896,7 @@ $('payunlock').addEventListener('click', () => {
     else activatePack(granted);
     toast(packDef(granted).unlockToast, 3600);
   } else {
-    toast('⚠️ That code didn’t check out — double-check it (looks like SKY-XXXX)', 3600);
+    toast('⚠️ That code didn’t check out — check for typos and paste the whole thing', 3600);
   }
 });
 $('paytrial').addEventListener('click', () => {
@@ -1862,7 +1933,7 @@ $('packrestore').addEventListener('click', () => { if(window.__sdNativePay) SkyG
 
 /* debug/test handle for the pack system */
 window.__sdpacks = { PACKS_CONFIG, PACK_STATE, Entitlements, PACK_ACTIVATE,
-  buildPackSheet, packCodeOK, openPaywall: (id) => openPaywall(id),
+  buildPackSheet, packCodeOK, SkySigned, openPaywall: (id) => openPaywall(id),
   get currentPay(){ return currentPay; } };
 
 /* ---- 🎣 depth-at-tap: ask the state DNR survey what's under your tap ----
@@ -3249,18 +3320,32 @@ window.__sdorv = { get mode(){ return orvMode; }, setOrvMode, refreshOrv,
    Data © Regrid — attribution line is added automatically when active.
    ===================================================================== */
 const REGRID = {
+  /* Fort SkyDog B1: exactly ONE of token/proxy may be set.
+     - token: fine for the free sandbox trial (demo counties, expires, low
+       stakes). NEVER ship a paid-plan token here — anyone can lift it from
+       source and burn the $375/mo quota from any site.
+     - proxy: the Phase B Cloudflare Worker (see worker/). It holds the paid
+       token as a server-side secret, checks Origin and rate-limits per IP.
+       When the paid plan activates: set proxy to 'https://api.skydoggps.com',
+       DELETE the token line, and the grep test below enforces the swap. */
   token: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyZWdyaWQuY29tIiwiaWF0IjoxNzg0OTUxNzc4LCJleHAiOjE3ODc1NDM3NzgsInUiOjg0ODAzMCwiZyI6MjMxNTMsImNhcCI6InBhOnRzOnBzOmJmOm1hOnR5OmVvOnpvOnNiIn0.WQCvjXYfG8btr2StlWaLG4ne6FUwrAn7GRn2QkX2DLE',   // Regrid sandbox token (expires 2026-08-23)
+  proxy: '',            // Phase B Worker base URL — set when the paid Regrid plan activates
+  active(){ return !!(REGRID.proxy || REGRID.token); },
   tileMinZ: 13,         // zoom where boundary lines switch on (13 ≈ neighborhood)
   trialNote: true,      // sandbox trial = demo counties only; set false when the nationwide plan is active
-  tiles: (z,x,y) => 'https://tiles.regrid.com/api/v1/parcels/'+z+'/'+x+'/'+y
-                    + '.png?token='+encodeURIComponent(REGRID.token),
-  point: (lat,lng) => 'https://app.regrid.com/api/v2/parcels/point?lat='+lat+'&lon='+lng
-                    + '&token='+encodeURIComponent(REGRID.token)
+  tiles: (z,x,y) => REGRID.proxy
+                    ? REGRID.proxy+'/parcel/tiles/'+z+'/'+x+'/'+y+'.png'
+                    : 'https://tiles.regrid.com/api/v1/parcels/'+z+'/'+x+'/'+y
+                      + '.png?token='+encodeURIComponent(REGRID.token),
+  point: (lat,lng) => REGRID.proxy
+                    ? REGRID.proxy+'/parcel/point?lat='+lat+'&lon='+lng
+                    : 'https://app.regrid.com/api/v2/parcels/point?lat='+lat+'&lon='+lng
+                      + '&token='+encodeURIComponent(REGRID.token)
 };
 
 OVERLAYS.parcels = { name:'🏡 Property Lines', alpha:0.9, maxTile:19,
   attrib:'Parcel data © Regrid',
-  url:(z,x,y)=> (!REGRID.token || z < REGRID.tileMinZ) ? BLANK_TILE : REGRID.tiles(z,x,y) };
+  url:(z,x,y)=> (!REGRID.active() || z < REGRID.tileMinZ) ? BLANK_TILE : REGRID.tiles(z,x,y) };
 
 OVERLAY_LEGENDS.parcels = [
   ['<div class="lg-h">🏡 Property Lines (county parcel records via Regrid)</div>'],
@@ -3330,7 +3415,7 @@ function parcelZoomNudge(){        /* layer on but too far out — say so instea
 const _parcelPrevTap = map.onTap;
 map.onTap = ll => {
   if(_parcelPrevTap && _parcelPrevTap(ll)) return true;
-  if(map.overlays.has('parcels') && REGRID.token){
+  if(map.overlays.has('parcels') && REGRID.active()){
     if(map.zoom >= REGRID.tileMinZ){ parcelLookup(ll.lat, ll.lng); return true; }
     parcelZoomNudge();
   }

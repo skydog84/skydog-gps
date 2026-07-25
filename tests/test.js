@@ -975,6 +975,88 @@ async function main(){
     cspViolations.concat(strictErrors).slice(0, 3).join(' | '));
   await strictCtx.close();
 
+  console.log('\n— 🔏 Fort SkyDog Phase B: proxy seam + signed codes —');
+  /* B1: the Regrid proxy seam. token and proxy are mutually exclusive; when
+     the proxy is configured every parcel URL flows through it, token-free. */
+  T('REGRID: token and proxy never both configured', await page.evaluate(
+    '(function(){ const R = __sdparcels.REGRID; return !(R.proxy && R.token); })()'));
+  T('proxy configured → point+tile URLs use the Worker, no token in sight', await page.evaluate(`(function(){
+    const R = __sdparcels.REGRID;
+    const oldT = R.token, oldP = R.proxy;
+    R.token = ''; R.proxy = 'https://api.skydoggps.com';
+    const pt = R.point(44.76, -85.62), tl = R.tiles(14, 100, 200);
+    R.token = oldT; R.proxy = oldP;
+    return pt === 'https://api.skydoggps.com/parcel/point?lat=44.76&lon=-85.62'
+      && tl === 'https://api.skydoggps.com/parcel/tiles/14/100/200.png'
+      && !pt.includes('token') && !tl.includes('token')
+      && R.active() === !!(oldT || oldP);
+  })()`));
+  T('no proxy AND no token → parcels layer stays blank (fail closed)', await page.evaluate(`(function(){
+    const R = __sdparcels.REGRID;
+    const oldT = R.token, oldP = R.proxy;
+    R.token = ''; R.proxy = '';
+    const off = !R.active();
+    R.token = oldT; R.proxy = oldP;
+    return off;
+  })()`));
+  /* B2: Ed25519-signed SKY codes. Mint with an ephemeral TEST key here in
+     node, verify in the page with WebCrypto — same math as the Worker. */
+  const nodeCrypto = require('crypto');
+  const kp = nodeCrypto.generateKeyPairSync('ed25519');
+  const TEST_PUB = kp.publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('base64');
+  const B32A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const b32 = (buf) => { let bits = 0, val = 0, out = ''; for (const b of buf) { val = (val << 8) | b; bits += 8;
+    while (bits >= 5) { out += B32A[(val >>> (bits - 5)) & 31]; bits -= 5; } } if (bits) out += B32A[(val << (5 - bits)) & 31]; return out; };
+  const mint = (payloadTxt) => { const payload = Buffer.from(payloadTxt);
+    return 'SKY-' + b32(payload) + '-' + b32(nodeCrypto.sign(null, payload, kp.privateKey)); };
+  const goodCode = mint('allaccess|209912');
+  const expiredCode = mint('allaccess|202001');
+  const tamperedCode = (() => { const p = goodCode.split('-'); /* re-encode a DIFFERENT payload under the real sig */
+    return 'SKY-' + b32(Buffer.from('fishing|209912')) + '-' + p[2]; })();
+  T('valid signed code verifies (packId + expiry honored)', await page.evaluate(`(async function(){
+    const r = await __sdpacks.SkySigned.verify(${JSON.stringify(goodCode)}, ${JSON.stringify(TEST_PUB)});
+    return !!r && r.packId === 'allaccess' && r.exp === '209912';
+  })()`));
+  T('tampered payload rejected', await page.evaluate(`(async function(){
+    return (await __sdpacks.SkySigned.verify(${JSON.stringify(tamperedCode)}, ${JSON.stringify(TEST_PUB)})) === null;
+  })()`));
+  T('expired code rejected', await page.evaluate(`(async function(){
+    return (await __sdpacks.SkySigned.verify(${JSON.stringify(expiredCode)}, ${JSON.stringify(TEST_PUB)})) === null;
+  })()`));
+  T('no public key configured → every SKY code fails closed', await page.evaluate(`(async function(){
+    return __sdpacks.SkySigned.pubkey === '' && (await __sdpacks.SkySigned.verify(${JSON.stringify(goodCode)})) === null;
+  })()`));
+  T('checksum-forged SKY code is dead (self-minting killed)', await page.evaluate(`(function(){
+    /* SKY-AB2H passes the old public checksum — it must no longer unlock anything */
+    return __sdpacks.packCodeOK('SKY', 'SKY-AB2H') === true
+      && __sdpacks.PACK_STATE.allaccess.codeOK('SKY-AB2H') === false
+      && __sdpacks.Entitlements.redeemAny('SKY-AB2H') === null;
+  })()`));
+  T('legacy FISH checksum promo codes still honored', await page.evaluate(
+    '__sdpacks.PACK_STATE.fishing.codeOK("FISH-VT71") === true'));
+  T('signed redeem persists + boot re-verify unlocks, cleanup relocks', await page.evaluate(`(async function(){
+    const S = __sdpacks.SkySigned, ST = __sdpacks.PACK_STATE.allaccess, E = __sdpacks.Entitlements;
+    S.pubkey = ${JSON.stringify(TEST_PUB)};
+    const r = await S.redeem(${JSON.stringify(goodCode)});
+    const unlocked = !!r && E.isUnlocked('allaccess');
+    ST._session = false;                       /* simulate app relaunch */
+    await S.boot();
+    const rebooted = E.isUnlocked('allaccess');
+    S.pubkey = ''; ST._session = false;        /* cleanup: key gone → boot drops the stored code */
+    await S.boot();
+    const relocked = !E.isUnlocked('allaccess') && (localStorage.getItem('sd-allaccess-signed') || '') === '';
+    return unlocked && rebooted && relocked;
+  })()`));
+  /* worker/ ships in-repo, secret-free */
+  const workerFiles = ['worker/worker.js', 'worker/wrangler.toml', 'worker/README.md', 'worker/generate-keys.mjs'];
+  T('worker/ files present (proxy + minting + keygen + docs)',
+    workerFiles.every((f) => fs.existsSync(path.join(APP_DIR, f))));
+  const workerSrc = workerFiles.filter((f) => fs.existsSync(path.join(APP_DIR, f)))
+    .map((f) => fs.readFileSync(path.join(APP_DIR, f), 'utf8')).join('\n');
+  T('no secret material anywhere in worker/ (keys live only in Cloudflare)', !SECRET_PAT.test(workerSrc));
+  T('worker rate-limits + checks Origin + edge-caches tiles',
+    workerSrc.includes('rateOK') && workerSrc.includes('originOK') && workerSrc.includes('caches.default'));
+
   console.log('\n— 📢 Ads stay for everyone —');
   T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
   T('no purchase copy promises ad removal', !/removes ads|ads gone|ad-free|removes the ads/i.test(appSrc));

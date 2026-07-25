@@ -1,0 +1,12 @@
+# SkyDog GPS API Worker — Fort SkyDog Phase B
+# Deploy:  cd worker && npx wrangler deploy
+# Secrets (set once, in the dashboard or via `npx wrangler secret put NAME`):
+#   REGRID_TOKEN, STRIPE_SECRET, STRIPE_WEBHOOK_SECRET, SIGNING_KEY
+# Secrets live ONLY in Cloudflare — never in this file, never in the repo.
+
+name = "skydog-api"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Custom domain (add api.skydoggps.com in the Cloudflare dashboard first):
+# routes = [{ pattern = "api.skydoggps.com", custom_domain = true }]
