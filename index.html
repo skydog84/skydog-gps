@@ -8,6 +8,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b0f14">
+<!-- ============================================================
+     🛡 Content-Security-Policy — Fort SkyDog Phase A1.
+     Only the origins this app actually talks to are allowed; anything
+     else (injected script src, rogue beacon, tampered tile host) is
+     blocked by the browser itself.
+     TRADEOFF, documented on purpose: this is a single-file app, so the
+     one big inline <script> block (and inline styles/handlers) must be
+     allowed via 'unsafe-inline'. That means CSP here does NOT defend
+     against injection INTO the page's own inline code — its job is to
+     stop exfiltration and foreign-code loading. A hash-based script-src
+     was considered and rejected: every build would need re-hashing and
+     iOS/Capacitor serves the same file from capacitor://localhost.
+     api.skydoggps.com is pre-allowlisted for the Phase B Cloudflare
+     Worker (Regrid proxy + signed unlock codes) so flipping it on
+     never requires a CSP change. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
 <meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & fishing intel. No account, no sign-up — free forever.">
@@ -458,12 +474,14 @@
     <label id="buddypetrow"><input type="checkbox" id="buddypet"> 🐾 This device is a pet / gear tracker</label>
     <button class="btn green" id="buddystart" style="width:100%;margin:10px 0">🚀 Start a Buddy Trip</button>
     <div style="display:flex;gap:8px">
-      <input class="field" id="buddycode" placeholder="Have a code? Enter it" maxlength="5" autocapitalize="characters" autocomplete="off" style="flex:1;margin:0">
+      <input class="field" id="buddycode" placeholder="Have a code? Enter it" maxlength="8" autocapitalize="characters" autocomplete="off" style="flex:1;margin:0">
       <button class="btn blue" id="buddyjoin">Join</button>
     </div>
+    <div class="lg-note" id="buddykeynote" style="margin:10px 0 0">🔑 Anyone with this code can see the trip while it's live — share it like a house key.</div>
   </div>
   <div id="buddyon" style="display:none">
     <div id="buddycodebox">TRIP CODE <b id="buddycodeshow">—</b></div>
+    <div class="lg-note" id="buddykeynote2" style="margin:8px 0 0">🔑 Anyone with this code can see the trip while it's live — share it like a house key.</div>
     <button class="btn blue" id="buddyshare" style="width:100%;margin:10px 0">📤 Invite buddies — share the link</button>
     <div id="buddylist"></div>
     <button class="btn gray" id="buddyend" style="width:100%;margin-top:12px">⏹ End Trip — stop sharing</button>
@@ -2245,14 +2263,18 @@ const BUDDY_STALE_MS = 60000;      // >60s without an update = stale dot
 const BUDDY_PUSH_MS  = 12000;      // how often we publish our position
 
 /* pure helpers (unit-tested) */
+const BUDDY_CODE_LEN = 8;          /* Fort SkyDog A2: 8 chars ≈ 6.5e11 combos (old 5-char ≈ 45M was guessable at scale) */
+const BUDDY_POINT_MAX_AGE_MS = 24*60*60*1000;   /* ignore points older than a day — codes are shared like house keys, not deeds */
 function buddyCode(){
   const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';       // no 0/O/1/I/L lookalikes
   let c = '';
-  const r = new Uint32Array(5);
+  const r = new Uint32Array(BUDDY_CODE_LEN);
   (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(r) : r.forEach((_,i)=>r[i]=Math.floor(Math.random()*1e9));
-  for(let i=0;i<5;i++) c += A[r[i] % A.length];
+  for(let i=0;i<BUDDY_CODE_LEN;i++) c += A[r[i] % A.length];
   return c;
 }
+/* new codes are 8 chars; 5-char codes from trips started on old builds still join (legacy) */
+function buddyCodeValid(c){ return /^[A-Z2-9]{8}$/.test(c) || /^[A-Z2-9]{5}$/.test(c); }
 function buddyBearing(a, b){
   const toR = Math.PI/180;
   const dL = (b.lng-a.lng)*toR;
@@ -2382,7 +2404,10 @@ const BUDDY = {
   },
 
   renderAll(){
-    const ids = Object.keys(this.members).filter(id => id !== this.memberId);
+    /* Fort SkyDog A2: drop points older than 24h — a code that leaks months
+       later must never replay somebody's last known position. */
+    const ids = Object.keys(this.members).filter(id => id !== this.memberId
+      && (this.members[id] && Date.now() - (this.members[id].ts || 0) <= BUDDY_POINT_MAX_AGE_MS));
     /* map dots */
     const seen = new Set();
     for(const id of ids){
@@ -2469,7 +2494,7 @@ $('buddypill').addEventListener('click', () => openSheet('buddysheet'));
 $('buddystart').addEventListener('click', () => buddyGate(() => BUDDY.start(buddyCode(), false)));
 $('buddyjoin').addEventListener('click', () => {
   const code = ($('buddycode').value || '').trim().toUpperCase();
-  if(!/^[A-Z2-9]{5}$/.test(code)){ toast('⚠️ Codes are 5 letters/numbers — ask your buddy'); return; }
+  if(!buddyCodeValid(code)){ toast('⚠️ Codes are 8 letters/numbers — ask your buddy to re-share'); return; }
   buddyGate(() => BUDDY.start(code, true));
 });
 $('buddyshare').addEventListener('click', () => BUDDY.share());
@@ -2484,7 +2509,7 @@ document.addEventListener('visibilitychange', () => {
 /* arriving via an invite link? prefill & open — and if this phone has already
    consented on a past trip, join straight from the link (one less tap). */
 (function(){
-  const m = /[?&]buddy=([A-Za-z2-9]{5})\b/.exec(location.search);
+  const m = /[?&]buddy=([A-Za-z2-9]{8}|[A-Za-z2-9]{5})\b/.exec(location.search);
   if(!m) return;
   const code = m[1].toUpperCase();
   $('buddycode').value = code;
@@ -2498,7 +2523,7 @@ document.addEventListener('visibilitychange', () => {
 })();
 
 /* test hooks */
-window.__BUDDY = { BUDDY, buddyCode, buddyBearing, buddyDistTxt, buddyColor };
+window.__BUDDY = { BUDDY, buddyCode, buddyCodeValid, buddyBearing, buddyDistTxt, buddyColor, BUDDY_POINT_MAX_AGE_MS };
 
 /* =====================================================================
    🌤 CURRENT CONDITIONS — Open-Meteo (free, keyless, global)

@@ -140,14 +140,17 @@ async function main(){
   }
   const exe = findChrome();
   const browser = await chromium.launch(exe ? { executablePath: exe } : {});
-  const ctx = await browser.newContext({ viewport: { width: 420, height: 850 } });
+  /* bypassCSP: Playwright's evaluate() relies on eval(), which the app's CSP
+     rightly forbids. The CSP itself is exercised for real in the dedicated
+     strict-context section below (no bypass, zero violations tolerated). */
+  const ctx = await browser.newContext({ viewport: { width: 420, height: 850 }, bypassCSP: true });
 
   let overpassMode = 'beaches';
   let faaHits = 0;
   let dnrHits = 0;
   let regridMode = 'parcel';   // 'parcel' | 'empty'
   let regridHits = 0;
-  await ctx.route('**/*', (route) => {
+  const mockRoute = (route) => {
     const url = route.request().url();
     if (url.startsWith('http://localhost:' + PORT)) return route.continue();
     if (url.includes('overpass-api.de')) {
@@ -198,7 +201,8 @@ async function main(){
     }
     /* every tile/export request → tiny png (deterministic, fast) */
     return route.fulfill({ status: 200, contentType: 'image/png', body: PNG1 });
-  });
+  };
+  await ctx.route('**/*', mockRoute);
 
   const page = await ctx.newPage();
   const consoleErrors = [];
@@ -425,12 +429,17 @@ async function main(){
 
   console.log('\n— 👥 Buddy Trip: helpers —');
   T('buddy fab exists', (await page.$eval('#buddyfab', (el) => el.textContent.trim())) === '👥');
-  T('trip codes: 5 chars, no 0/O/1/I/L lookalikes', await page.evaluate(`(function(){
+  T('trip codes: 8 chars, no 0/O/1/I/L lookalikes (Fort SkyDog A2)', await page.evaluate(`(function(){
     for (let i = 0; i < 50; i++){
       const c = __BUDDY.buddyCode();
-      if (!/^[A-HJ-KM-NP-Z2-9]{5}$/.test(c) || /[OIL01]/.test(c)) return false;
+      if (!/^[A-HJ-KM-NP-Z2-9]{8}$/.test(c) || /[OIL01]/.test(c)) return false;
     }
     return true;
+  })()`));
+  T('code validator: new 8-char + legacy 5-char accepted, junk rejected', await page.evaluate(`(function(){
+    return __BUDDY.buddyCodeValid('ABCDEFGH') && __BUDDY.buddyCodeValid('AB2DE')
+      && !__BUDDY.buddyCodeValid('ABCDEF')   /* 6 chars — never issued */
+      && !__BUDDY.buddyCodeValid('ABCDEFGHJ') && !__BUDDY.buddyCodeValid('abcde') && !__BUDDY.buddyCodeValid('AB0DEFGH');
   })()`));
   T('bearing math: N / E / SW', await page.evaluate(`(function(){
     const me = { lat: 44.76, lng: -85.62 };
@@ -467,7 +476,7 @@ async function main(){
 
   console.log('\n— 👥 Buddy Trip: live room —');
   const tripCode = await page.evaluate('__BUDDY.BUDDY.code');
-  T('room code shown in sheet', (await page.$eval('#buddycodeshow', (el) => el.textContent)) === tripCode && /^[A-Z2-9]{5}$/.test(tripCode));
+  T('room code shown in sheet (8-char)', (await page.$eval('#buddycodeshow', (el) => el.textContent)) === tripCode && /^[A-Z2-9]{8}$/.test(tripCode));
   T('sharing pill visible', await page.$eval('#buddypill', (el) => getComputedStyle(el).display !== 'none'));
   T('onDisconnect cleanup armed on MY member path', await page.evaluate('window.__fbOD') === 'trips/' + tripCode + '/members/' + (await page.evaluate('__BUDDY.BUDDY.memberId')));
   /* Regression: joining registers presence IMMEDIATELY, before GPS answers —
@@ -511,6 +520,20 @@ async function main(){
   T('GPS-less buddy listed as locating…, no map dot', await page.evaluate(`(function(){
     const row = [...document.querySelectorAll('#buddylist .buddyrow')].find(e => e.textContent.includes('NoGps'));
     return !!row && row.textContent.includes('locating…') && __sdmap.countGroup('buddy') === 2;
+  })()`));
+  /* Fort SkyDog A2: a point older than 24h must be treated as gone — a code
+     that leaks later must never replay someone's last known position. */
+  await page.evaluate(`(function(){
+    const members = {};
+    members[__BUDDY.BUDDY.memberId] = { name: 'Tester', lat: 44.76, lng: -85.62, ts: Date.now(), kind: 'person', color: '#4aa3ff' };
+    members['ava1'] = { name: 'Ava', lat: 44.7609, lng: -85.62, ts: Date.now(), kind: 'person', color: '#ff7a59' };
+    members['old1'] = { name: 'Yesterday', lat: 44.78, lng: -85.60, ts: Date.now() - (__BUDDY.BUDDY_POINT_MAX_AGE_MS + 3600000), kind: 'person', color: '#ffd166' };
+    window.__fbCBs['trips/' + __BUDDY.BUDDY.code + '/members']({ val: function(){ return members; } });
+  })()`);
+  T('stale >24h point filtered: no dot, no row, not counted (Fort SkyDog A2)', await page.evaluate(`(function(){
+    const listed = [...document.querySelectorAll('#buddylist .buddyrow')].some(e => e.textContent.includes('Yesterday'));
+    const dotted = [...document.querySelectorAll('.bdymark')].some(e => e.textContent.includes('Yesterday'));
+    return !listed && !dotted && document.getElementById('buddycount').textContent === '1';
   })()`));
 
   console.log('\n— 👥 Buddy Trip: background/foreground survival —');
@@ -889,8 +912,70 @@ async function main(){
   T('regrid attribution when active', await page.evaluate('(function(){ updateAttrib(); return document.getElementById("attrib").textContent; })()').then(t => t.includes('Regrid')));
   await page.evaluate('__sdmap.overlays.delete("parcels"); __sdparcels.REGRID.token = ""; updateAttrib(); __sdmap.clearGroup("parcel");');
 
-  console.log('\n— 📢 Ads stay for everyone —');
+  console.log('\n— 🛡 Fort SkyDog Phase A: CSP + tamper containment —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+  const cspMatch = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(appSrc);
+  T('CSP meta tag present', !!cspMatch);
+  const csp = cspMatch ? cspMatch[1] : '';
+  /* every origin the app (and this suite's mocks) actually talks to must be allowlisted */
+  const CSP_ORIGINS = [
+    'tile.openstreetmap.org', 'a.tile.opentopomap.org', 'b.tile.opentopomap.org', 'c.tile.opentopomap.org',
+    'basemap.nationalmap.gov', 'server.arcgisonline.com', 'services.arcgisonline.com', 'tile.waymarkedtrails.org',
+    'tiles.regrid.com', 'app.regrid.com', 'maps.dnr.illinois.gov', 'gisagocss.state.mi.us',
+    'programs.iowadnr.gov', 'enterprise.gisdata.mn.gov', 'gis.charttools.noaa.gov', 'gisagodnr.state.mi.us',
+    'overpass-api.de', 'nominatim.openstreetmap.org', 'api.open-meteo.com', 'services6.arcgis.com',
+    'www.gstatic.com', 'firebaseio.com', 'api.skydoggps.com',
+  ];
+  T('CSP allowlists every origin the app talks to (' + CSP_ORIGINS.length + ')',
+    CSP_ORIGINS.every((o) => csp.includes(o)), CSP_ORIGINS.filter((o) => !csp.includes(o)).join(', '));
+  T('CSP locks the rest down (default-src none, self scripts, firebase ws)',
+    csp.includes("default-src 'none'") && csp.includes("script-src 'self' 'unsafe-inline'") && csp.includes('wss://*.firebaseio.com'));
+  T('CSP tradeoff documented at the tag (unsafe-inline is a stated choice)', /unsafe-inline.*single-file|single-file[^]*?unsafe-inline/i.test(appSrc.slice(0, appSrc.indexOf('</head>'))));
+  T('house-key warning on join screen + live sheet', appSrc.includes('buddykeynote')
+    && (appSrc.match(/share it like a house key/g) || []).length >= 2);
+  T('join input accepts 8 chars', (await page.$eval('#buddycode', (el) => el.maxLength)) === 8);
+  /* rules deploy file: 8-char codes accepted, legacy 5-char still valid, root stays locked */
+  const rules = fs.readFileSync(path.join(APP_DIR, 'database.rules.json'), 'utf8');
+  T('database.rules.json: $code accepts {8} and legacy {5}, root locked',
+    rules.includes('^[A-Z2-9]{8}$') && rules.includes('^[A-Z2-9]{5}$') && rules.includes('".read": false') && rules.includes('".write": false'));
+  /* invite link with a NEW 8-char code auto-joins for a consented user */
+  await page.evaluate('localStorage.setItem("sd-buddy-consent", "1")');
+  await page.goto('http://localhost:' + PORT + '/?buddy=ABCDEFGH', { waitUntil: 'load' });
+  await page.waitForFunction('window.__SKYDOG_READY === true', null, { timeout: 10000 });
+  await page.waitForFunction('window.__BUDDY && __BUDDY.BUDDY.active() === true', null, { timeout: 5000 });
+  T('8-char invite link joins the room', (await page.evaluate('__BUDDY.BUDDY.code')) === 'ABCDEFGH');
+  await page.evaluate('__BUDDY.BUDDY.end(true)');
+  /* A3 tamper containment: money-shaped secrets must never live in the page,
+     and no pack gate may side-step Entitlements.isUnlocked(). */
+  /* pattern built by concatenation so this test file itself never matches the
+     repo-history acceptance grep for secret material */
+  const SECRET_PAT = new RegExp(['sk_' + 'live_', 'sk_' + 'test_', 'wh' + 'sec_', 'BEGIN\\s+(EC\\s+)?PRIVATE'].join('|'), 'i');
+  T('no Stripe secret material in app source (live/test keys, webhook secrets)', !SECRET_PAT.test(appSrc));
+  T('no hardcoded entitlement keys outside makePackState (no side doors)', !/['"]sd-(fishing|drone|orv|allaccess)-(iap|trial)['"]/.test(appSrc));
+  T('every pack gate flows through Entitlements.isUnlocked', (appSrc.match(/Entitlements\.isUnlocked\(/g) || []).length >= 8);
+  T('honesty rule: no unhackable/impenetrable claims anywhere', !/unhackable|impenetrable|uncrackable|hack-?proof/i.test(appSrc));
+  /* CSP enforced for real: boot the app in a context WITHOUT bypassCSP and
+     poke tiles + a discovery fetch. Any blocked load logs a "Refused to"
+     violation to the console — zero are tolerated. (No evaluate() calls in
+     here: eval is exactly what the CSP forbids.) */
+  const strictCtx = await browser.newContext({ viewport: { width: 420, height: 850 } });
+  await strictCtx.route('**/*', mockRoute);
+  const strictPage = await strictCtx.newPage();
+  const cspViolations = [];
+  const strictErrors = [];
+  strictPage.on('console', (m) => { if (/Refused to|Content Security Policy/i.test(m.text())) cspViolations.push(m.text()); });
+  strictPage.on('pageerror', (e) => strictErrors.push(String(e)));
+  await strictPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+  await strictPage.waitForTimeout(1200);
+  await strictPage.click('#zoomin');                 /* pull fresh tiles (img-src) */
+  await strictPage.click('#chips .chip');            /* overpass fetch (connect-src) */
+  await strictPage.waitForTimeout(1200);
+  T('strict CSP boot: zero violations, zero page errors',
+    cspViolations.length === 0 && strictErrors.length === 0,
+    cspViolations.concat(strictErrors).slice(0, 3).join(' | '));
+  await strictCtx.close();
+
+  console.log('\n— 📢 Ads stay for everyone —');
   T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
   T('no purchase copy promises ad removal', !/removes ads|ads gone|ad-free|removes the ads/i.test(appSrc));
   T('grant path never touches the ad banner', !appSrc.slice(appSrc.indexOf('function sdGrantPack')).includes('SkyGPSAds.remove'));
@@ -900,7 +985,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v21', sw.includes("skydog-gps-v21") && !sw.includes("skydog-gps-v20"));
+  T('sw.js cache bumped to v22', sw.includes("skydog-gps-v22") && !sw.includes("skydog-gps-v21"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
