@@ -3222,7 +3222,7 @@ window.__sdorv = { get mode(){ return orvMode; }, setOrvMode, refreshOrv,
    Data © Regrid — attribution line is added automatically when active.
    ===================================================================== */
 const REGRID = {
-  token: '',            // ← paste your Regrid API token here
+  token: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyZWdyaWQuY29tIiwiaWF0IjoxNzg0OTUxNzc4LCJleHAiOjE3ODc1NDM3NzgsInUiOjg0ODAzMCwiZyI6MjMxNTMsImNhcCI6InBhOnRzOnBzOmJmOm1hOnR5OmVvOnpvOnNiIn0.WQCvjXYfG8btr2StlWaLG4ne6FUwrAn7GRn2QkX2DLE',   // Regrid sandbox token (expires 2026-08-23)
   tileMinZ: 13,         // zoom where boundary lines switch on (13 ≈ neighborhood)
   tiles: (z,x,y) => 'https://tiles.regrid.com/api/v1/parcels/'+z+'/'+x+'/'+y
                     + '.png?token='+encodeURIComponent(REGRID.token),
