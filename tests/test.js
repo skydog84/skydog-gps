@@ -1056,6 +1056,12 @@ async function main(){
   T('no secret material anywhere in worker/ (keys live only in Cloudflare)', !SECRET_PAT.test(workerSrc));
   T('worker rate-limits + checks Origin + edge-caches tiles',
     workerSrc.includes('rateOK') && workerSrc.includes('originOK') && workerSrc.includes('caches.default'));
+  /* Phase C: a public, secret-free way to report problems */
+  const secPath = path.join(APP_DIR, 'SECURITY.md');
+  T('SECURITY.md: report channel published, honest scope, no secrets',
+    fs.existsSync(secPath) && (function(){ const s = fs.readFileSync(secPath, 'utf8');
+      return s.includes('skydog8426@gmail.com') && /in scope/i.test(s) && !SECRET_PAT.test(s)
+        && !/unhackable|impenetrable|uncrackable|hack-?proof/i.test(s); })());
 
   console.log('\n— 📢 Ads stay for everyone —');
   T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
