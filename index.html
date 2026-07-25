@@ -1073,9 +1073,11 @@ function buildLayerSheet(){
       if(key === 'parcels' && on){
         toast(!REGRID.token
           ? '🏡 Property data isn’t connected yet — check back soon!'
+          : REGRID.trialNote
+          ? '🏡 Preview mode — parcel data is live in the demo counties: search “Dallas”, zoom in & tap any lot!'
           : (map.zoom < REGRID.tileMinZ
               ? '🏡 Property Lines ON — zoom in to see boundaries, then tap a parcel'
-              : '🏡 Tap inside any parcel to see who owns it'), 3600);
+              : '🏡 Tap inside any parcel to see who owns it'), 4200);
       } else toast(def.name + (on ? ' ON' : ' off'));
     });
     oc.appendChild(c);
@@ -3224,6 +3226,7 @@ window.__sdorv = { get mode(){ return orvMode; }, setOrvMode, refreshOrv,
 const REGRID = {
   token: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyZWdyaWQuY29tIiwiaWF0IjoxNzg0OTUxNzc4LCJleHAiOjE3ODc1NDM3NzgsInUiOjg0ODAzMCwiZyI6MjMxNTMsImNhcCI6InBhOnRzOnBzOmJmOm1hOnR5OmVvOnpvOnNiIn0.WQCvjXYfG8btr2StlWaLG4ne6FUwrAn7GRn2QkX2DLE',   // Regrid sandbox token (expires 2026-08-23)
   tileMinZ: 13,         // zoom where boundary lines switch on (13 ≈ neighborhood)
+  trialNote: true,      // sandbox trial = demo counties only; set false when the nationwide plan is active
   tiles: (z,x,y) => 'https://tiles.regrid.com/api/v1/parcels/'+z+'/'+x+'/'+y
                     + '.png?token='+encodeURIComponent(REGRID.token),
   point: (lat,lng) => 'https://app.regrid.com/api/v2/parcels/point?lat='+lat+'&lon='+lng
@@ -3281,9 +3284,11 @@ async function parcelLookup(lat, lng){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const d = await res.json();
     const f = d && d.parcels && d.parcels.features && d.parcels.features[0];
-    if(!f){ clearParcel(); toast('🏡 No parcel mapped at that spot'); return; }
-    map.setParcel({ rings: parcelRings(f.geometry) });
-    map.clearGroup('parcel');
+    if(!f){ clearParcel(); toast(REGRID.trialNote
+      ? '🏡 No data here in preview — search “Dallas” or “Indianapolis” to see it in action'
+      : '🏡 No parcel mapped at that spot', 3800); return; }
+    map.clearGroup('parcel');                          /* old popup closes first… */
+    map.setParcel({ rings: parcelRings(f.geometry) }); /* …so the fresh highlight survives */
     const m = map.addMarker({ lat, lng, html:'<div class="poimark">🏡</div>',
       group:'parcel', z:500, popup: parcelPopupHTML(f, lat, lng) });
     map.openPopup(m);
@@ -3292,12 +3297,17 @@ async function parcelLookup(lat, lng){
 }
 
 /* ride the tap chain: existing handlers (❓ identify, ORV, spots…) win first */
+let _parcelNudgeAt = 0;
+function parcelZoomNudge(){        /* layer on but too far out — say so instead of silent nothing */
+  const n = Date.now();
+  if(n - _parcelNudgeAt > 4000){ _parcelNudgeAt = n; toast('🏡 Zoom in closer to read property lines, then tap a parcel'); }
+}
 const _parcelPrevTap = map.onTap;
 map.onTap = ll => {
   if(_parcelPrevTap && _parcelPrevTap(ll)) return true;
-  if(map.overlays.has('parcels') && REGRID.token && map.zoom >= REGRID.tileMinZ){
-    parcelLookup(ll.lat, ll.lng);
-    return true;
+  if(map.overlays.has('parcels') && REGRID.token){
+    if(map.zoom >= REGRID.tileMinZ){ parcelLookup(ll.lat, ll.lng); return true; }
+    parcelZoomNudge();
   }
   return false;
 };

@@ -836,7 +836,13 @@ async function main(){
 
   console.log('\n— 🏡 Property Lines (Regrid parcels) —');
   T('parcels handle exposed', await page.evaluate('!!window.__sdparcels && typeof __sdparcels.parcelLookup === "function"'));
-  T('no token → tiles stay blank', await page.evaluate('OVERLAYS.parcels.url(15, 100, 200)') === (await page.evaluate('BLANK_TILE')));
+  T('no token → tiles stay blank', await page.evaluate(`(function(){
+      const saved = __sdparcels.REGRID.token;
+      __sdparcels.REGRID.token = '';
+      const blank = OVERLAYS.parcels.url(15, 100, 200) === BLANK_TILE;
+      __sdparcels.REGRID.token = saved;
+      return blank;
+    })()`));
   await page.evaluate('__sdparcels.REGRID.token = "test-token"');
   T('token + below min zoom → still blank', await page.evaluate('OVERLAYS.parcels.url(12, 100, 200)') === (await page.evaluate('BLANK_TILE')));
   T('token + close zoom → Regrid tile URL', await page.evaluate('OVERLAYS.parcels.url(15, 100, 200)').then(u => u.includes('tiles.regrid.com/api/v1/parcels/15/100/200.png') && u.includes('token=test-token')));
@@ -851,10 +857,30 @@ async function main(){
   T('gold highlight ring on the map', await page.evaluate('__sdmap.parcel && __sdmap.parcel.rings.length === 1 && __sdmap.parcel.rings[0].length === 5'));
   T('exactly one Regrid lookup fired', regridHits === 1);
   T('closing popup drops the highlight', await page.evaluate('(function(){ __sdmap.closePopup(); return __sdmap.parcel === null; })()'));
+  T('re-tapping a parcel keeps the fresh highlight', await page.evaluate(`(async function(){
+      __sdmap.onTap({lat:44.76, lng:-85.62});
+      await new Promise(r => setTimeout(r, 400));
+      __sdmap.onTap({lat:44.76, lng:-85.62});   /* second tap while popup open */
+      await new Promise(r => setTimeout(r, 400));
+      return !!(__sdmap.parcel && __sdmap.parcel.rings.length === 1);
+    })()`));
+  await page.evaluate('__sdmap.closePopup()');
+  T('zoomed-out tap nudges instead of silence', await page.evaluate(`(function(){
+      __sdmap.zoom = 11;
+      const handled = __sdmap.onTap({lat:44.76, lng:-85.62});
+      const t = document.getElementById('toast').textContent;
+      __sdmap.zoom = 16;
+      return handled === false && t.includes('Zoom in closer');
+    })()`));
   regridMode = 'empty';
   await page.evaluate('__sdmap.onTap({lat:44.70, lng:-85.50})');
+  await page.waitForFunction('document.getElementById("toast").textContent.includes("No data here in preview")', null, { timeout: 5000 });
+  T('trial miss → preview guidance toast', await page.evaluate('__sdmap.parcel === null && __sdmap.countGroup("parcel") === 0'));
+  await page.evaluate('__sdparcels.REGRID.trialNote = false');
+  await page.evaluate('__sdmap.onTap({lat:44.70, lng:-85.50})');
   await page.waitForFunction('document.getElementById("toast").textContent.includes("No parcel mapped")', null, { timeout: 5000 });
-  T('miss → friendly toast, no stale highlight', await page.evaluate('__sdmap.parcel === null && __sdmap.countGroup("parcel") === 0'));
+  T('production miss → plain no-parcel toast', true);
+  await page.evaluate('__sdparcels.REGRID.trialNote = true');
   regridMode = 'parcel';
   T('MultiPolygon parcels flatten to rings', await page.evaluate(`__sdparcels.parcelRings({ type:'MultiPolygon', coordinates: [
       [[[-85.1,44.1],[-85.0,44.1],[-85.0,44.2],[-85.1,44.1]]],
