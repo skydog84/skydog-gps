@@ -358,7 +358,7 @@
   <div id="basegrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px"></div>
   <h3 style="margin-top:16px">✨ Overlays — stack on top of any map</h3>
   <div id="ovchips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-  <div class="lg-note">🏂 Ski &amp; Board Runs shows real runs color-coded by difficulty. 🌊 Lake Depths shades deeper water darker (killer for the Great Lakes). ⛰️ 3D Terrain makes hills &amp; valleys pop on any map. 🎣 Lake Depth Contours + ⚓ NOAA Depth Charts come on automatically in Fishing Mode (the 🎣 button) — or stack them here yourself.</div>
+  <div class="lg-note">🏡 Property Lines draws real parcel boundaries when you zoom in — tap inside one to see who owns the land. 🏂 Ski &amp; Board Runs shows real runs color-coded by difficulty. 🌊 Lake Depths shades deeper water darker (killer for the Great Lakes). ⛰️ 3D Terrain makes hills &amp; valleys pop on any map. 🎣 Lake Depth Contours + ⚓ NOAA Depth Charts come on automatically in Fishing Mode (the 🎣 button) — or stack them here yourself.</div>
   <button class="btn green" id="layerdone" style="width:100%;margin-top:14px">✔ Done</button>
 </div>
 
@@ -607,6 +607,7 @@ class SDMap {
     this.markers = [];
     this.track = [];             // live/neon polyline points [{lat,lng}]
     this.circle = null;          // {lat,lng, radiusM}
+    this.parcel = null;          // 🏡 highlighted property {rings:[[{lat,lng},…],…]}
     this._raf = 0;
     this._anim = null;
     this._tileErrors = 0;
@@ -780,6 +781,7 @@ class SDMap {
   setTrack(pts){ this.track = pts.slice(); this.requestDraw(); }
   addTrackPoint(p){ this.track.push(p); this.requestDraw(); }
   setCircle(c){ this.circle = c; this.requestDraw(); }
+  setParcel(p){ this.parcel = p; this.requestDraw(); }
 
   /* ---- tiles ---- */
   _tile(def, z, x, y){
@@ -880,6 +882,20 @@ class SDMap {
         ctx.fillStyle = 'rgba(74,163,255,.10)'; ctx.fill();
         ctx.strokeStyle = 'rgba(74,163,255,.5)'; ctx.lineWidth = 1; ctx.stroke();
       }
+    }
+
+    /* 🏡 highlighted property parcel (gold) */
+    if(this.parcel && this.parcel.rings && this.parcel.rings.length){
+      ctx.beginPath();
+      for(const ring of this.parcel.rings){
+        for(let i=0;i<ring.length;i++){
+          const [px,py] = this.project(ring[i].lat, ring[i].lng, ws);
+          if(i===0) ctx.moveTo(px-ox, py-oy); else ctx.lineTo(px-ox, py-oy);
+        }
+        ctx.closePath();
+      }
+      ctx.fillStyle = 'rgba(255,200,60,.16)'; ctx.fill('evenodd');
+      ctx.strokeStyle = '#ffc83c'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
     }
 
     /* track polyline (neon glow) */
@@ -1054,7 +1070,13 @@ function buildLayerSheet(){
     c.addEventListener('click', () => {
       const on = map.toggleOverlay(key);
       updateAttrib(); buildLayerSheet();
-      toast(def.name + (on ? ' ON' : ' off'));
+      if(key === 'parcels' && on){
+        toast(!REGRID.token
+          ? '🏡 Property data isn’t connected yet — check back soon!'
+          : (map.zoom < REGRID.tileMinZ
+              ? '🏡 Property Lines ON — zoom in to see boundaries, then tap a parcel'
+              : '🏡 Tap inside any parcel to see who owns it'), 3600);
+      } else toast(def.name + (on ? ' ON' : ' off'));
     });
     oc.appendChild(c);
   });
@@ -3189,6 +3211,104 @@ window.__sdorv = { get mode(){ return orvMode; }, setOrvMode, refreshOrv,
   ORV_CFG, ORV_LAYERS, ORV_POINTS, ORV_POINT_CATS,
   tapInfo: orvTapInfo, trailAt: (lat,lng,tol) => trailSource.trailAt(lat,lng,tol),
   buildOrvChips, renderOrvPoints, drawOrvTrails, orvStyleFor, segDistDeg };
+
+/* =====================================================================
+   🏡 PROPERTY LINES & OWNERS — nationwide parcel data via Regrid
+   Boundary lines draw as a raster overlay once you zoom in close;
+   tapping inside a parcel looks up the owner, acreage & address.
+   SETUP: sign in at https://app.regrid.com → API → create a token
+   (free 30-day trial, paid after) and paste it into REGRID.token below.
+   No token = the layer stays blank and the chip toast says why.
+   Data © Regrid — attribution line is added automatically when active.
+   ===================================================================== */
+const REGRID = {
+  token: '',            // ← paste your Regrid API token here
+  tileMinZ: 13,         // zoom where boundary lines switch on (13 ≈ neighborhood)
+  tiles: (z,x,y) => 'https://tiles.regrid.com/api/v1/parcels/'+z+'/'+x+'/'+y
+                    + '.png?token='+encodeURIComponent(REGRID.token),
+  point: (lat,lng) => 'https://app.regrid.com/api/v2/parcels/point?lat='+lat+'&lon='+lng
+                    + '&token='+encodeURIComponent(REGRID.token)
+};
+
+OVERLAYS.parcels = { name:'🏡 Property Lines', alpha:0.9, maxTile:19,
+  attrib:'Parcel data © Regrid',
+  url:(z,x,y)=> (!REGRID.token || z < REGRID.tileMinZ) ? BLANK_TILE : REGRID.tiles(z,x,y) };
+
+OVERLAY_LEGENDS.parcels = [
+  ['<div class="lg-h">🏡 Property Lines (county parcel records via Regrid)</div>'],
+  [sw(lineSw('#ffc83c')), '<b>Boundary lines</b> — legal property lines from county tax rolls'],
+  [sw('background:rgba(255,200,60,.35);border:2px solid #ffc83c;border-radius:4px'),
+    '<b>Gold highlight</b> — the parcel you tapped; the popup names the owner'],
+  ['<div class="lg-note">Zoom in until lines appear, then tap inside any parcel to see who owns it, the acreage &amp; address. Ownership comes from public county records and can lag recent sales. Lines are approximate — not a survey. Always get permission before crossing private land.</div>'],
+];
+
+/* GeoJSON Polygon/MultiPolygon → rings of {lat,lng} for the canvas */
+function parcelRings(geom){
+  if(!geom) return [];
+  const polys = geom.type === 'MultiPolygon' ? geom.coordinates :
+                geom.type === 'Polygon'      ? [geom.coordinates] : [];
+  const rings = [];
+  polys.forEach(p => p.forEach(ring => rings.push(ring.map(c => ({lat:c[1], lng:c[0]})))));
+  return rings;
+}
+
+function parcelPopupHTML(f, lat, lng){
+  const fld  = (f.properties && f.properties.fields) || {};
+  const owner = fld.owner || 'Owner not listed in county records';
+  const bits = [];
+  if(fld.ll_gisacre) bits.push((Math.round(fld.ll_gisacre*100)/100)+' acres');
+  if(fld.usedesc) bits.push(String(fld.usedesc).toLowerCase());
+  const addr = (f.properties && f.properties.headline) || fld.address || '';
+  return '<div class="poptitle">🏡 '+esc(owner)+'</div>'
+    + '<div class="popsub">'+esc(bits.join(' · ') || 'parcel')+'</div>'
+    + (addr ? '<div style="font-size:11px;color:var(--dim);margin-bottom:8px">'+esc(addr)+'</div>' : '')
+    + '<div style="font-size:10px;color:var(--dim);margin-bottom:8px">County records — approximate lines, not a survey</div>'
+    + '<div class="popbtns">'
+    + '<a class="popbtn nav" href="'+gmapsDir(lat,lng)+'" target="_blank" rel="noopener">🚗 Drive there</a>'
+    + '<button class="popbtn go" onclick="window.sdFly('+lat+','+lng+')">🔍 Zoom in</button>'
+    + '</div>';
+}
+
+function clearParcel(){ map.setParcel(null); map.clearGroup('parcel'); }
+
+let parcelBusy = false;
+async function parcelLookup(lat, lng){
+  if(parcelBusy) return;
+  parcelBusy = true;
+  $('spinner').style.display='block'; $('spinner').textContent='Checking who owns this land…';
+  try{
+    const res = await fetch(REGRID.point(lat, lng));
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const d = await res.json();
+    const f = d && d.parcels && d.parcels.features && d.parcels.features[0];
+    if(!f){ clearParcel(); toast('🏡 No parcel mapped at that spot'); return; }
+    map.setParcel({ rings: parcelRings(f.geometry) });
+    map.clearGroup('parcel');
+    const m = map.addMarker({ lat, lng, html:'<div class="poimark">🏡</div>',
+      group:'parcel', z:500, popup: parcelPopupHTML(f, lat, lng) });
+    map.openPopup(m);
+  }catch(e){ toast('⚠️ Couldn’t look up that parcel — check connection'); }
+  finally{ parcelBusy = false; $('spinner').style.display='none'; }
+}
+
+/* ride the tap chain: existing handlers (❓ identify, ORV, spots…) win first */
+const _parcelPrevTap = map.onTap;
+map.onTap = ll => {
+  if(_parcelPrevTap && _parcelPrevTap(ll)) return true;
+  if(map.overlays.has('parcels') && REGRID.token && map.zoom >= REGRID.tileMinZ){
+    parcelLookup(ll.lat, ll.lng);
+    return true;
+  }
+  return false;
+};
+
+/* closing the popup (✕ or a tap elsewhere) also drops the gold highlight */
+const _parcelPrevClose = map.closePopup.bind(map);
+map.closePopup = function(){ _parcelPrevClose(); if(map.parcel) map.setParcel(null); };
+
+/* debug/test handle for property lines */
+window.__sdparcels = { REGRID, parcelLookup, parcelRings, parcelPopupHTML, clearParcel,
+  get active(){ return map.overlays.has('parcels'); } };
 
 /* =====================================================================
    📍 MY SPOTS — free for everyone. Your own pins: name + icon + notes.

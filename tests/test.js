@@ -55,6 +55,14 @@ const FIX_FIXEDSITES = { features: [
 ] };
 const FIX_WEATHER = { current: { temperature_2m: 72.4, wind_speed_10m: 8.3, wind_direction_10m: 270, wind_gusts_10m: 12.1 } };
 
+/* 🏡 Regrid parcel point-lookup fixture — one 40-acre parcel near Traverse City */
+const FIX_REGRID = { parcels: { type: 'FeatureCollection', features: [
+  { type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [[[-85.63, 44.75], [-85.61, 44.75], [-85.61, 44.77], [-85.63, 44.77], [-85.63, 44.75]]] },
+    properties: { headline: '123 Skydog Trail, Traverse City, MI',
+      fields: { owner: 'DOE JOHN & JANE', ll_gisacre: 39.4816, usedesc: 'RESIDENTIAL', address: '123 SKYDOG TRL' } } },
+] } };
+
 /* Michigan DNR trails (gisagodnr.state.mi.us) — polylines near Traverse City.
    Layer 15 = snowmobile (one open, one closed) · 11 = ORV route · 12 = ORV trail
    · 13 = motorcycle · 0 = temporary closures. */
@@ -137,6 +145,8 @@ async function main(){
   let overpassMode = 'beaches';
   let faaHits = 0;
   let dnrHits = 0;
+  let regridMode = 'parcel';   // 'parcel' | 'empty'
+  let regridHits = 0;
   await ctx.route('**/*', (route) => {
     const url = route.request().url();
     if (url.startsWith('http://localhost:' + PORT)) return route.continue();
@@ -176,6 +186,12 @@ async function main(){
     if (url.includes('open-meteo')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{"elevation":[190]}' });
     }
+    /* 🏡 Regrid parcel point lookup (tiles.regrid.com falls through to the png catch-all) */
+    if (url.includes('app.regrid.com/api/v2/parcels/point')) {
+      regridHits++;
+      const body = regridMode === 'empty' ? { parcels: { type: 'FeatureCollection', features: [] } } : FIX_REGRID;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
     /* Firebase SDK stub — records writes/listeners so buddy tests are deterministic & offline */
     if (url.includes('gstatic.com/firebasejs')) {
       return route.fulfill({ status: 200, contentType: 'text/javascript', body: FB_STUB });
@@ -200,7 +216,7 @@ async function main(){
   T('12 discovery chips', await page.$$eval('#chips .chip', (e) => e.length) === 12);
   T('12 activity modes', await page.$$eval('#modes .modebtn', (e) => e.length) === 12);
   T('5 base maps in layer sheet', await page.evaluate('Object.keys(__sdmap.constructor ? window.BASES || {} : {}).length || (function(){ return document.querySelectorAll("#basegrid .modebtn").length; })()') !== -1 && (await page.evaluate('(function(){ document.getElementById("layerfab").click(); return document.querySelectorAll("#basegrid .modebtn").length; })()')) === 5, 'basegrid count');
-  T('5 overlays incl fishing pair in layer sheet', await page.$$eval('#ovchips .chip', (e) => e.length) === 5);
+  T('6 overlays incl fishing pair + property lines in layer sheet', await page.$$eval('#ovchips .chip', (e) => e.length) === 6);
   await page.evaluate('(function(){ document.getElementById("layerdone").click(); })()');
   const z0 = await page.evaluate('__sdmap.zoom');
   await page.click('#zoomin');
@@ -818,6 +834,35 @@ async function main(){
     && await page.evaluate('__sdmap.countGroup("myspot")') === 0
     && await page.evaluate('localStorage.getItem("sd-myspots")') === '[]');
 
+  console.log('\n— 🏡 Property Lines (Regrid parcels) —');
+  T('parcels handle exposed', await page.evaluate('!!window.__sdparcels && typeof __sdparcels.parcelLookup === "function"'));
+  T('no token → tiles stay blank', await page.evaluate('OVERLAYS.parcels.url(15, 100, 200)') === (await page.evaluate('BLANK_TILE')));
+  await page.evaluate('__sdparcels.REGRID.token = "test-token"');
+  T('token + below min zoom → still blank', await page.evaluate('OVERLAYS.parcels.url(12, 100, 200)') === (await page.evaluate('BLANK_TILE')));
+  T('token + close zoom → Regrid tile URL', await page.evaluate('OVERLAYS.parcels.url(15, 100, 200)').then(u => u.includes('tiles.regrid.com/api/v1/parcels/15/100/200.png') && u.includes('token=test-token')));
+  T('overlay off → tap not hijacked', await page.evaluate('__sdmap.onTap({lat:44.76, lng:-85.62})') === false && regridHits === 0);
+  await page.evaluate('__sdmap.overlays.add("parcels"); __sdmap.center = {lat:44.76, lng:-85.62}; __sdmap.zoom = 16;');
+  T('tap inside parcel → handled', await page.evaluate('__sdmap.onTap({lat:44.76, lng:-85.62})') === true);
+  await page.waitForFunction('document.getElementById("popup").style.display === "block"', null, { timeout: 5000 });
+  const parcelPop = await page.evaluate('document.getElementById("popupbody").innerHTML');
+  T('popup names the owner', parcelPop.includes('DOE JOHN &amp; JANE'));
+  T('popup shows acreage + use', parcelPop.includes('39.48 acres') && parcelPop.includes('residential'));
+  T('popup shows address + not-a-survey note', parcelPop.includes('123 Skydog Trail') && parcelPop.includes('not a survey'));
+  T('gold highlight ring on the map', await page.evaluate('__sdmap.parcel && __sdmap.parcel.rings.length === 1 && __sdmap.parcel.rings[0].length === 5'));
+  T('exactly one Regrid lookup fired', regridHits === 1);
+  T('closing popup drops the highlight', await page.evaluate('(function(){ __sdmap.closePopup(); return __sdmap.parcel === null; })()'));
+  regridMode = 'empty';
+  await page.evaluate('__sdmap.onTap({lat:44.70, lng:-85.50})');
+  await page.waitForFunction('document.getElementById("toast").textContent.includes("No parcel mapped")', null, { timeout: 5000 });
+  T('miss → friendly toast, no stale highlight', await page.evaluate('__sdmap.parcel === null && __sdmap.countGroup("parcel") === 0'));
+  regridMode = 'parcel';
+  T('MultiPolygon parcels flatten to rings', await page.evaluate(`__sdparcels.parcelRings({ type:'MultiPolygon', coordinates: [
+      [[[-85.1,44.1],[-85.0,44.1],[-85.0,44.2],[-85.1,44.1]]],
+      [[[-85.3,44.3],[-85.2,44.3],[-85.2,44.4],[-85.3,44.3]]]
+    ] }).length`) === 2);
+  T('regrid attribution when active', await page.evaluate('(function(){ updateAttrib(); return document.getElementById("attrib").textContent; })()').then(t => t.includes('Regrid')));
+  await page.evaluate('__sdmap.overlays.delete("parcels"); __sdparcels.REGRID.token = ""; updateAttrib(); __sdmap.clearGroup("parcel");');
+
   console.log('\n— 📢 Ads stay for everyone —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
   T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
@@ -829,7 +874,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v17', sw.includes("skydog-gps-v17") && !sw.includes("skydog-gps-v16"));
+  T('sw.js cache bumped to v21', sw.includes("skydog-gps-v21") && !sw.includes("skydog-gps-v20"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
