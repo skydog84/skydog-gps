@@ -1948,7 +1948,7 @@ const Entitlements = {
    stop someone from console-tampering entitlements on their OWN device;
    that cheats only themselves and no server or other user trusts it. */
 const SkySigned = {
-  pubkey: '',                          /* base64 raw 32-byte Ed25519 public key — paste from worker/generate-keys.mjs output */
+  pubkey: '7r+uJ+0pgFLMFZA+UWd6HAAUM1a93q17sWQCA7mqD10=', /* base64 raw 32-byte Ed25519 public key — private half lives ONLY in the Cloudflare SIGNING_KEY secret */
   storeKey: 'sd-allaccess-signed',
   _b32(s){                             /* RFC4648 base32 (no padding) → bytes */
     const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';

@@ -1160,8 +1160,8 @@ async function main(){
   T('expired code rejected', await page.evaluate(`(async function(){
     return (await __sdpacks.SkySigned.verify(${JSON.stringify(expiredCode)}, ${JSON.stringify(TEST_PUB)})) === null;
   })()`));
-  T('no public key configured → every SKY code fails closed', await page.evaluate(`(async function(){
-    return __sdpacks.SkySigned.pubkey === '' && (await __sdpacks.SkySigned.verify(${JSON.stringify(goodCode)})) === null;
+  T('production pubkey configured → codes signed with any other key fail closed', await page.evaluate(`(async function(){
+    return __sdpacks.SkySigned.pubkey.length > 0 && (await __sdpacks.SkySigned.verify(${JSON.stringify(goodCode)})) === null;
   })()`));
   T('checksum-forged SKY code is dead (self-minting killed)', await page.evaluate(`(function(){
     /* SKY-AB2H passes the old public checksum — it must no longer unlock anything */
@@ -1210,7 +1210,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v23 (UI refresh ships fresh)', sw.includes("skydog-gps-v23") && !sw.includes("skydog-gps-v22") && !sw.includes("skydog-gps-v21"));
+  T('sw.js cache bumped to v24 (signed-code key ships fresh)', sw.includes("skydog-gps-v24") && !sw.includes("skydog-gps-v23") && !sw.includes("skydog-gps-v22"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
