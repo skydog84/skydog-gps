@@ -24,7 +24,7 @@
      api.skydoggps.com is pre-allowlisted for the Phase B Cloudflare
      Worker (Regrid proxy + signed unlock codes) so flipping it on
      never requires a CSP change. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://mesonet.agron.iastate.edu https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://services3.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev https://api.weather.gov https://waterservices.usgs.gov https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://mesonet.agron.iastate.edu https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://services3.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev https://api.weather.gov https://waterservices.usgs.gov https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
 <meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
@@ -414,6 +414,31 @@
   #recwait button{flex:1 1 30%;padding:9px 4px;border-radius:10px;font-size:12.5px;font-weight:700;
     border:1px solid var(--line);background:#101a28;color:var(--text);cursor:pointer;font-family:inherit}
   #recwait button.sel{background:#2a1114;border-color:#ff6a4a;color:#ff9a8a}
+  /* 📸 Trail Cam Hub — Run 4 */
+  #camacct .camaddr{display:block;width:100%;text-align:center;background:#0d131c;border:1px dashed #2a3648;
+    border-radius:12px;padding:12px 8px;margin:4px 0 8px;font-size:14px;font-weight:800;color:#4aa3ff;
+    cursor:pointer;font-family:inherit;word-break:break-all}
+  #camname{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--line);
+    background:#101a28;color:var(--text);font-family:inherit;font-size:14px;margin:8px 0 6px}
+  #cambrands{display:flex;flex-wrap:wrap;gap:6px}
+  #cambrands button{flex:1 1 30%;padding:8px 4px;border-radius:10px;font-size:12px;font-weight:700;
+    border:1px solid var(--line);background:#101a28;color:var(--text);cursor:pointer;font-family:inherit}
+  #cambrands button.sel{background:#0e2a1a;border-color:#35e08a;color:#35e08a}
+  #camfilters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+  #camfilters button{flex:1 1 20%;padding:8px 4px;border-radius:10px;font-size:12px;font-weight:700;
+    border:1px solid var(--line);background:#101a28;color:var(--text);cursor:pointer;font-family:inherit}
+  #camfilters button.sel{background:#0e2a1a;border-color:#35e08a;color:#35e08a}
+  #camgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  #camgrid button{padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0d1622;
+    cursor:pointer;aspect-ratio:4/3;position:relative}
+  #camgrid img{width:100%;height:100%;object-fit:cover;display:block}
+  #camgrid .camtag{position:absolute;left:4px;bottom:4px;font-size:11px;background:rgba(0,0,0,.65);
+    border-radius:6px;padding:1px 5px}
+  #camsel img{width:100%;border-radius:12px;border:1px solid var(--line);display:block}
+  .camchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .camchips span{font-size:12px;font-weight:700;background:#101c2e;border:1px solid #274468;
+    border-radius:999px;padding:3px 9px}
+  .cammark{font-size:18px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));cursor:pointer}
   #gaugespark{width:100%;height:80px;background:#0d1622;border:1px solid var(--line);border-radius:10px;margin-top:8px}
   #gaugenow .nightrow span{color:var(--text)}
   #sunstrip{display:flex;gap:1px;height:44px;border-radius:8px;overflow:hidden;margin:10px 0 4px}
@@ -473,6 +498,7 @@
   <button class="wfab" id="orvfab" data-mode="orv" aria-label="ORV Trails" title="ORV Trails — snowmobile, ORV &amp; motorcycle trails">🏔</button>
   <button class="wfab" id="worldfab" data-mode="world" aria-label="World Data — live radar, weather alerts, river gauges and wildfire" title="World Data — live radar, weather alerts, river gauges &amp; wildfire">🌎</button>
   <button class="wfab" id="huntfab" data-mode="hunt" aria-label="Hunt Intelligence — wind, thermals and recovery mode" title="Hunt Intelligence — wind &amp; thermals per stand, blood-trail recovery">🦌</button>
+  <button class="wfab" id="camsfab" data-mode="cams" aria-label="Trail Cam Hub — every camera, every brand, one map" title="Trail Cam Hub — every camera, every brand, one map">📸</button>
   <button class="wfab" id="buddyfab" data-mode="buddy" aria-label="Buddy Trip" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="wfab" id="spotsfab" data-mode="spots" aria-label="My Spots" title="My Spots — save your own places on the map">➕</button>
   <button class="wfab" id="packsfab" data-mode="store" aria-label="Feature Packs store" title="Feature Packs — optional add-ons">🎒</button>
@@ -881,6 +907,42 @@
   <button data-rec="good">🩸🩸<small>Good blood</small></button>
   <button data-rec="hair">🐾<small>Hair</small></button>
   <button data-rec="lost">❓<small>Lost trail</small></button>
+</div>
+
+<!-- 📸 Trail Cam Hub — Run 4 -->
+<div class="sheet" id="camsheet">
+  <div class="grabber"></div>
+  <h3>📸 Trail Cam Hub</h3>
+  <div class="lg-note" style="margin:0 0 8px">Every camera. Every brand. One map. Your cams email their photos to a
+    <b>private SkyDog address</b> — Tactacam Reveal, SpyPoint, Moultrie, Stealth Cam, any cam that can email or forward.
+    No per-camera fees, ever.</div>
+  <div id="camacct"></div>
+  <button class="worldrow" id="caminboxbtn">📥 <b>Photo timeline</b> — every cam, one feed<span class="wstate" id="caminboxstate"></span></button>
+  <div style="font-weight:800;margin:10px 0 4px">🗺 Your cameras on the map</div>
+  <div id="camlist"></div>
+  <button class="worldrow" id="camaddbtn">➕ <b>Add a camera</b> — tap the map where it hangs</button>
+  <div id="camedit" style="display:none">
+    <input id="camname" maxlength="40" placeholder="Camera name (North Ridge cam…)" autocomplete="off">
+    <div id="cambrands"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="worldrow" id="camsave" style="flex:1;border-color:#2f7d43">💾 <b>Save</b></button>
+      <button class="worldrow" id="camdel" style="flex:1;border-color:#a03030">🗑 <b>Remove</b></button>
+    </div>
+  </div>
+  <div style="font-weight:800;margin:10px 0 4px">🔌 Hook up your cam — 2 minutes</div>
+  <div id="camwiz"></div>
+  <div class="lg-note" style="margin:8px 0 0">Photos are private to you, kept <b>60 days</b> (up to 400), then cleared —
+    save keepers to your phone. Auto-tags are a <b>triage</b> (animal / person / vehicle), not species ID — no AI can
+    age a buck from a blurry 2am frame, and we won't pretend otherwise.</div>
+</div>
+
+<div class="sheet" id="camtimesheet">
+  <div class="grabber"></div>
+  <h3 id="camtimetitle">📥 Cam Timeline</h3>
+  <div id="camfilters"></div>
+  <div id="camsel"></div>
+  <div id="camgrid"></div>
+  <div id="camquota" class="lg-note" style="margin-top:8px"></div>
 </div>
 
 <!-- 🌙 Night Ops -->
@@ -1610,7 +1672,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.5';
+const SD_VERSION = '1.6';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2262,6 +2324,7 @@ const PACKS_CONFIG = {
     features:[
       ['🎁','<b>Everything unlocked</b> — fishing, drone &amp; every future pack, automatically'],
       ['🦌','<b>Wind &amp; thermals per stand</b> — huntable-wind windows &amp; modeled thermal calls (they charge $30–100/yr for less)'],
+      ['📸','<b>Trail Cam Hub</b> — every cam brand emails photos to one private address, auto-tagged on your map (no per-camera fees)'],
       ['🆓','<b>The map stays free</b> — this only adds the specialist extras on top']
     ],
     price:'$2.99/mo', priceNote:'subscription',
@@ -2626,7 +2689,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet','worldsheet','gaugesheet','huntsheet','huntspotsheet','recoverysheet'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet','worldsheet','gaugesheet','huntsheet','huntspotsheet','recoverysheet','camsheet','camtimesheet'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -6589,6 +6652,357 @@ window.__sdhunt = { HUNT, RECOVERY, HUNT_CFG, RECOVERY_CFG, HUNT_DIRS, huntSecto
   buildSpotRose, readSpotRose };
 
 /* =====================================================================
+   📸 TRAIL CAM HUB — RUN 4 «EVERY CAMERA, ONE MAP» (feature ⑧)
+   The owner's marquee idea. No cam brand has a public API, so we need
+   nobody's permission: each user gets a PRIVATE ingest email address
+   (u_xxxx@skydogai.com) minted by the worker. Their cam app (Tactacam
+   Reveal, SpyPoint, Moultrie, Stealth Cam) or a Gmail forwarding rule
+   sends photo emails there; Cloudflare Email Routing hands them to the
+   worker, which stores images in R2 and triage-tags them (animal /
+   person / vehicle — NOT species, honesty rule). The app pulls the
+   timeline with the id+token pair that never leaves this phone except
+   to authenticate against the worker.
+   Camera pins live in sdStore ONLY (like stands — locations never
+   uploaded). Conditions cross-ref joins each photo with solunar score
+   + wind + pressure AT THAT TIME from the engines Runs 1–3 already
+   built (Open-Meteo past_days=7 history; solunar is pure math for any
+   date). Trail Cam Hub rides All Access (owner: one tier, everything).
+   Kill switch: CAMS_CFG.enabled. Quotas mirror the worker: 400 photos,
+   60 days — cost discipline for a $2.99 sub, stated honestly in-sheet.
+   ===================================================================== */
+const CAMS_CFG = {
+  enabled: true,                 /* kill switch: 📸 wheel stop + sheets        */
+  api: 'https://skydog-api.skydog8426.workers.dev',
+  histDays: 7,                   /* Open-Meteo past_days window for conditions */
+  refreshMins: 5,                /* inbox re-fetch throttle                    */
+  maxThumbs: 120,                /* photos rendered per open (newest first)    */
+  patternMin: 8                  /* photos with conditions before we claim a pattern */
+};
+const CAM_BRANDS = [['reveal','Tactacam Reveal'],['spypoint','SpyPoint'],['moultrie','Moultrie'],
+  ['stealth','Stealth Cam'],['other','Other / Gmail']];
+
+/* ---- pure helpers (unit-tested via window.__sdcams) ---- */
+function camsFilterPhotos(photos, mode){
+  if (mode === 'all') return (photos || []).slice();
+  return (photos || []).filter(p => String(p.tags || '').split(',').includes(mode));
+}
+/* nearest forecast hour within 90 min of the photo, else no claim */
+function camsCondsAt(hours, ts){
+  let best = null, bd = 5400000;
+  for (const h of (hours || [])){
+    const d = Math.abs(h.t - ts);
+    if (d < bd){ bd = d; best = h; }
+  }
+  return best ? { deg: best.deg, mph: best.mph, hpa: best.hpa } : null;
+}
+/* the sentence that sells the sub — but only once the data has earned it */
+function camsPatternLine(entries){
+  const es = (entries || []).filter(e => e && isFinite(e.deg));
+  if (es.length < CAMS_CFG.patternMin) return '';
+  const bySec = {};
+  es.forEach(e => { const s = huntSectorOf(e.deg); bySec[s] = (bySec[s] || 0) + 1; });
+  const top = Object.entries(bySec).sort((a, b) => b[1] - a[1])[0];
+  const windShare = Math.round(top[1] / es.length * 100);
+  const scored = es.filter(e => isFinite(e.score));
+  const avg = scored.length ? Math.round(scored.reduce((a, e) => a + e.score, 0) / scored.length) : null;
+  let line = '📈 This cam fires most on <b>' + HUNT_DIRS[+top[0]] + ' wind</b> (' + windShare + '% of tagged photos)';
+  if (avg != null) line += ' · avg solunar <b>' + avg + '</b> at trigger time';
+  return line;
+}
+/* solunar score for ANY moment at the CAMERA's location — pure math reuse */
+function camsSolunarAt(ts, lat, lng){
+  const d = new Date(ts);
+  const per = solunarPeriods(d, lat, lng);
+  const st = AST.sunTimes(d, lat, lng);
+  return solunarScoreAt(ts, { majors: per.majors, minors: per.minors,
+    sunEdges: [st.sunrise && +st.sunrise, st.sunset && +st.sunset],
+    phase: AST.moonIllumination(d).phase, nudge: 0 });
+}
+
+/* ---- 📸 the cams module ---- */
+const CAMS = {
+  acct: null, cams: [], assign: {}, placing: false, editingId: null,
+  photos: [], filter: 'all', camFilter: '', selKey: null, _fetched: 0, _hist: new Map(), _urls: [],
+  load(){
+    const J = (k, fb) => { try{ const v = JSON.parse(sdStore.get(k) || 'null'); return v == null ? fb : v; }catch(e){ return fb; } };
+    this.acct = J('sd-camsacct', null);
+    this.cams = J('sd-cams', []);
+    this.assign = J('sd-camassign', {});
+    if (!Array.isArray(this.cams)) this.cams = [];
+  },
+  saveCams(){ sdStore.set('sd-cams', JSON.stringify(this.cams)); sdStore.set('sd-camassign', JSON.stringify(this.assign)); },
+  camOf(k){ const cid = this.assign[k]; return this.cams.find(c => c.id === cid) || null; },
+  openMain(){
+    if (!CAMS_CFG.enabled){ toast('Trail Cam Hub is switched off in this build'); return; }
+    this.load();
+    this.renderAcct(); this.renderList(); this.renderWiz();
+    $('camedit').style.display = 'none';
+    openSheet('camsheet');
+  },
+  renderAcct(){
+    const w = $('camacct');
+    if (this.acct){
+      w.innerHTML = '<div style="font-weight:800;margin:0 0 2px">Your private cam address — tap to copy</div>'
+        + '<button class="camaddr" id="camaddrbtn">' + esc(this.acct.addr) + '</button>'
+        + '<div class="lg-note">Point your cam app (or a Gmail forwarding rule) at this address and photos start landing on your map. Keep it private — anyone who has it can fill your timeline.</div>';
+      $('camaddrbtn').addEventListener('click', () => {
+        const done = () => toast('📋 Copied — paste it into your cam app');
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(this.acct.addr).then(done, done);
+        else done();
+      });
+    } else {
+      w.innerHTML = '<button class="worldrow" id="camregbtn" style="border-color:#2f7d43">🔑 <b>Create my private cam address</b><span class="wstate">All Access</span></button>';
+      $('camregbtn').addEventListener('click', () => this.register());
+    }
+    $('caminboxstate').textContent = this.acct ? '' : 'All Access';
+  },
+  async register(){
+    if (!Entitlements.isUnlocked('allaccess')){ openPaywall('allaccess'); return; }
+    if (!navigator.onLine){ toast('📡 You need signal to create your address'); return; }
+    try{
+      const r = await fetch(CAMS_CFG.api + '/cams/register', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const b = await r.json();
+      if (!b.ok) throw new Error(b.error || 'register');
+      this.acct = { id: b.id, token: b.token, addr: b.addr };
+      sdStore.set('sd-camsacct', JSON.stringify(this.acct));
+      this.renderAcct();
+      toast('📸 Your cam address is live');
+    }catch(e){ toast('😕 Could not create the address — try again in a minute'); }
+  },
+  renderList(){
+    const w = $('camlist');
+    if (!this.cams.length){
+      w.innerHTML = '<div class="empty">No cameras pinned yet — add one and your photos get a home on the map.</div>';
+      return;
+    }
+    w.innerHTML = this.cams.map(c => '<div class="spotrow" data-id="' + c.id + '">'
+      + '<span class="sem">📸</span><span style="min-width:0"><span class="snm">' + esc(c.name) + '</span>'
+      + '<br><span class="snt">' + esc((CAM_BRANDS.find(b => b[0] === c.brand) || ['', 'Other'])[1]) + '</span></span>'
+      + '<button data-act="go" aria-label="Zoom to camera">🔍</button><button data-act="edit" aria-label="Edit camera">✏️</button></div>').join('');
+    w.querySelectorAll('.spotrow button').forEach(b => b.addEventListener('click', () => {
+      const id = b.closest('.spotrow').dataset.id, c = this.cams.find(x => x.id === id);
+      if (!c) return;
+      if (b.dataset.act === 'go'){ closeSheets(); map.flyTo(c.lat, c.lng, Math.max(map.zoom, 14)); }
+      else this.edit(id);
+    }));
+  },
+  renderWiz(){
+    const steps = {
+      reveal: 'Tactacam Reveal app → Account → <b>Photo email notifications ON</b> → set the email to your SkyDog address. New photos forward automatically.',
+      spypoint: 'SpyPoint app → your camera → Settings → <b>Notifications by email</b> → add your SkyDog address (or forward from the email account SpyPoint already mails).',
+      moultrie: 'Moultrie Mobile → Account → Notifications → <b>email alerts ON</b> → SkyDog address as the recipient.',
+      stealth: 'Stealth Cam Command → Settings → <b>Email notifications</b> → add your SkyDog address.',
+      other: 'Any cam that emails ANY address works: in Gmail → Settings → <b>Forwarding &amp; filters</b> → forward cam emails to your SkyDog address. Two minutes, one time.'
+    };
+    $('camwiz').innerHTML = CAM_BRANDS.map(([id, name]) =>
+      '<button class="worldrow camwizrow" data-b="' + id + '">' + (id === 'other' ? '📧' : '📷') + ' <b>' + name + '</b><span class="wstate">how</span></button>'
+      + '<div class="lg-note camwizhow" id="camwiz-' + id + '" style="display:none;margin:2px 0 6px">' + steps[id] + '</div>').join('');
+    $('camwiz').querySelectorAll('.camwizrow').forEach(b => b.addEventListener('click', () => {
+      const el = $('camwiz-' + b.dataset.b);
+      el.style.display = el.style.display === 'none' ? '' : 'none';
+    }));
+  },
+  /* ---- camera pins ---- */
+  add(lat, lng){
+    const c = { id: 'c' + Date.now().toString(36), name: 'Cam ' + (this.cams.length + 1), brand: 'other', lat, lng };
+    this.cams.push(c); this.saveCams(); this.render();
+    this.openMain(); this.edit(c.id);
+  },
+  edit(id){
+    const c = this.cams.find(x => x.id === id); if (!c) return;
+    this.editingId = id;
+    $('camedit').style.display = '';
+    $('camname').value = c.name;
+    $('cambrands').innerHTML = CAM_BRANDS.map(([b, n]) =>
+      '<button data-b="' + b + '"' + (c.brand === b ? ' class="sel"' : '') + '>' + n + '</button>').join('');
+    $('cambrands').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      $('cambrands').querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+      b.classList.add('sel');
+    }));
+  },
+  saveEdit(){
+    const c = this.cams.find(x => x.id === this.editingId); if (!c) return;
+    c.name = ($('camname').value || 'My cam').slice(0, 40);
+    const sel = $('cambrands').querySelector('button.sel');
+    c.brand = sel ? sel.dataset.b : 'other';
+    this.saveCams(); this.render(); this.renderList();
+    $('camedit').style.display = 'none';
+    toast('💾 Camera saved');
+  },
+  removeCam(){
+    this.cams = this.cams.filter(c => c.id !== this.editingId);
+    Object.keys(this.assign).forEach(k => { if (this.assign[k] === this.editingId) delete this.assign[k]; });
+    this.saveCams(); this.render(); this.renderList();
+    $('camedit').style.display = 'none';
+    toast('🗑 Camera removed (photos stay in your timeline)');
+  },
+  render(){
+    map.clearGroup('trailcam');
+    this.cams.forEach(c => {
+      map.addMarker({ lat: c.lat, lng: c.lng, html: '<div class="cammark">📸</div>', group: 'trailcam',
+        popup: '<b>📸 ' + esc(c.name) + '</b><br>'
+          + '<button class="popbtn go" onclick="window.__sdcams.CAMS.openInbox(\'' + c.id + '\')">📥 Photos</button>'
+          + '<button class="popbtn" onclick="window.__sdcams.CAMS.openMain();window.__sdcams.CAMS.edit(\'' + c.id + '\')">✏️ Edit</button>' });
+    });
+  },
+  /* ---- timeline ---- */
+  async openInbox(camId){
+    if (!CAMS_CFG.enabled) return;
+    if (!Entitlements.isUnlocked('allaccess')){ openPaywall('allaccess'); return; }
+    this.load();
+    if (!this.acct){ this.openMain(); toast('🔑 Create your cam address first — one tap'); return; }
+    this.camFilter = typeof camId === 'string' ? camId : '';
+    this.selKey = null;
+    $('camtimetitle').textContent = this.camFilter
+      ? '📥 ' + esc((this.cams.find(c => c.id === this.camFilter) || {}).name || 'Camera')
+      : '📥 Cam Timeline';
+    $('camsel').innerHTML = '';
+    $('camgrid').innerHTML = '<div class="empty">⏳ Checking the mailbox…</div>';
+    openSheet('camtimesheet');
+    try{
+      if (Date.now() - this._fetched > CAMS_CFG.refreshMins * 60000 || !this.photos.length){
+        const r = await fetch(CAMS_CFG.api + '/cams/list?id=' + this.acct.id + '&token=' + this.acct.token);
+        const b = await r.json();
+        if (!b.ok) throw new Error(b.error || 'list');
+        this.photos = b.photos || []; this.quota = b.quota; this._fetched = Date.now();
+        this.personAlert();
+      }
+      this.renderGrid();
+    }catch(e){
+      $('camgrid').innerHTML = '<div class="empty">😕 Could not reach your photo box — check signal and try again.</div>';
+    }
+  },
+  personAlert(){
+    const seen = +sdStore.get('sd-camseen') || 0;
+    const fresh = this.photos.filter(p => p.ts > seen && String(p.tags || '').split(',').includes('person'));
+    if (fresh.length) toast('🚨 Person on camera — ' + fresh.length + ' new photo' + (fresh.length > 1 ? 's' : '') + ' tagged', 4200);
+    if (this.photos.length) sdStore.set('sd-camseen', String(this.photos[0].ts));
+  },
+  photoUrl(k){ return CAMS_CFG.api + '/cams/photo?id=' + this.acct.id + '&token=' + this.acct.token + '&k=' + encodeURIComponent(k); },
+  renderGrid(){
+    this._urls.forEach(u => URL.revokeObjectURL(u)); this._urls = [];
+    const modes = [['all', 'All'], ['animal', '🦌 Animals'], ['person', '🧍 People'], ['vehicle', '🚗 Vehicles']];
+    $('camfilters').innerHTML = modes.map(([m, n]) =>
+      '<button data-m="' + m + '"' + (this.filter === m ? ' class="sel"' : '') + '>' + n + '</button>').join('');
+    $('camfilters').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      this.filter = b.dataset.m; this.selKey = null; $('camsel').innerHTML = ''; this.renderGrid();
+    }));
+    let list = camsFilterPhotos(this.photos, this.filter);
+    if (this.camFilter) list = list.filter(p => this.assign[p.k] === this.camFilter);
+    list = list.slice(0, CAMS_CFG.maxThumbs);
+    if (!list.length){
+      $('camgrid').innerHTML = '<div class="empty">' + (this.photos.length
+        ? 'Nothing matches this filter yet.'
+        : 'No photos yet — once your cam address gets its first email, they show up here.') + '</div>';
+    } else {
+      $('camgrid').innerHTML = list.map(p => '<button data-k="' + esc(p.k) + '">'
+        + '<img loading="lazy" alt="cam photo" src="' + this.photoUrl(p.k) + '">'
+        + (p.tags && p.tags !== 'untagged' ? '<span class="camtag">' + esc(p.tags.split(',').map(t =>
+            ({ animal: '🦌', person: '🧍', vehicle: '🚗' })[t] || t).join(' ')) + '</span>' : '') + '</button>').join('');
+      $('camgrid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => this.select(b.dataset.k)));
+    }
+    $('camquota').innerHTML = this.quota
+      ? '📦 ' + this.quota.used + ' / ' + this.quota.max + ' photos · kept ' + this.quota.days + ' days · save keepers to your phone'
+      : '';
+    const pl = camsPatternLine(this.condEntries());
+    if (pl) $('camquota').innerHTML = pl + '<br>' + $('camquota').innerHTML;
+  },
+  condEntries(){
+    const out = [];
+    for (const p of this.photos){
+      const cam = this.camOf(p.k); if (!cam) continue;
+      const hours = this._hist.get(cam.id); if (!hours) continue;
+      const c = camsCondsAt(hours, p.ts); if (!c) continue;
+      out.push({ deg: c.deg, score: camsSolunarAt(p.ts, cam.lat, cam.lng) });
+    }
+    return out;
+  },
+  async history(cam){
+    if (this._hist.has(cam.id)) return this._hist.get(cam.id);
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + cam.lat.toFixed(3) + '&longitude=' + cam.lng.toFixed(3)
+      + '&hourly=wind_speed_10m,wind_direction_10m,surface_pressure&past_days=' + CAMS_CFG.histDays
+      + '&forecast_days=1&wind_speed_unit=mph&timezone=UTC';
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error('history HTTP ' + r.status);
+    const H = (await r.json()).hourly || {};
+    const hours = (H.time || []).map((t, i) => ({
+      t: Date.parse(t.endsWith('Z') ? t : t + ':00Z') || Date.parse(t),
+      mph: +H.wind_speed_10m[i], deg: +H.wind_direction_10m[i], hpa: +((H.surface_pressure || [])[i] || 0)
+    })).filter(h => isFinite(h.t));
+    this._hist.set(cam.id, hours);
+    if (this._hist.size > 12) this._hist.delete(this._hist.keys().next().value);
+    return hours;
+  },
+  async select(k){
+    const p = this.photos.find(x => x.k === k); if (!p) return;
+    this.selKey = k;
+    const cam = this.camOf(k);
+    const when = new Date(p.ts);
+    const opts = '<option value="">— not on a camera yet —</option>' + this.cams.map(c =>
+      '<option value="' + c.id + '"' + (this.assign[k] === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+    $('camsel').innerHTML = '<img alt="trail cam photo" src="' + this.photoUrl(k) + '">'
+      + '<div class="camchips" id="camselchips"><span>🕐 ' + when.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' }) + '</span>'
+      + (p.tags && p.tags !== 'untagged' ? p.tags.split(',').map(t => '<span>' + ({ animal: '🦌 animal', person: '🧍 person', vehicle: '🚗 vehicle' })[t] + '</span>').join('') : '<span>🏷 untagged</span>') + '</div>'
+      + '<div style="margin:6px 0"><select id="camassignsel" style="width:100%;padding:9px;border-radius:10px;background:#101a28;color:inherit;border:1px solid var(--line);font-family:inherit">' + opts + '</select></div>'
+      + '<div id="camselconds" class="lg-note"></div>'
+      + '<button class="worldrow" id="camphotodel" style="border-color:#a03030;margin-top:6px">🗑 <b>Delete this photo</b></button>';
+    $('camassignsel').addEventListener('change', e => {
+      if (e.target.value) this.assign[k] = e.target.value; else delete this.assign[k];
+      this.saveCams(); this.select(k);
+    });
+    $('camphotodel').addEventListener('click', async () => {
+      try{
+        await fetch(CAMS_CFG.api + '/cams/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: this.acct.id, token: this.acct.token, k }) });
+      }catch(e){}
+      this.photos = this.photos.filter(x => x.k !== k); delete this.assign[k]; this.saveCams();
+      this.selKey = null; $('camsel').innerHTML = ''; this.renderGrid();
+      toast('🗑 Photo deleted');
+    });
+    const condEl = $('camselconds');
+    if (!cam){ condEl.innerHTML = 'Pick which camera took this and SkyDog joins it with wind, pressure &amp; solunar at trigger time.'; return; }
+    const score = camsSolunarAt(p.ts, cam.lat, cam.lng);
+    condEl.innerHTML = '⏳ reading conditions at trigger time…';
+    try{
+      const hours = await this.history(cam);
+      const c = camsCondsAt(hours, p.ts);
+      condEl.innerHTML = '<div class="camchips">'
+        + (c ? '<span>💨 ' + Math.round(c.mph) + ' mph ' + HUNT_DIRS[huntSectorOf(c.deg)] + '</span>'
+             + (c.hpa ? '<span>📉 ' + Math.round(c.hpa) + ' hPa</span>' : '') : '<span>💨 wind history only covers ' + CAMS_CFG.histDays + ' days back</span>')
+        + '<span>' + (SOLUNAR.labels[SOLUNAR.species] || ['🐟'])[0] + ' solunar ' + score + '</span></div>';
+      this.renderGrid();   /* pattern line may have just earned itself */
+    }catch(e){
+      condEl.innerHTML = '<div class="camchips"><span>' + (SOLUNAR.labels[SOLUNAR.species] || ['🐟'])[0] + ' solunar ' + score + '</span><span>💨 no signal for wind history</span></div>';
+    }
+  }
+};
+
+/* ---- wiring ---- */
+CAMS.load();
+$('camsfab').addEventListener('click', () => CAMS.openMain());
+$('caminboxbtn').addEventListener('click', () => CAMS.openInbox());
+$('camaddbtn').addEventListener('click', () => {
+  if (!Entitlements.isUnlocked('allaccess')){ openPaywall('allaccess'); return; }
+  CAMS.placing = true; closeSheets();
+  toast('👆 Tap the map where this camera hangs', 3600);
+});
+$('camsave').addEventListener('click', () => CAMS.saveEdit());
+$('camdel').addEventListener('click', () => CAMS.removeCam());
+if (!CAMS_CFG.enabled) $('camsfab').style.display = 'none';
+
+/* cam tap-to-place rides the same tap chain as spots/recovery */
+const _camPrevTap = map.onTap;
+map.onTap = ll => {
+  if (CAMS.placing){ CAMS.placing = false; CAMS.add(ll.lat, ll.lng); return true; }
+  return _camPrevTap ? _camPrevTap(ll) : false;
+};
+CAMS.render();   /* saved camera pins reappear on every boot */
+
+/* debug/test handle */
+window.__sdcams = { CAMS, CAMS_CFG, CAM_BRANDS, camsFilterPhotos, camsCondsAt, camsPatternLine, camsSolunarAt };
+
+/* =====================================================================
    🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility
    tool lives on a cyclic wheel anchored in the bottom-right thumb
    corner: flick to spin (momentum + firm snap detents), tap any button
@@ -6640,6 +7054,7 @@ function wheelBuildItems(){
   });
   items.push({ id:'world', btn: $('worldfab'), pack: false });
   items.push({ id:'hunt', btn: $('huntfab'), pack: false });
+  items.push({ id:'cams', btn: $('camsfab'), pack: false });
   items.push({ id:'buddy', btn: $('buddyfab'), pack: false });
   items.push({ id:'spots', btn: $('spotsfab'), pack: false });
   items.push({ id:'store', btn: $('packsfab'), pack: false });

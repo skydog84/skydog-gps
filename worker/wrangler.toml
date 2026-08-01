@@ -17,6 +17,26 @@ compatibility_date = "2026-07-01"
 binding = "OD"
 id = "84bb3d2b44d947bdafc312ecdbaac6e7"
 
+# 📸 Trail Cam Hub (Run 4): ingest ids + tokens
+[[kv_namespaces]]
+binding = "CAMS"
+id = "dd501631035746f4bb6eab0d1e61d600"
+
+# 📸 cam photos — R2 free tier (10 GB / 1M writes / 10M reads per month);
+# quotas in worker.js CAMS_CFG keep one user's cams from eating the tier
+[[r2_buckets]]
+binding = "CAM_PHOTOS"
+bucket_name = "skydog-cams"
+
+# 📸 triage tagging (animal/person/vehicle — NOT species ID, honesty rule).
+# Free allocation; worker degrades to "untagged" if this binding is removed.
+[ai]
+binding = "AI"
+
+# 📸 Email Routing: set skydogai.com catch-all → this worker in the dash
+# (Email → Email Routing → Routes). The worker's email() handler rejects
+# anything that isn't a registered u_<id>@ address.
+
 # the safety sweep: overdue + silent = email the contacts
 [triggers]
 crons = ["*/10 * * * *"]

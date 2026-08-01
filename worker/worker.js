@@ -38,7 +38,7 @@ const ALLOWED_ORIGINS = [
 /* per-IP sliding-hour rate limits. In-memory = per-isolate best effort,
    which is plenty to stop casual quota-burning; upgrade to Durable
    Objects / KV counters only if the Regrid dashboard ever shows abuse. */
-const LIMITS = { point: 30, tiles: 4000, overdue: 20 };
+const LIMITS = { point: 30, tiles: 4000, overdue: 20, camreg: 10, camlist: 240, camphoto: 2000 };
 const hits = new Map();     /* ip:kind -> [timestamps] */
 
 function rateOK(ip, kind){
@@ -188,6 +188,111 @@ async function odSweep(env){
   return { checked, sent };
 }
 
+/* =====================================================================
+   📸 TRAIL CAM HUB — RUN 4 (feature ⑧)
+   Every camera. Every brand. One map. No per-camera fees.
+
+   The killer move: each user gets a PRIVATE ingest email address
+   (u_<id>@skydogai.com). They set their cam app (Tactacam Reveal,
+   SpyPoint, Moultrie, Stealth Cam…) or Gmail to forward photo emails
+   there. Cloudflare Email Routing hands the message to this worker,
+   which pulls the image attachments into R2 and (when the AI binding
+   is live) runs a triage tag: animal / person / vehicle.
+
+   HONESTY + PRIVACY:
+   - Photos are PRIVATE per user: every read needs the id+token pair
+     minted at registration (stored only on the user's phone).
+   - Triage is animal/person/vehicle, NOT species ID — COCO-class models
+     call a whitetail a "horse" often enough that promising species
+     would be a lie. Copy in the app says "triage", not "species".
+   - NO camera blood-detection AI anywhere (patent trap — Run 3 note).
+   - EXIF is not exposed anywhere; photos stream back only to the
+     authenticated owner. Any future sharing path must strip EXIF first.
+
+   COST DISCIPLINE ($2.99 sub carries this — quotas are the feature):
+   - R2 free tier: 10 GB storage / 1M writes / 10M reads per month.
+   - Quotas below: 8 MB/photo, 8 photos/email, 400 photos/user,
+     60-day retention (pruned on list). At full quota a user holds
+     ~1–2 GB worst-case, realistically ~200 MB of cam JPEGs.
+   - Workers AI free allocation covers the triage volume at launch;
+     tagging degrades to "untagged" (never errors) without the binding.
+   ===================================================================== */
+const CAMS_CFG = {
+  maxPhotoBytes: 8 * 1024 * 1024,   /* per attachment                     */
+  maxRawBytes: 30 * 1024 * 1024,    /* whole email cap before we bail     */
+  maxPerMsg: 8,                     /* attachments stored per email       */
+  maxPerUser: 400,                  /* photo cap per ingest id            */
+  retentionDays: 60                 /* pruned during /cams/list           */
+};
+
+const hexId = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+async function camsAuth(env, id, token){
+  if(!env.CAMS || !/^[0-9a-f]{8,20}$/.test(id || '') || !/^[0-9a-f]{16,48}$/.test(token || '')) return null;
+  const raw = await env.CAMS.get('cam:' + id);
+  if(!raw) return null;
+  const rec = JSON.parse(raw);
+  return rec.token === token ? rec : null;
+}
+
+/* ---- minimal MIME multipart walk — enough for cam emails ----
+   Trail cams and forwarders send bog-standard multipart/mixed with
+   base64 image parts. This walks boundaries recursively (mixed inside
+   alternative), collects image/* parts, and ignores everything else.
+   It is deliberately conservative: anything malformed = no attachment,
+   never a throw. */
+function camsExtractImages(rawText){
+  const out = [];
+  const walk = (text, depth) => {
+    if(depth > 4 || out.length >= CAMS_CFG.maxPerMsg) return;
+    const bm = /content-type:[^\n]*boundary="?([^";\r\n]+)"?/i.exec(text.slice(0, 8192));
+    if(!bm) return;
+    const parts = text.split('--' + bm[1]);
+    for(const part of parts.slice(1, -1)){
+      if(out.length >= CAMS_CFG.maxPerMsg) return;
+      const hEnd = part.indexOf('\r\n\r\n') >= 0 ? part.indexOf('\r\n\r\n') : part.indexOf('\n\n');
+      if(hEnd < 0) continue;
+      const head = part.slice(0, hEnd).toLowerCase();
+      const body = part.slice(hEnd).trim();
+      if(/content-type:\s*multipart\//.test(head)){ walk(part, depth + 1); continue; }
+      const ct = /content-type:\s*(image\/[a-z0-9.+-]+)/.exec(head);
+      if(!ct) continue;
+      if(!/content-transfer-encoding:\s*base64/.test(head)) continue;
+      try{
+        const b64 = body.replace(/[\r\n\s]/g, '');
+        if(b64.length * 0.75 > CAMS_CFG.maxPhotoBytes) continue;
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        if(bytes.length > 100) out.push({ type: ct[1], bytes });
+      }catch(e){ /* malformed part = skipped part, never a bounce loop */ }
+    }
+  };
+  walk(rawText, 0);
+  return out;
+}
+
+/* ---- triage tag via Workers AI (optional binding) ----
+   detr-resnet-50 speaks COCO. COCO has no "deer", so every four-legged
+   label collapses to "animal" — honest triage, not species ID. */
+const CAMS_ANIMALS = ['bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe'];
+function camsTagFromDetections(dets){
+  const tags = new Set();
+  for(const d of (dets || [])){
+    if(!d || (d.score || 0) < 0.35) continue;
+    const l = String(d.label || '').toLowerCase();
+    if(l === 'person') tags.add('person');
+    else if(['car','truck','bus','motorcycle','bicycle','boat'].includes(l)) tags.add('vehicle');
+    else if(CAMS_ANIMALS.includes(l)) tags.add('animal');
+  }
+  return tags.size ? [...tags].sort().join(',') : 'untagged';
+}
+async function camsTag(env, bytes){
+  if(!env.AI) return 'untagged';
+  try{
+    const res = await env.AI.run('@cf/facebook/detr-resnet-50', { image: [...bytes] });
+    return camsTagFromDetections(Array.isArray(res) ? res : res && res.output);
+  }catch(e){ return 'untagged'; }
+}
+
 export default {
   async fetch(req, env){
     const url = new URL(req.url);
@@ -324,7 +429,94 @@ export default {
       return cors(req, json({ ok: true }));
     }
 
+    /* ---------- 📸 TRAIL CAM HUB (Run 4) ---------- */
+    if(url.pathname === '/cams/register' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!rateOK(ip, 'camreg')) return cors(req, json({ error: 'rate' }, 429));
+      if(!env.CAMS) return cors(req, json({ error: 'kv not bound' }, 503));
+      const id = hexId(6), token = hexId(16);
+      await env.CAMS.put('cam:' + id, JSON.stringify({ token, created: Date.now(), n: 0 }));
+      return cors(req, json({ ok: true, id, token, addr: 'u_' + id + '@skydogai.com' }));
+    }
+
+    if(url.pathname === '/cams/list'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!rateOK(ip, 'camlist')) return cors(req, json({ error: 'rate' }, 429));
+      const id = url.searchParams.get('id'), rec = await camsAuth(env, id, url.searchParams.get('token'));
+      if(!rec) return cors(req, json({ error: 'auth' }, 403));
+      if(!env.CAM_PHOTOS) return cors(req, json({ error: 'r2 not bound' }, 503));
+      const cutoff = Date.now() - CAMS_CFG.retentionDays * 86400000;
+      const photos = []; let cursor, pruned = 0;
+      do{
+        const page = await env.CAM_PHOTOS.list({ prefix: 'cams/' + id + '/', cursor, include: ['customMetadata'] });
+        cursor = page.truncated ? page.cursor : null;
+        for(const o of page.objects){
+          const ts = +((o.customMetadata || {}).ts || 0) || +o.uploaded;
+          if(ts < cutoff){ await env.CAM_PHOTOS.delete(o.key); pruned++; continue; }   /* retention, enforced honestly */
+          photos.push({ k: o.key.split('/').pop(), ts, size: o.size,
+            tags: (o.customMetadata || {}).tags || 'untagged',
+            from: (o.customMetadata || {}).from || '', subj: (o.customMetadata || {}).subj || '' });
+        }
+      } while(cursor);
+      photos.sort((a, b) => b.ts - a.ts);
+      if(pruned && env.CAMS){ rec.n = photos.length; await env.CAMS.put('cam:' + id, JSON.stringify(rec)); }
+      return cors(req, json({ ok: true, photos: photos.slice(0, CAMS_CFG.maxPerUser),
+        quota: { used: photos.length, max: CAMS_CFG.maxPerUser, days: CAMS_CFG.retentionDays } }));
+    }
+
+    if(url.pathname === '/cams/photo'){
+      if(!rateOK(ip, 'camphoto')) return new Response('rate limited', { status: 429 });
+      const id = url.searchParams.get('id'), rec = await camsAuth(env, id, url.searchParams.get('token'));
+      if(!rec) return new Response('forbidden', { status: 403 });
+      const k = url.searchParams.get('k') || '';
+      if(!/^[\w.-]{1,80}$/.test(k) || !env.CAM_PHOTOS) return new Response('bad key', { status: 400 });
+      const obj = await env.CAM_PHOTOS.get('cams/' + id + '/' + k);
+      if(!obj) return new Response('not found', { status: 404 });
+      return cors(req, new Response(obj.body, { headers: {
+        'Content-Type': (obj.customMetadata || {}).type || 'image/jpeg',
+        'Cache-Control': 'private, max-age=3600' } }));
+    }
+
+    if(url.pathname === '/cams/delete' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      let b; try{ b = await req.json(); }catch(e){ return cors(req, json({ error: 'bad json' }, 400)); }
+      const rec = await camsAuth(env, b.id, b.token);
+      if(!rec) return cors(req, json({ error: 'auth' }, 403));
+      const k = String(b.k || '');
+      if(/^[\w.-]{1,80}$/.test(k) && env.CAM_PHOTOS) await env.CAM_PHOTOS.delete('cams/' + b.id + '/' + k);
+      return cors(req, json({ ok: true }));
+    }
+
     return json({ error: 'not found' }, 404);
+  },
+
+  /* 📸 Email Routing hands every u_<id>@skydogai.com message here.
+     Unknown address = reject (sender sees a bounce, no storage burned).
+     Known address = pull image attachments into R2 + triage-tag. */
+  async email(message, env, ctx){
+    const m = /^u_([0-9a-f]{8,20})@/i.exec(String(message.to || '').toLowerCase());
+    const kvRaw = m && env.CAMS ? await env.CAMS.get('cam:' + m[1]) : null;
+    const rec = kvRaw ? JSON.parse(kvRaw) : null;      /* the private address IS the credential here */
+    if(!rec){ message.setReject('no such SkyDog cam address'); return; }
+    const id = m[1];
+    if(message.rawSize > CAMS_CFG.maxRawBytes){ message.setReject('message too large'); return; }
+    if((rec.n || 0) >= CAMS_CFG.maxPerUser){ message.setReject('photo quota full — open SkyDog GPS to prune'); return; }
+    const raw = await new Response(message.raw).text();
+    const images = camsExtractImages(raw);
+    if(!images.length) return;                       /* text-only mail: accept quietly, store nothing */
+    const from = String(message.from || '').slice(0, 120);
+    const subj = String((message.headers && message.headers.get && message.headers.get('subject')) || '').slice(0, 140);
+    const now = Date.now();
+    let stored = 0;
+    for(let i = 0; i < images.length && (rec.n || 0) + stored < CAMS_CFG.maxPerUser; i++){
+      const img = images[i];
+      const tags = await camsTag(env, img.bytes);
+      const ext = img.type === 'image/png' ? 'png' : 'jpg';
+      await env.CAM_PHOTOS.put('cams/' + id + '/' + now + '-' + i + '.' + ext, img.bytes,
+        { customMetadata: { ts: String(now), from, subj, tags, type: img.type } });
+      stored++;
+    }
+    if(stored){ rec.n = (rec.n || 0) + stored; ctx.waitUntil(env.CAMS.put('cam:' + id, JSON.stringify(rec))); }
   },
 
   /* cron (wrangler.toml [triggers]) — the whole point of phase 2: a DEAD

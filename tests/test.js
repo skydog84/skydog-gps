@@ -76,6 +76,26 @@ const FIX_HOURLY = () => {
   return { hourly: { time, wind_speed_10m: ws, wind_direction_10m: wd, wind_gusts_10m: wg, cloud_cover: cc } };
 };
 
+/* 📸 Run 4 fixtures — cams worker API + photo-conditions history */
+const FIX_CAMLIST = () => {
+  const now = Date.now();
+  return { ok: true, photos: [
+    { k: (now - 2 * 3600000) + '-0.jpg', ts: now - 2 * 3600000, size: 84210, tags: 'animal', from: 'noreply@revealcellcam.com', subj: 'New photo' },
+    { k: (now - 3 * 3600000) + '-0.jpg', ts: now - 3 * 3600000, size: 91002, tags: 'person', from: 'noreply@spypoint.com', subj: 'Activity' },
+    { k: (now - 26 * 3600000) + '-0.jpg', ts: now - 26 * 3600000, size: 77455, tags: 'untagged', from: 'me@gmail.com', subj: 'Fwd: cam' }
+  ], quota: { used: 3, max: 400, days: 60 } };
+};
+/* steady 6 mph NW wind + 1015 hPa across past 7 days + today, hourly UTC */
+const FIX_CAMHIST = () => {
+  const start = Date.now() - 7 * 86400000;
+  const time = [], ws = [], wd = [], sp = [];
+  for (let i = 0; i < 8 * 24; i++){
+    time.push(new Date(start + i * 3600000).toISOString().slice(0, 16));
+    ws.push(6); wd.push(315); sp.push(1015);
+  }
+  return { hourly: { time, wind_speed_10m: ws, wind_direction_10m: wd, surface_pressure: sp } };
+};
+
 /* 🌌 NOAA SWPC planetary-K forecast — one strong predicted row inside the next 36 h */
 const FIX_SWPC = () => {
   const fmt = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -214,6 +234,7 @@ async function main(){
   let dnrHits = 0;
   let regridMode = 'parcel';   // 'parcel' | 'empty'
   const odCalls = [];          // 🌎 worker calls the app made
+  const camCalls = [];         // 📸 cams worker calls the app made
   let regridHits = 0;
   const mockRoute = (route) => {
     const url = route.request().url();
@@ -247,6 +268,11 @@ async function main(){
         : layer === '0' ? FIX_DNR_CLOSURES
         : { features: [] };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
+    /* 📸 Run 4 photo-conditions history (past_days marks it) — BEFORE the
+       cloud_cover and generic /v1/forecast branches (ordering gotcha) */
+    if (url.includes('open-meteo') && url.includes('/v1/forecast') && url.includes('past_days')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_CAMHIST()) });
     }
     /* 🦌 Run 3 hunt forecast (cloud_cover marks it) MUST branch before the
        generic /v1/forecast catch — solunar's hourly=surface_pressure and the
@@ -287,6 +313,22 @@ async function main(){
     if (url.includes('services3.arcgis.com')) {
       const body = url.includes('returnCountOnly=true') ? { count: 1 } : FIX_WFIGS;
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
+    /* 📸 Run 4: the cams worker API — BEFORE the overdue branch so cams
+       traffic never pollutes odCalls (its "only /overdue/" pin stays honest) */
+    if (url.includes('skydog-api.skydog8426.workers.dev/cams/')) {
+      camCalls.push(url.slice(url.indexOf('/cams')));
+      if (url.includes('/cams/register')) {
+        return route.fulfill({ status: 200, contentType: 'application/json',
+          body: JSON.stringify({ ok: true, id: 'abc123def0', token: 'deadbeefdeadbeefdeadbeef', addr: 'u_abc123def0@skydogai.com' }) });
+      }
+      if (url.includes('/cams/list')) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_CAMLIST()) });
+      }
+      if (url.includes('/cams/photo')) {
+        return route.fulfill({ status: 200, contentType: 'image/png', body: PNG1 });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
     }
     /* ⏳ Run 2: the overdue worker (register / checkin / cancel) */
     if (url.includes('skydog-api.skydog8426.workers.dev')) {
@@ -819,13 +861,13 @@ async function main(){
   console.log('\n— 🎡 Mode Wheel (free core navigation) —');
   await page.evaluate('__sdwheel.jumpTo("fishing")');
   T('wheel holds every mode + tool in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
-    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'world', 'hunt', 'buddy', 'spots', 'store',
+    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'world', 'hunt', 'cams', 'buddy', 'spots', 'store',
                         'sos', 'night', 'layer', 'locate', 'saved', 'key', 'what', 'clear']));
   T('every configured pack auto-appears on the wheel', await page.evaluate(
     'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
   T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
     && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
-  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(16)') === -1);
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(17)') === -1);
   T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
     __sdwheel.spinBy(1.4);
     const drifting = __sdwheel.pos;
@@ -901,7 +943,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.5');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.6');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -1889,7 +1931,7 @@ async function main(){
   })()`));
   T('stand privacy: Run 3 code never talks to the worker (nothing uploads)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
-    const seg = src.slice(src.indexOf('HUNT INTELLIGENCE — RUN 3'), src.indexOf('🎡 MODE WHEEL'));
+    const seg = src.slice(src.indexOf('HUNT INTELLIGENCE — RUN 3'), src.indexOf('TRAIL CAM HUB — RUN 4'));
     return seg.length > 1000 && !seg.includes('workerBase') && !seg.includes('/overdue/') && !seg.includes('firebase');
   })());
   T('honesty copy: "modeled, not measured" ships in the sheet', (function(){
@@ -1967,9 +2009,148 @@ async function main(){
   })());
   T('no blood-detection AI anywhere (patent trap stays documented)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
-    const seg = src.slice(src.indexOf('HUNT INTELLIGENCE — RUN 3'), src.indexOf('🎡 MODE WHEEL'));
+    const seg = src.slice(src.indexOf('HUNT INTELLIGENCE — RUN 3'), src.indexOf('TRAIL CAM HUB — RUN 4'));
     return seg.includes('NO camera blood-detection AI') && !seg.includes('getUserMedia');
   })());
+
+  console.log('\n— 📸 Run 4: cams math (pure, deterministic) —');
+  T('camsFilterPhotos splits by triage tag incl. multi-tag photos', await page.evaluate(`(function(){
+    const ps = [{k:'a',tags:'animal'},{k:'b',tags:'person'},{k:'c',tags:'animal,person'},{k:'d',tags:'untagged'}];
+    const f = __sdcams.camsFilterPhotos;
+    return f(ps,'all').length === 4 && f(ps,'animal').map(p=>p.k).join('') === 'ac'
+      && f(ps,'person').map(p=>p.k).join('') === 'bc' && f(ps,'vehicle').length === 0;
+  })()`));
+  T('camsCondsAt picks the nearest hour inside 90 min, refuses beyond', await page.evaluate(`(function(){
+    const t0 = 1700000000000;
+    const hours = [{t:t0,deg:315,mph:6,hpa:1015},{t:t0+3600000,deg:90,mph:9,hpa:1010}];
+    const near = __sdcams.camsCondsAt(hours, t0 + 1200000);
+    const far = __sdcams.camsCondsAt(hours, t0 + 9 * 3600000);
+    return near && near.deg === 315 && far === null;
+  })()`));
+  T('pattern line stays silent under ' + 8 + ' photos, then calls the wind', await page.evaluate(`(function(){
+    const few = Array.from({length:5}, () => ({deg:315, score:60}));
+    const many = Array.from({length:10}, (_,i) => ({deg: i < 8 ? 315 : 90, score: 50 + i}));
+    const quiet = __sdcams.camsPatternLine(few) === '';
+    const line = __sdcams.camsPatternLine(many);
+    return quiet && line.includes('NW wind') && line.includes('80%') && line.includes('avg solunar');
+  })()`));
+  T('camsSolunarAt scores any moment at the camera 0–100 (pure math reuse)', await page.evaluate(`(function(){
+    const s1 = __sdcams.camsSolunarAt(Date.now() - 86400000, 44.76, -85.62);
+    const s2 = __sdcams.camsSolunarAt(Date.now() - 86400000, 44.76, -85.62);
+    return Number.isInteger(s1) && s1 >= 0 && s1 <= 100 && s1 === s2;
+  })()`));
+
+  console.log('\n— 📸 Trail Cam Hub: wheel + address + timeline + All Access gate —');
+  T('📸 rides the wheel between hunt and buddy and opens the sheet', await page.evaluate(`(function(){
+    if (__sdwheel.order.indexOf('cams') !== __sdwheel.order.indexOf('hunt') + 1) return false;
+    document.getElementById('camsfab').click();
+    return document.getElementById('camsheet').classList.contains('open');
+  })()`));
+  T('all five brand hookup guides ship in the wizard', await page.evaluate(`(function(){
+    const t = document.getElementById('camwiz').textContent;
+    return ['Tactacam Reveal','SpyPoint','Moultrie','Stealth Cam','Other'].every(b => t.includes(b));
+  })()`));
+  T('honesty copy: triage, not species ID — and the 60-day / 400 quota is stated', await page.evaluate(`(function(){
+    const t = document.getElementById('camsheet').textContent;
+    return t.includes('not species ID') && t.includes('60 days') && t.includes('400');
+  })()`));
+  T('kill switch: CAMS_CFG.enabled=false refuses the sheet', await page.evaluate(`(function(){
+    __sdcams.CAMS_CFG.enabled = false;
+    document.getElementById('backdrop').click();
+    __sdcams.CAMS.openMain();
+    const refused = !document.getElementById('camsheet').classList.contains('open');
+    __sdcams.CAMS_CFG.enabled = true;
+    return refused;
+  })()`));
+  T('locked: creating the cam address opens the All Access paywall instead', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdcams.CAMS.openMain();
+    document.getElementById('camregbtn').click();
+    const paywalled = document.getElementById('paysheet').classList.contains('open');
+    document.getElementById('backdrop').click();
+    return paywalled && !__sdcams.CAMS.acct;
+  })()`));
+  await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    __sdcams.CAMS.openMain();
+    document.getElementById('camregbtn').click();
+  })()`);
+  await page.waitForFunction('document.getElementById("camacct").textContent.includes("@skydogai.com")', null, { timeout: 5000 });
+  T('unlocked: private address minted, shown, and persisted on-phone only', await page.evaluate(`(function(){
+    const shown = document.getElementById('camacct').textContent.includes('u_abc123def0@skydogai.com');
+    const saved = JSON.parse(sdStore.get('sd-camsacct')).token === 'deadbeefdeadbeefdeadbeef';
+    return shown && saved;
+  })()`));
+  T('add a camera → 📸 pin on the map + editor opens', await page.evaluate(`(function(){
+    __sdcams.CAMS.add(44.7601, -85.6201);
+    const pinned = __sdmap.countGroup('trailcam') === 1;
+    const editing = document.getElementById('camedit').style.display !== 'none';
+    document.getElementById('camname').value = 'North Ridge cam';
+    document.querySelector('#cambrands button[data-b="reveal"]').click();
+    document.getElementById('camsave').click();
+    const c = __sdcams.CAMS.cams[0];
+    window.__camId = c && c.id;
+    return pinned && editing && c && c.name === 'North Ridge cam' && c.brand === 'reveal';
+  })()`));
+  await page.evaluate('__sdcams.CAMS.openInbox()');
+  await page.waitForFunction('document.querySelectorAll("#camgrid button").length === 3', null, { timeout: 5000 });
+  T('timeline pulls the mocked mailbox: 3 photos, quota line, list called with token', await page.evaluate(`(function(){
+    return document.getElementById('camquota').textContent.includes('3 / 400');
+  })()`) && camCalls.some((u) => u.startsWith('/cams/list') && u.includes('token=deadbeef')));
+  T('🚨 person-on-camera alert fired and the seen marker advanced', await page.evaluate(`(function(){
+    return +sdStore.get('sd-camseen') > 0;
+  })()`));
+  T('filter chips: 🧍 People shows exactly the person-tagged photo', await page.evaluate(`(function(){
+    document.querySelector('#camfilters button[data-m="person"]').click();
+    const one = document.querySelectorAll('#camgrid button').length === 1;
+    document.querySelector('#camfilters button[data-m="all"]').click();
+    return one;
+  })()`));
+  await page.evaluate(`(function(){
+    const k = __sdcams.CAMS.photos[0].k;
+    __sdcams.CAMS.select(k).then(() => {
+      const sel = document.getElementById('camassignsel');
+      sel.value = window.__camId; sel.dispatchEvent(new Event('change'));
+    });
+  })()`);
+  await page.waitForFunction('document.getElementById("camselconds") && document.getElementById("camselconds").textContent.includes("NW")', null, { timeout: 5000 });
+  T('assigned photo joins wind + pressure + solunar at trigger time', await page.evaluate(`(function(){
+    const t = document.getElementById('camselconds').textContent;
+    return t.includes('6 mph NW') && t.includes('1015 hPa') && t.includes('solunar');
+  })()`));
+  T('camera locations stay on the phone: register body carries no coordinates', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('TRAIL CAM HUB — RUN 4'), src.indexOf('🎡 MODE WHEEL'));
+    return seg.length > 1000 && seg.includes("body: '{}'") && !seg.includes('firebase')
+      && seg.includes("sdStore.set('sd-cams'");
+  })());
+  T('paywall copy sells the Trail Cam Hub inside All Access', await page.evaluate(`(function(){
+    return __sdpacks.PACKS_CONFIG.bundle.features.some((f) => f[1].toLowerCase().includes('cam'));
+  })()`));
+  await page.evaluate(`(function(){
+    document.getElementById('backdrop').click();
+    localStorage.setItem('sd-allaccess-iap', '0');   /* relock so Fort B's redeem tests start cold */
+  })()`);
+
+  console.log('\n— 📸 Worker: cams ingest + API (file contract) —');
+  {
+    const w = fs.readFileSync(path.join(APP_DIR, 'worker', 'worker.js'), 'utf8');
+    const wt = fs.readFileSync(path.join(APP_DIR, 'worker', 'wrangler.toml'), 'utf8');
+    T('email() handler exists and rejects unknown addresses', w.includes('async email(message, env, ctx)')
+      && w.includes("setReject('no such SkyDog cam address')"));
+    T('all four cams endpoints are routed', ['/cams/register', '/cams/list', '/cams/photo', '/cams/delete']
+      .every((p) => w.includes("'" + p + "'")));
+    T('quotas are real: 400 photos, 60-day retention, 8 MB cap', w.includes('maxPerUser: 400')
+      && w.includes('retentionDays: 60') && w.includes('maxPhotoBytes: 8 * 1024 * 1024'));
+    T('triage stays honest: person/vehicle/animal mapping + no species promise', w.includes("tags.add('person')")
+      && w.includes("tags.add('vehicle')") && w.includes("tags.add('animal')")
+      && w.includes('NOT species ID'));
+    T('AI binding optional: tagging degrades to untagged, never throws', w.includes("if(!env.AI) return 'untagged'")
+      && w.includes("catch(e){ return 'untagged'; }"));
+    T('wrangler.toml binds CAMS KV + skydog-cams R2 + AI', wt.includes('binding = "CAMS"')
+      && wt.includes('bucket_name = "skydog-cams"') && wt.includes('[ai]'));
+    T('no secrets anywhere near the cams code', !/re_[A-Za-z0-9]{8}/.test(w) && !/re_[A-Za-z0-9]{8}/.test(wt));
+  }
 
   console.log('\n— 🛡 Fort SkyDog Phase A: CSP + tamper containment —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
@@ -2145,7 +2326,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v30 (Hunt Intelligence ships fresh)', sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28"));
+  T('sw.js cache bumped to v31 (Trail Cam Hub ships fresh)', sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
