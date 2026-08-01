@@ -1,6 +1,6 @@
 # ADMOB ANDROID SWAP — ready-to-apply patch
 # Prepared 2026-08-01. Apply ONLY after the Android AdMob app + banner unit exist.
-# Do NOT commit until tests read 432/432.
+# Do NOT commit until tests read 474/474.
 
 ## 0. What you need first
 
@@ -97,12 +97,12 @@ any sync, because Capacitor has been known to rewrite the manifest on plugin cha
 
 ---
 
-## 3. sw.js — bump the cache version (now v31 → v32 after Run 4)
+## 3. sw.js — bump the cache version (now v32 → v33 after Run 5)
 
 index.html changed, so the service worker version MUST move in the same commit.
 
-    line 3:  const CACHE = 'skydog-gps-v31';
-      →      const CACHE = 'skydog-gps-v32';
+    line 3:  const CACHE = 'skydog-gps-v32';
+      →      const CACHE = 'skydog-gps-v33';
 
 ---
 
@@ -112,13 +112,13 @@ Search test.js for "sw.js cache bumped" (the line number moves every run). The p
 other is an instant red suite.
 
 ```js
-T('sw.js cache bumped to v31 (Trail Cam Hub ships fresh)', sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29"));
+T('sw.js cache bumped to v32 (Party + Footprints ship fresh)', sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30"));
 ```
 
 becomes:
 
 ```js
-T('sw.js cache bumped to v32 (platform-aware AdMob ids ship fresh)', sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30"));
+T('sw.js cache bumped to v33 (platform-aware AdMob ids ship fresh)', sw.includes("skydog-gps-v33") && !sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31"));
 ```
 
 ---
@@ -128,12 +128,12 @@ T('sw.js cache bumped to v32 (platform-aware AdMob ids ship fresh)', sw.includes
 ```bash
 cd ~/Projects/skydog-gps-deploy
 
-# 1. tests must be 432/432 — no push before this reads 100%
+# 1. tests must be 474/474 — no push before this reads 100%
 SD_APP_DIR=$PWD node tests/test.js
 
 # 2. push the web change (skydoggps.com is GitHub Pages off main — this goes live)
 git -c user.name="SkyDog" -c user.email="skydog8426@gmail.com" \
-    commit -am "Android AdMob: platform-aware ad ids, sw v32"
+    commit -am "Android AdMob: platform-aware ad ids, sw v33"
 git push
 
 # 3. rebuild the Android bundle with the real ids
@@ -152,7 +152,7 @@ only accepts `/mnt/user-data/uploads` paths.
 - [ ] `grep -c "ca-app-pub-3940256099942544" index.html android/app/src/main/AndroidManifest.xml` → **0**. No test ids left anywhere.
 - [ ] The Android app id uses `~`, the banner id uses `/`.
 - [ ] versionCode bumped if you already uploaded build 1 to any track.
-- [ ] Tests 432/432 BEFORE the push, not after.
+- [ ] Tests 474/474 BEFORE the push, not after.
 - [ ] **Never tap your own ads.** Not once, not to "check it works." AdMob
       termination for self-clicks is usually permanent and it would take the
       iOS revenue down with it — same publisher account.
@@ -168,4 +168,4 @@ pattern that gets a fresh AdMob account flagged for invalid activity.
 Apply this patch **after** the 14-day closed test completes and **before** you
 submit for production access. That is the window.
 
-> ⚠️ Updated 2026-08-01 (Run 4): Run 3 took v30 and the Run 4 Trail Cam Hub build took v31, so this patch now bumps v31 → v32. Numbers above already reflect that.
+> ⚠️ Updated 2026-08-01 (Run 5): Run 4 took v31 and the Run 5 Party + Footprints build took v32, so this patch now bumps v32 → v33. Numbers above already reflect that.
