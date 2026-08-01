@@ -24,7 +24,7 @@
      api.skydoggps.com is pre-allowlisted for the Phase B Cloudflare
      Worker (Regrid proxy + signed unlock codes) so flipping it on
      never requires a CSP change. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://mesonet.agron.iastate.edu https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://services3.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev https://api.weather.gov https://waterservices.usgs.gov https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
 <meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
@@ -374,6 +374,27 @@
   #redmodebtn{width:100%;font-size:17px;font-weight:800;border-radius:14px;padding:15px;border:1px solid var(--line);
     background:#2a0a06;color:#ff6a4a;cursor:pointer;font-family:inherit}
   #redmodebtn.on{background:#5c1408;border-color:#ff6a4a}
+  /* 🌎 World Data (Run 2 «Free Data Flex») */
+  .worldrow{width:100%;display:flex;align-items:center;gap:8px;font-size:15px;text-align:left;border-radius:12px;
+    padding:12px 14px;border:1px solid var(--line);background:#101a28;color:var(--text);cursor:pointer;
+    font-family:inherit;margin-top:8px}
+  .worldrow .wstate{margin-left:auto;font-size:12px;font-weight:800;color:var(--dim)}
+  .worldrow.on{border-color:#35e08a}
+  .worldrow.on .wstate{color:#35e08a}
+  #walertlist{margin:4px 0 0}
+  .walert{background:#2a1114;border:1px solid #7a2733;border-radius:10px;padding:8px 10px;font-size:13px;
+    line-height:1.45;margin-top:6px}
+  .walert.watch{background:#26200e;border-color:#7a6427}
+  .walert.marine{background:#0e1c2a;border-color:#27527a}
+  #wfirestale{display:none;background:#2a1a0e;border:1px solid #7a5227;border-radius:10px;padding:8px 10px;
+    font-size:13px;margin-top:6px}
+  #stormpill{position:absolute;left:50%;transform:translateX(-50%);top:calc(156px + var(--safe-top));z-index:1500;
+    background:#7a1420;border:1px solid #ff5a5a;color:#fff;border-radius:999px;padding:8px 14px;font-size:13px;
+    font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+  .gaugemark{font-size:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));cursor:pointer}
+  .firemark{font-size:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));cursor:pointer}
+  #gaugespark{width:100%;height:80px;background:#0d1622;border:1px solid var(--line);border-radius:10px;margin-top:8px}
+  #gaugenow .nightrow span{color:var(--text)}
   #sunstrip{display:flex;gap:1px;height:44px;border-radius:8px;overflow:hidden;margin:10px 0 4px}
   #sunstrip div{flex:1}
   .sunlegend{display:flex;justify-content:space-between;font-size:10px;color:var(--dim)}
@@ -429,6 +450,7 @@
   <button class="wfab" id="fishfab" data-mode="fishing" aria-label="Fishing Mode" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
   <button class="wfab" id="dronefab" data-mode="drone" aria-label="Drone Mode" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
   <button class="wfab" id="orvfab" data-mode="orv" aria-label="ORV Trails" title="ORV Trails — snowmobile, ORV &amp; motorcycle trails">🏔</button>
+  <button class="wfab" id="worldfab" data-mode="world" aria-label="World Data — live radar, weather alerts, river gauges and wildfire" title="World Data — live radar, weather alerts, river gauges &amp; wildfire">🌎</button>
   <button class="wfab" id="buddyfab" data-mode="buddy" aria-label="Buddy Trip" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="wfab" id="spotsfab" data-mode="spots" aria-label="My Spots" title="My Spots — save your own places on the map">➕</button>
   <button class="wfab" id="packsfab" data-mode="store" aria-label="Feature Packs store" title="Feature Packs — optional add-ons">🎒</button>
@@ -716,7 +738,7 @@
   <h3>⏳ Back-by Timer</h3>
   <div class="lg-note" style="margin:0 0 10px">Tell SkyDog when you'll be back. If you don't check in, your phone
     alarms and preps a text to your people — <b>your contacts stay on this phone</b> and are never sent anywhere
-    unless you tap send.</div>
+    unless you tap send or switch on auto-email below.</div>
   <label style="font-size:13px;color:var(--dim)">I'll be back by</label>
   <input class="odfield" id="odtime" type="time" aria-label="Back by time">
   <div class="odchips">
@@ -731,9 +753,54 @@
     <input class="odfield" id="odname3" placeholder="Contact 3 name">
     <input class="odfield" id="odphone3" placeholder="Phone" inputmode="tel">
   </div>
+  <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--dim);margin:10px 0 0;cursor:pointer">
+    <input type="checkbox" id="odemailopt" style="margin-top:2px">
+    <span>📧 <b style="color:var(--text)">Auto-email my contacts if I go silent</b> — even if this phone is dead in a
+    ravine. Turning this on sends your plan, back-by time &amp; the emails below to SkyDog's server (nothing else,
+    deleted within 48 h). Needs signal once to arm.</span>
+  </label>
+  <div class="odgrid" id="odemails" style="display:none;margin-top:8px">
+    <input class="odfield" id="odemail1" placeholder="Contact email 1" inputmode="email" style="grid-column:1 / -1">
+    <input class="odfield" id="odemail2" placeholder="Contact email 2 (optional)" inputmode="email" style="grid-column:1 / -1">
+  </div>
+  <div class="lg-note" id="odemailstate" style="display:none;margin-top:4px"></div>
   <button class="btn green" id="odstart" style="width:100%;margin-top:6px">⏳ Start the timer</button>
   <button class="btn gray" id="odcancel" style="width:100%;margin-top:8px;display:none">Stop the timer</button>
 </div>
+
+<!-- 🌎 World Data — Run 2 «Free Data Flex» -->
+<div class="sheet" id="worldsheet">
+  <div class="grabber"></div>
+  <h3>🌎 World Data</h3>
+  <div class="lg-note" style="margin:0 0 4px">Live public data on your map — radar, weather alerts, river flows &amp;
+    wildfire perimeters. The stuff others paywall, free with ads on SkyDog. Your taxes already paid for it.</div>
+  <button class="worldrow" id="wradar">⛈ <b>Live Radar</b><span class="wstate" id="wradarstate">off</span></button>
+  <div class="lg-note" id="radarnote" style="display:none;margin:2px 0 0">NOAA NEXRAD radar via Iowa State Mesonet,
+    animated over the last hour — runs ~5 minutes behind real time. Situational awareness only,
+    <b>not a warning service</b>: turn on 🚨 Weather Alerts for the official word.</div>
+  <button class="worldrow" id="walerts">🚨 <b>Weather Alerts</b><span class="wstate" id="walertsstate">off</span></button>
+  <div id="walertlist"></div>
+  <button class="worldrow" id="wgauges">🌊 <b>River Gauges</b><span class="wstate" id="wgaugesstate">off</span></button>
+  <div class="lg-note" id="gaugenote" style="display:none;margin:2px 0 0">USGS live gauges — tap a 🌊 pin for flow &amp;
+    gauge height. Zoom in to see pins.</div>
+  <button class="worldrow" id="wfire">🔥 <b>Wildfire</b><span class="wstate" id="wfirestate">off</span></button>
+  <div id="wfirestale"></div>
+  <div class="lg-note" id="firenote" style="display:none;margin:2px 0 0">Active fire perimeters from the National
+    Interagency Fire Center. Fires move faster than maps — <b>never</b> use this to judge whether a road or area
+    is safe. Evacuation orders come from local authorities.</div>
+</div>
+
+<div class="sheet" id="gaugesheet">
+  <div class="grabber"></div>
+  <h3 id="gaugetitle">🌊 River Gauge</h3>
+  <div id="gaugenow"></div>
+  <canvas id="gaugespark" width="360" height="80"></canvas>
+  <div id="gaugesparklabel" class="lg-note" style="margin-top:4px"></div>
+  <div class="lg-note" style="margin-top:8px">USGS instantaneous values — 7-day trend above. Reference only:
+    rivers change fast, always judge conditions on site.</div>
+</div>
+
+<button id="stormpill" style="display:none">🚨 <b id="stormpilltxt">Weather alert</b></button>
 
 <!-- 🌙 Night Ops -->
 <div id="nightveil" aria-hidden="true"></div>
@@ -1462,7 +1529,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.3';
+const SD_VERSION = '1.4';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2477,7 +2544,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet','worldsheet','gaugesheet'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -4841,7 +4908,11 @@ const SAFETY_CFG = {
   enabled: true,                 /* kill switch: 🆘 screen + ⏳ overdue timer */
   rescuePushMs: 20000,           /* how often an active rescuer link updates */
   rescueMaxAgeMs: 24*60*60*1000, /* same 24 h honesty promise as buddy trips */
-  w3wKey: ''                     /* what3words API key — '' hides the row until the owner's free key lands */
+  w3wKey: '',                    /* what3words API key — '' hides the row until the owner's free key lands */
+  /* ⏳ phase 2 home: the deployed Cloudflare worker (moves to api.skydoggps.com
+     once the domain's DNS lives on Cloudflare — CSP already carries both) */
+  workerBase: 'https://skydog-api.skydog8426.workers.dev',
+  checkinMins: 10                /* how often an armed phone pings the worker */
 };
 const NIGHT_CFG = {
   enabled: true,                 /* kill switch: red-light mode + night sheet */
@@ -4875,6 +4946,21 @@ function sosSmsBody(fix, opts){
   if (core.length > 160) core = 'SOS! Need help. ' + lat + ',' + lng + (m ? ' MGRS ' + m : '');
   return core + ' https://maps.google.com/?q=' + lat + ',' + lng
     + (opts.rescueUrl ? ' Track: ' + opts.rescueUrl : '');
+}
+/* ---- ⏳ phase 2 (worker auto-email) pure helpers — unit-tested ---- */
+function odValidEmails(list){
+  return (list || []).map(e => String(e || '').trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)).slice(0, 3);
+}
+/* exactly what leaves the phone when auto-email is ON — nothing else, ever */
+function odRegisterPayload(state, fix, name){
+  return {
+    id: state.remoteId || null,
+    backBy: state.backBy,
+    plan: String(state.plan || '').slice(0, 400),
+    name: String(name || '').slice(0, 60),
+    emails: odValidEmails(state.emails),
+    fix: fix ? { lat: +fix.lat.toFixed(4), lng: +fix.lng.toFixed(4) } : null
+  };
 }
 function overdueSmsBody(state, fix, rescueUrl){
   const who = sdStore.get('sd-buddy-name') || 'I';
@@ -5023,10 +5109,13 @@ $('sosoverdue').addEventListener('click', () => { SOS.close(); OVERDUE.openPlan(
 if (!SAFETY_CFG.enabled) $('sosfab').style.display = 'none';
 
 /* ============ ⏳ OVERDUE TIMER — the "tell someone" net ============
-   Plan + contacts live ONLY in sdStore on this phone. Nothing uploads,
-   ever — when the timer fires, the PHONE OWNER taps one button and
-   their own SMS app sends the pre-filled message. (Automatic worker
-   email when the phone is dead = Run 2, once api.skydoggps.com is up.) */
+   Phase 1: plan + contacts live ONLY in sdStore on this phone — when the
+   timer fires, the PHONE OWNER taps one button and their own SMS app
+   sends the pre-filled message.
+   Phase 2 (Run 2, opt-in): if the user switches ON auto-email, the plan
+   + back-by + contact EMAILS register with the worker, the phone checks
+   in while alive, and a cron emails the contacts if it goes silent past
+   back-by. Off by default; nothing uploads until the user flips it. */
 const OVERDUE = {
   KEY: 'sd-overdue', CKEY: 'sd-safety-contacts',
   state: null, _t: null,
@@ -5045,7 +5134,24 @@ const OVERDUE = {
       $('odtime').value = new Date(this.state.backBy).toTimeString().slice(0, 5);
       $('odcancel').style.display = '';
     } else $('odcancel').style.display = 'none';
+    /* phase 2: prefill the auto-email opt-in from the last trip */
+    let em = [];
+    try{ em = JSON.parse(sdStore.get('sd-safety-emails') || '[]'); }catch(e){}
+    const opted = (this.state && this.state.emailOpt) || sdStore.get('sd-safety-emailopt') === '1';
+    $('odemailopt').checked = !!opted;
+    $('odemails').style.display = opted ? '' : 'none';
+    $('odemail1').value = em[0] || '';
+    $('odemail2').value = em[1] || '';
+    this.renderEmailState();
     openSheet('overduesheet');
+  },
+  renderEmailState(){
+    const el = $('odemailstate');
+    if (!this.state || !this.state.emailOpt){ el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.textContent = this.state.remoteId
+      ? '📧 Auto-email is ARMED — SkyDog\'s server emails your contacts if this phone goes silent past your back-by time.'
+      : '📧 Auto-email is on but NOT armed yet (needs signal once). The phone alarm below still works fully offline.';
   },
   readForm(){
     const contacts = [];
@@ -5058,24 +5164,68 @@ const OVERDUE = {
     const [h, m] = tv.split(':').map(Number);
     const back = new Date(); back.setHours(h, m, 0, 0);
     if (+back <= Date.now()) back.setDate(back.getDate() + 1);   /* "back by 6am" set at 8pm = tomorrow 6am */
-    return { backBy: +back, contacts, plan: $('odplan').value.trim(), fired: false, set: Date.now() };
+    const emailOpt = $('odemailopt').checked;
+    const emails = emailOpt ? odValidEmails([$('odemail1').value, $('odemail2').value]) : [];
+    return { backBy: +back, contacts, plan: $('odplan').value.trim(), fired: false, set: Date.now(),
+      emailOpt, emails, remoteId: (this.state && this.state.remoteId) || null, lastPing: 0 };
   },
   start(){
     const s = this.readForm();
     if (!s){ toast('⏰ Pick a back-by time first'); return; }
     if (!s.contacts.length){ toast('📱 Add at least one contact — that\'s the whole net'); return; }
+    if (s.emailOpt && !s.emails.length){ toast('📧 Auto-email is on but needs at least one valid email'); return; }
     this.state = s; this.persist();
     sdStore.set(this.CKEY, JSON.stringify(s.contacts));
+    sdStore.set('sd-safety-emails', JSON.stringify(s.emails));
+    sdStore.set('sd-safety-emailopt', s.emailOpt ? '1' : '');
     closeSheets(); this.arm(); this.renderPill();
     toast('⏳ Timer set — big "I\'m back safe" button lives on this pill', 5000);
+    if (s.emailOpt) this.remoteArm();
   },
-  cancel(){ this.state = null; this.persist(); this.unarm(); this.renderPill(); closeSheets(); toast('Timer stopped'); },
+  /* phase 2: register the plan with the worker so a DEAD phone still tells someone */
+  async remoteArm(){
+    if (!this.state || !this.state.emailOpt || !this.state.emails.length) return;
+    try{
+      const fix = SOS.fix || null;
+      const body = odRegisterPayload(this.state, fix, sdStore.get('sd-buddy-name') || '');
+      const r = await fetch(SAFETY_CFG.workerBase + '/overdue/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (j && j.id){
+        this.state.remoteId = j.id; this.state.lastPing = Date.now(); this.persist();
+        toast('📧 Auto-email armed — even a dead phone tells your people now', 4200);
+      } else throw new Error('no id');
+    }catch(e){
+      toast('📧 Couldn\'t arm auto-email (no signal?) — the phone alarm still works offline', 5200);
+    }
+    this.renderEmailState();
+  },
+  remoteCheckin(){
+    if (!this.state || !this.state.remoteId) return;
+    if (Date.now() - (this.state.lastPing || 0) < SAFETY_CFG.checkinMins * 60000) return;
+    /* KV free-tier discipline: pings only matter near the deadline — the
+       arm call already proved the phone was alive at the start */
+    if (this.state.backBy - Date.now() > 90 * 60000) return;
+    this.state.lastPing = Date.now(); this.persist();
+    fetch(SAFETY_CFG.workerBase + '/overdue/checkin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: this.state.remoteId, backBy: this.state.backBy }) }).catch(() => {});
+  },
+  remoteCancel(){
+    const id = this.state && this.state.remoteId;
+    if (!id) return;
+    fetch(SAFETY_CFG.workerBase + '/overdue/cancel', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }) }).catch(() => {});
+  },
+  cancel(){ this.remoteCancel(); this.state = null; this.persist(); this.unarm(); this.renderPill(); closeSheets(); toast('Timer stopped'); },
   arm(){ if (!this._t) this._t = setInterval(() => this.check(), 20000); },
   unarm(){ if (this._t){ clearInterval(this._t); this._t = null; } $('odalarm').style.display = 'none'; },
   check(now){
     now = now || Date.now();
     if (!this.state) return false;
     this.renderPill(now);
+    this.remoteCheckin();   /* phase 2: a live phone keeps telling the worker it's alive */
     if (!this.state.fired && now > this.state.backBy){ this.fire(); return true; }
     return false;
   },
@@ -5090,10 +5240,11 @@ const OVERDUE = {
     try{ navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 800]); }catch(e){}
     this.renderPill();
   },
-  back(){ this.state = null; this.persist(); this.unarm(); this.renderPill(); toast('👍 Glad you\'re back safe. Timer cleared.'); },
+  back(){ this.remoteCancel(); this.state = null; this.persist(); this.unarm(); this.renderPill(); toast('👍 Glad you\'re back safe. Timer cleared.'); },
   plusHour(){
     this.state.backBy += 3600000; this.state.fired = false; this.persist();
     $('odalarm').style.display = 'none'; this.renderPill();
+    if (this.state.remoteId) this.remoteArm();   /* push the new back-by to the worker too */
     toast('⏳ One more hour — new back-by ' + tfmt(this.state.backBy));
   },
   renderPill(now){
@@ -5123,6 +5274,10 @@ $('odqsunset').addEventListener('click', () => {
   const st = AST.sunTimes(new Date(), map.center.lat, map.center.lng);
   if (st.sunset){ const d = new Date(+st.sunset + 3600000); $('odtime').value = d.toTimeString().slice(0, 5); }
 });
+$('odemailopt').addEventListener('change', () => {
+  $('odemails').style.display = $('odemailopt').checked ? '' : 'none';
+});
+window.__sdoverdue2 = { odValidEmails, odRegisterPayload };
 /* survive a page reload mid-trip: pick the timer back up */
 OVERDUE.state = OVERDUE.load();
 if (OVERDUE.state){ OVERDUE.arm(); OVERDUE.renderPill(); if (OVERDUE.state.fired) OVERDUE.check(); }
@@ -5377,6 +5532,453 @@ window.__sdnight = { NIGHT, NIGHT_CFG, AST };
 window.__sdsolunar = { SOLUNAR, SOLUNAR_CFG, solunarPeriods, solunarPhaseWeight, solunarWxNudge, solunarScoreAt };
 
 /* =====================================================================
+   🌎 WORLD DATA — RUN 2 «FREE DATA FLEX» (features ④⑤ of the ten-pack)
+   Live radar (IEM NEXRAD, public domain), NWS weather alerts incl.
+   Special Marine Warnings, USGS river gauges, NIFC wildfire perimeters.
+   Radar + alerts + fire: FREE with ads (owner decision 2026-08-01).
+   Gauges: pins free, detail sheet rides All Access (owner decision).
+   Every fetch host has a test-route branch BEFORE the catch-all.
+   ===================================================================== */
+const WORLD_CFG = {
+  enabled: true,                /* master kill switch: 🌎 wheel stop + sheet    */
+  radarEnabled: true,           /* kill switch: radar overlay + animation       */
+  radarBase: 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/',
+  radarTickMs: 700,             /* animation frame hold                         */
+  radarDwellMs: 2200,           /* extra hold on the newest frame               */
+  alertsEnabled: true,          /* kill switch: NWS alert list + storm pill     */
+  alertsUrl: 'https://api.weather.gov/alerts/active',
+  alertsCacheMins: 5,
+  gaugesEnabled: true,          /* kill switch: USGS gauge pins + detail sheet  */
+  gaugesUrl: 'https://waterservices.usgs.gov/nwis/iv/',
+  gaugeMinZoom: 9, gaugeMaxPins: 60, gaugeCacheMins: 15,
+  fireEnabled: true,            /* kill switch: NIFC perimeters + suggest toast */
+  fireUrl: 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0/query',
+  fireMinZoom: 5, fireCacheMins: 15,
+  fireStaleMins: 60,            /* older than this = mandatory STALE badge      */
+  fireSuggestZoom: 8            /* auto-suggest checks run at/after this zoom   */
+};
+
+/* ---- pure helpers (unit-tested via window.__sdworld) ---- */
+/* IEM keeps the last hour of composites in 5-minute steps; index 0 = oldest */
+function worldRadarFrames(){
+  const f = [];
+  for (let m = 50; m >= 5; m -= 5) f.push('nexrad-n0q-900913-m' + String(m).padStart(2, '0') + 'm');
+  f.push('nexrad-n0q-900913');   /* the live frame */
+  return f;
+}
+function worldRadarFrameUrl(frame, z, x, y){
+  return WORLD_CFG.radarBase + frame + '/' + z + '/' + x + '/' + y + '.png';
+}
+/* NWS severity → sort rank + row class; marine warnings get their own look */
+function worldAlertRank(props){
+  const ev = String((props && props.event) || '');
+  const sev = String((props && props.severity) || '');
+  if (/warning/i.test(ev) || sev === 'Extreme' || sev === 'Severe') return 0;
+  if (/watch/i.test(ev)) return 1;
+  return 2;                     /* advisory / statement / everything else */
+}
+function worldAlertClass(props){
+  const ev = String((props && props.event) || '');
+  if (/marine|gale|small craft|waterspout/i.test(ev)) return 'walert marine';
+  return worldAlertRank(props) === 1 ? 'walert watch' : 'walert';
+}
+/* is this lat/lng inside any alert polygon? (GeoJSON rings are [lng,lat]) */
+function worldCoveringAlert(features, lat, lng){
+  for (const f of (features || [])){
+    const g = f.geometry;
+    if (!g) continue;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    for (const rings of polys){
+      if (rings.length && pointInRing(lat, lng, rings[0])) return f;
+    }
+  }
+  return null;
+}
+/* 7-day series → plain-language trend (last vs first quarter medians) */
+function worldGaugeTrend(vals){
+  const v = (vals || []).filter(x => isFinite(x));
+  if (v.length < 8) return 'steady';
+  const q = Math.max(2, Math.floor(v.length / 4));
+  const med = a => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length/2)]; };
+  const first = med(v.slice(0, q)), last = med(v.slice(-q));
+  if (!isFinite(first) || first === 0) return 'steady';
+  const pct = (last - first) / Math.abs(first);
+  return pct > 0.10 ? 'rising' : pct < -0.10 ? 'falling' : 'steady';
+}
+function worldFmtFlow(cfs){
+  if (!isFinite(cfs)) return '—';
+  return cfs >= 10000 ? Math.round(cfs/1000) + 'k cfs' : Math.round(cfs).toLocaleString() + ' cfs';
+}
+/* stale-data honesty: '' while fresh, a loud badge line once it ages out */
+function worldFireStaleText(ageMs){
+  if (!isFinite(ageMs) || ageMs < WORLD_CFG.fireStaleMins * 60000) return '';
+  const mins = Math.round(ageMs / 60000);
+  const age = mins >= 120 ? Math.round(mins/60) + ' hours' : mins + ' minutes';
+  return '⚠️ STALE — fire data is ' + age + ' old (no signal?). Perimeters have likely moved. Do not trust this picture.';
+}
+
+/* radar rides the existing overlay tile engine — frame index lives on WORLD */
+const WORLD = {
+  radarOn: false, radarFrame: 0, _radarT: null,
+  alertsOn: false, alerts: [], _alertsAt: 0,
+  gaugesOn: false, _gauges: new Map(), _gaugeAt: 0, _gaugeBox: null,
+  fireOn: false, fires: [], _fireAt: 0, _fireSuggested: false,
+  openSheet(){
+    if (!WORLD_CFG.enabled){ toast('World Data is switched off in this build'); return; }
+    this.syncRows(); openSheet('worldsheet');
+  },
+  syncRows(){
+    const set = (id, on, noteId) => {
+      const b = $(id); if (!b) return;
+      b.classList.toggle('on', on);
+      b.querySelector('.wstate').textContent = on ? 'on' : 'off';
+      if (noteId) $(noteId).style.display = on ? '' : 'none';
+    };
+    set('wradar', this.radarOn, 'radarnote');
+    set('walerts', this.alertsOn);
+    set('wgauges', this.gaugesOn, 'gaugenote');
+    set('wfire', this.fireOn, 'firenote');
+    if (!WORLD_CFG.radarEnabled) $('wradar').style.display = 'none';
+    if (!WORLD_CFG.alertsEnabled) $('walerts').style.display = 'none';
+    if (!WORLD_CFG.gaugesEnabled) $('wgauges').style.display = 'none';
+    if (!WORLD_CFG.fireEnabled){ $('wfire').style.display = 'none'; $('wfirestale').style.display = 'none'; }
+  },
+  /* ---- ⛈ radar ---- */
+  toggleRadar(force){
+    if (!WORLD_CFG.radarEnabled) return;
+    this.radarOn = force != null ? !!force : !this.radarOn;
+    if (this.radarOn){
+      if (!map.overlays.has('radar')) map.overlays.add('radar');
+      this.radarFrame = worldRadarFrames().length - 1;   /* start on the live frame */
+      this._radarTick();
+    } else {
+      map.overlays.delete('radar');
+      if (this._radarT){ clearTimeout(this._radarT); this._radarT = null; }
+      map.draw();
+    }
+    this.syncRows();
+  },
+  _radarTick(){
+    if (!this.radarOn) return;
+    map.draw();
+    const frames = worldRadarFrames();
+    const onLive = this.radarFrame === frames.length - 1;
+    this._radarT = setTimeout(() => {
+      this.radarFrame = (this.radarFrame + 1) % frames.length;
+      this._radarTick();
+    }, onLive ? WORLD_CFG.radarDwellMs : WORLD_CFG.radarTickMs);
+  },
+  /* ---- 🚨 alerts ---- */
+  toggleAlerts(force){
+    if (!WORLD_CFG.alertsEnabled) return;
+    this.alertsOn = force != null ? !!force : !this.alertsOn;
+    if (this.alertsOn) this.refreshAlerts(); else { this.alerts = []; this.renderAlerts(); map.draw(); }
+    this.syncRows();
+  },
+  async refreshAlerts(){
+    if (!this.alertsOn) return;
+    if (Date.now() - this._alertsAt < WORLD_CFG.alertsCacheMins * 60000){ this.renderAlerts(); return; }
+    try{
+      const c = map.center;
+      const r = await fetch(WORLD_CFG.alertsUrl + '?point=' + c.lat.toFixed(4) + ',' + c.lng.toFixed(4), {
+        headers: { 'Accept': 'application/geo+json' } });
+      const j = await r.json();
+      this.alerts = (j.features || []).sort((a, b) => worldAlertRank(a.properties) - worldAlertRank(b.properties));
+      this._alertsAt = Date.now();
+    }catch(e){ /* offline — keep whatever we had, list says so */ }
+    this.renderAlerts(); this.checkStormPill(); map.draw();
+  },
+  renderAlerts(){
+    const box = $('walertlist');
+    if (!this.alertsOn){ box.innerHTML = ''; return; }
+    if (!this.alerts.length){
+      box.innerHTML = '<div class="lg-note" style="margin-top:6px">✅ No active alerts for this map area'
+        + (this._alertsAt ? '' : ' (couldn\'t reach the weather service — try again with signal)') + '.</div>';
+      return;
+    }
+    box.innerHTML = this.alerts.slice(0, 6).map(f => {
+      const p = f.properties || {};
+      return '<div class="' + worldAlertClass(p) + '"><b>' + esc(p.event || 'Alert') + '</b>'
+        + (p.headline ? ' — ' + esc(String(p.headline).slice(0, 140)) : '') + '</div>';
+    }).join('');
+  },
+  /* the geofenced nudge: an alert polygon covering YOUR position = loud pill */
+  checkStormPill(){
+    const fix = SOS.fix || null;
+    const hit = fix && this.alertsOn ? worldCoveringAlert(this.alerts, fix.lat, fix.lng) : null;
+    const pill = $('stormpill');
+    if (hit){
+      $('stormpilltxt').textContent = (hit.properties && hit.properties.event) || 'Weather alert';
+      if (pill.style.display === 'none'){
+        pill.style.display = '';
+        try{ navigator.vibrate && navigator.vibrate([300, 120, 300]); }catch(e){}
+      }
+    } else pill.style.display = 'none';
+  },
+  /* ---- 🌊 gauges ---- */
+  toggleGauges(force){
+    if (!WORLD_CFG.gaugesEnabled) return;
+    this.gaugesOn = force != null ? !!force : !this.gaugesOn;
+    if (this.gaugesOn) this.refreshGauges(); else map.clearGroup('gauges');
+    this.syncRows();
+  },
+  async refreshGauges(){
+    if (!this.gaugesOn) return;
+    if (map.zoom < WORLD_CFG.gaugeMinZoom){ map.clearGroup('gauges'); return; }
+    const bb = worldViewBBox(0.15);
+    const key = bb.map(v => v.toFixed(2)).join(',');
+    if (this._gaugeBox === key && Date.now() - this._gaugeAt < WORLD_CFG.gaugeCacheMins * 60000){
+      this.renderGauges(); return;   /* same view, fresh cache — just repaint pins */
+    }
+    try{
+      const u = WORLD_CFG.gaugesUrl + '?format=json&bBox=' + bb.map(v => v.toFixed(4)).join(',')
+        + '&parameterCd=00060,00065,00010&siteStatus=active';
+      const j = await (await fetch(u)).json();
+      this._gauges = worldParseGauges(j);
+      this._gaugeBox = key; this._gaugeAt = Date.now();
+      this.renderGauges();
+    }catch(e){ /* offline — pins stay as they were */ }
+  },
+  renderGauges(){
+    map.clearGroup('gauges');
+    let n = 0;
+    for (const g of this._gauges.values()){
+      if (n++ >= WORLD_CFG.gaugeMaxPins) break;
+      map.addMarker({ lat: g.lat, lng: g.lng, html: '<div class="gaugemark">🌊</div>', group: 'gauges',
+        anchor: [10, 10], onClick: () => WORLD.openGauge(g.id) });
+    }
+  },
+  openGauge(id){
+    const g = this._gauges.get(id);
+    if (!g) return;
+    /* pins are free for everyone; the detail sheet rides All Access */
+    if (!Entitlements.isUnlocked('allaccess')){ openPaywall('allaccess'); return; }
+    $('gaugetitle').textContent = '🌊 ' + (g.name || 'River Gauge');
+    const row = (k, v) => '<div class="nightrow"><span>' + k + '</span><b>' + v + '</b></div>';
+    let html = '';
+    if (g.flow != null) html += row('Flow', worldFmtFlow(g.flow));
+    if (g.height != null) html += row('Gauge height', g.height.toFixed(2) + ' ft');
+    if (g.temp != null) html += row('Water temp', Math.round(g.temp * 9/5 + 32) + ' °F');
+    $('gaugenow').innerHTML = html || '<div class="lg-note">No live values right now.</div>';
+    $('gaugesparklabel').textContent = 'Loading 7-day trend…';
+    openSheet('gaugesheet');
+    this.fetchSpark(g);
+  },
+  async fetchSpark(g){
+    try{
+      const u = WORLD_CFG.gaugesUrl + '?format=json&sites=' + g.id + '&parameterCd=' + (g.flow != null ? '00060' : '00065')
+        + '&period=P7D';
+      const j = await (await fetch(u)).json();
+      const ts = (j.value && j.value.timeSeries && j.value.timeSeries[0]) || null;
+      const vals = ts ? (ts.values[0].value || []).map(v => parseFloat(v.value)).filter(isFinite) : [];
+      worldDrawSpark($('gaugespark'), vals);
+      const tr = worldGaugeTrend(vals);
+      $('gaugesparklabel').textContent = vals.length
+        ? 'Last 7 days — ' + (tr === 'rising' ? '📈 rising' : tr === 'falling' ? '📉 falling' : '➡️ steady')
+        : 'No 7-day history for this gauge.';
+    }catch(e){ $('gaugesparklabel').textContent = 'Couldn\'t load the 7-day trend (no signal?).'; }
+  },
+  /* ---- 🔥 wildfire ---- */
+  toggleFire(force){
+    if (!WORLD_CFG.fireEnabled) return;
+    this.fireOn = force != null ? !!force : !this.fireOn;
+    if (this.fireOn){
+      if (window.__sddrone && __sddrone.mode) __sddrone.setDroneMode(false);   /* one drawHook owner */
+      if (window.__sdorv && __sdorv.mode) __sdorv.setOrvMode(false);
+      map.drawHook = worldDrawFire;
+      this.refreshFire();
+    } else {
+      if (map.drawHook === worldDrawFire) map.drawHook = null;
+      map.clearGroup('fire');
+      $('wfirestale').style.display = 'none';
+      map.draw();
+    }
+    this.syncRows();
+  },
+  async refreshFire(){
+    if (!this.fireOn || map.zoom < WORLD_CFG.fireMinZoom) return;
+    if (Date.now() - this._fireAt < WORLD_CFG.fireCacheMins * 60000){ this.fireStaleBadge(); return; }
+    const bb = worldViewBBox(0.25);
+    try{
+      const u = WORLD_CFG.fireUrl + '?f=geojson&where=1%3D1&outFields=*&resultRecordCount=100'
+        + '&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&inSR=4326&outSR=4326'
+        + '&geometry=' + bb.map(v => v.toFixed(4)).join(',');
+      const j = await (await fetch(u)).json();
+      this.fires = (j.features || []).map(f => {
+        const a = f.properties || {};
+        const name = a.poly_IncidentName || a.IncidentName || a.irwin_IncidentName || 'Fire';
+        const acres = a.poly_GISAcres || a.GISAcres || a.irwin_CalculatedAcres || null;
+        const pct = a.irwin_PercentContained != null ? a.irwin_PercentContained : a.PercentContained;
+        return { name, acres, pct, geometry: f.geometry };
+      });
+      this._fireAt = Date.now();
+      this.renderFirePins();
+    }catch(e){ /* keep the old picture — the stale badge tells the truth about its age */ }
+    this.fireStaleBadge(); map.draw();
+  },
+  renderFirePins(){
+    map.clearGroup('fire');
+    for (const f of this.fires){
+      const ctr = worldGeoCentroid(f.geometry);
+      if (!ctr) continue;
+      const label = esc(f.name) + (f.acres ? ' · ' + Math.round(f.acres).toLocaleString() + ' acres' : '')
+        + (f.pct != null ? ' · ' + Math.round(f.pct) + '% contained' : '');
+      map.addMarker({ lat: ctr[0], lng: ctr[1], html: '<div class="firemark">🔥</div>', group: 'fire',
+        anchor: [10, 10], popup: '🔥 <b>' + label + '</b>' });
+    }
+  },
+  fireStaleBadge(){
+    const el = $('wfirestale');
+    const txt = this.fireOn && this._fireAt ? worldFireStaleText(Date.now() - this._fireAt) : '';
+    el.textContent = txt;
+    el.style.display = txt ? '' : 'none';
+  },
+  /* one quiet nudge per session: an active fire is in view and the layer is off */
+  async maybeSuggestFire(){
+    if (!WORLD_CFG.enabled || !WORLD_CFG.fireEnabled || this.fireOn || this._fireSuggested) return;
+    if (map.zoom < WORLD_CFG.fireSuggestZoom) return;
+    this._fireSuggested = true;      /* one API poke per session, hit or miss */
+    try{
+      const bb = worldViewBBox(0);
+      const u = WORLD_CFG.fireUrl + '?f=json&where=1%3D1&returnCountOnly=true'
+        + '&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&inSR=4326'
+        + '&geometry=' + bb.map(v => v.toFixed(4)).join(',');
+      const j = await (await fetch(u)).json();
+      if (j && j.count > 0) toast('🔥 Active fire near this view — 🌎 World Data shows the perimeter', 5200);
+    }catch(e){}
+  }
+};
+
+/* current viewport as [west, south, east, north] — USGS bBox and ArcGIS
+   envelope both take exactly this order */
+function worldViewBBox(padPct){
+  const ws = map.worldSize();
+  const [cx, cy] = map.project(map.center.lat, map.center.lng, ws);
+  const px = map.w * (0.5 + (padPct || 0)), py = map.h * (0.5 + (padPct || 0));
+  const a = map.unproject(cx - px, cy + py, ws), b = map.unproject(cx + px, cy - py, ws);
+  return [a.lng, a.lat, b.lng, b.lat];
+}
+/* GeoJSON centroid (first ring average — good enough to hang a 🔥 pin on) */
+function worldGeoCentroid(g){
+  if (!g) return null;
+  const ring = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'MultiPolygon' ? g.coordinates[0][0] : null;
+  if (!ring || !ring.length) return null;
+  let lat = 0, lng = 0;
+  for (const p of ring){ lng += p[0]; lat += p[1]; }
+  return [lat / ring.length, lng / ring.length];
+}
+/* USGS iv JSON → Map(siteId → {id,name,lat,lng,flow,height,temp}) */
+function worldParseGauges(j){
+  const out = new Map();
+  const series = (j && j.value && j.value.timeSeries) || [];
+  for (const ts of series){
+    const si = ts.sourceInfo || {};
+    const id = (si.siteCode && si.siteCode[0] && si.siteCode[0].value) || null;
+    if (!id) continue;
+    const loc = (si.geoLocation && si.geoLocation.geogLocation) || {};
+    const g = out.get(id) || { id, name: si.siteName || 'Gauge', lat: loc.latitude, lng: loc.longitude,
+      flow: null, height: null, temp: null };
+    const code = (ts.variable && ts.variable.variableCode && ts.variable.variableCode[0]
+      && ts.variable.variableCode[0].value) || '';
+    const vs = (ts.values && ts.values[0] && ts.values[0].value) || [];
+    const last = vs.length ? parseFloat(vs[vs.length - 1].value) : NaN;
+    if (isFinite(last) && last > -99999){
+      if (code === '00060') g.flow = last;
+      else if (code === '00065') g.height = last;
+      else if (code === '00010') g.temp = last;
+    }
+    if (g.lat != null && g.lng != null) out.set(id, g);
+  }
+  return out;
+}
+/* tiny sparkline — no library, one path, honest axes (min/max labels skipped) */
+function worldDrawSpark(canvas, vals){
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!vals || vals.length < 2) return;
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  ctx.beginPath();
+  vals.forEach((v, i) => {
+    const x = 6 + (canvas.width - 12) * i / (vals.length - 1);
+    const y = canvas.height - 8 - (canvas.height - 16) * (v - min) / span;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.strokeStyle = '#4aa3ff'; ctx.lineWidth = 2; ctx.stroke();
+}
+/* fire perimeters paint on the shared canvas via the (single-owner) drawHook */
+function worldDrawFire(ctx, ws, ox, oy){
+  for (const f of WORLD.fires){
+    const g = f.geometry;
+    if (!g) continue;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    for (const rings of polys){
+      for (const ring of rings){
+        ctx.beginPath();
+        ring.forEach((p, i) => {
+          const [px, py] = map.project(p[1], p[0], ws);
+          i ? ctx.lineTo(px - ox, py - oy) : ctx.moveTo(px - ox, py - oy);
+        });
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,90,40,.16)'; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,90,40,.85)'; ctx.lineWidth = 2; ctx.stroke();
+      }
+    }
+  }
+  /* alert polygons ride along when alerts are on (storm red, no fill clutter) */
+  if (WORLD.alertsOn){
+    for (const f of WORLD.alerts){
+      const g = f.geometry;
+      if (!g) continue;
+      const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+      for (const rings of polys){
+        for (const ring of rings){
+          ctx.beginPath();
+          ring.forEach((p, i) => {
+            const [px, py] = map.project(p[1], p[0], ws);
+            i ? ctx.lineTo(px - ox, py - oy) : ctx.moveTo(px - ox, py - oy);
+          });
+          ctx.closePath();
+          ctx.strokeStyle = 'rgba(255,90,90,.8)'; ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+    }
+  }
+}
+
+/* radar overlay registration — frame index lives on WORLD so the animation
+   is one draw() away; while OFF the entry is inert (never fetched) */
+OVERLAYS.radar = { name: '⛈ Live Radar', alpha: 0.72, maxTile: 15, attrib: '⛈ NOAA NEXRAD via IEM',
+  url: (z, x, y) => worldRadarFrameUrl(worldRadarFrames()[WORLD.radarFrame] || 'nexrad-n0q-900913', z, x, y) };
+OVERLAY_LEGENDS.radar = [
+  ['<div class="lg-h">⛈ Live Radar (NOAA NEXRAD)</div>'],
+  [sw('background:#39ff5a'), '<b>Greens</b> — light rain'],
+  [sw('background:#ffd23a'), '<b>Yellows</b> — steady rain, getting loud'],
+  [sw('background:#ff4a3a'), '<b>Reds</b> — heavy rain / storm core'],
+  [sw('background:#ff3aff'), '<b>Purples</b> — hail / severe core, take shelter'],
+  ['<div class="lg-note">About 5 minutes behind real time. Radar is awareness, not a warning — 🚨 Weather Alerts under 🌎 World Data carries the official word.</div>'],
+];
+
+/* ---- wiring ---- */
+$('worldfab').addEventListener('click', () => WORLD.openSheet());
+$('wradar').addEventListener('click', () => WORLD.toggleRadar());
+$('walerts').addEventListener('click', () => WORLD.toggleAlerts());
+$('wgauges').addEventListener('click', () => WORLD.toggleGauges());
+$('wfire').addEventListener('click', () => WORLD.toggleFire());
+$('stormpill').addEventListener('click', () => { WORLD.openSheet(); });
+if (!WORLD_CFG.enabled) $('worldfab').style.display = 'none';
+settleFns.push(() => {
+  if (!WORLD_CFG.enabled) return;
+  if (WORLD.alertsOn) WORLD.refreshAlerts();
+  if (WORLD.gaugesOn) WORLD.refreshGauges();
+  if (WORLD.fireOn) WORLD.refreshFire(); else WORLD.maybeSuggestFire();
+});
+
+window.__sdworld = { WORLD, WORLD_CFG, worldRadarFrames, worldRadarFrameUrl, worldAlertRank, worldAlertClass,
+  worldCoveringAlert, worldGaugeTrend, worldFmtFlow, worldFireStaleText, worldParseGauges, worldGeoCentroid,
+  worldDrawSpark, worldDrawFire };
+
+/* =====================================================================
    🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility
    tool lives on a cyclic wheel anchored in the bottom-right thumb
    corner: flick to spin (momentum + firm snap detents), tap any button
@@ -5426,6 +6028,7 @@ function wheelBuildItems(){
     const btn = document.querySelector('#modewheel [data-mode="'+d.id+'"]');
     if(btn) items.push({ id: d.id, btn, pack: true });
   });
+  items.push({ id:'world', btn: $('worldfab'), pack: false });
   items.push({ id:'buddy', btn: $('buddyfab'), pack: false });
   items.push({ id:'spots', btn: $('spotsfab'), pack: false });
   items.push({ id:'store', btn: $('packsfab'), pack: false });

@@ -1,0 +1,47 @@
+SkyDog GPS — v1.1 paste-ready text (copy straight from this file)
+==================================================================
+
+1) WHAT'S NEW (App Store Connect → version 1.1)
+------------------------------------------------
+SkyDog GPS 1.1 🐾
+
+NEW — Cinematic intro: every launch now opens with a smooth zoom from space right down to your spot.
+
+NEW — 🏡 Property Lines (early preview): flip on the new Property Lines layer and tap a parcel to see property boundaries, owner and acreage. Live in our first preview areas now — wider coverage is on the way.
+
+Plus polish and bug fixes under the hood. GPS tracking, all three maps, discovery and GPX export stay 100% free.
+
+
+2) FISHING PACK IAP DESCRIPTION (replaces the "Removes ads" wording)
+--------------------------------------------------------------------
+Short (42 characters — safe everywhere):
+Depth contours, launch intel & lake rules.
+
+Longer (if the field accepts more):
+Real lake depth contours, launch intel & local lake rules — one purchase, yours forever.
+
+
+3) APP STORE DESCRIPTION — replacement for the old Fishing Pack paragraph
+-------------------------------------------------------------------------
+(Replace the whole "🎣 FISHING PACK (one-time upgrade — also removes ads)"
+section, including the "every ad disappears" line, with this:)
+
+🎒 SKYDOG ALL ACCESS (optional subscription)
+• Fishing Pack — real DNR lake depth contours, NOAA charts on the Great Lakes, depth-at-tap, launch intel, local rules & records
+• Drone Pack — FAA airspace ceilings, recreational fields, wind & a go/no-go flight check
+• ORV Trails — Michigan snowmobile & ORV network with open/closed status, pit stops & staging
+One low subscription unlocks every pack — and the map stays free.
+
+
+4) REVIEW NOTES for the v1.1 submission (App Review notes box)
+--------------------------------------------------------------
+SkyDog GPS is a fully client-side maps/tracking app. No account or login is
+required anywhere in the app. Location is used only on-device (when-in-use)
+to show the user on the map and record their trip; it is never uploaded.
+Purchases: the SkyDog All Access subscription
+(com.skydog.skygps.allaccess.monthly) unlocks the Fishing, Drone and ORV
+feature packs. The legacy non-consumable com.skydog.skygps.fishingpack is no
+longer offered for sale but is still honored via Restore Purchases. Ads are
+shown to all users; no purchase removes ads. Restore Purchases is available
+on the purchase sheet. The Property Lines layer is an early preview with
+limited coverage areas, and the app says so in-product.

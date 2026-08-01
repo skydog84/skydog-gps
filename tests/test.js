@@ -69,6 +69,38 @@ const FIX_SWPC = () => {
 /* 🆘 what3words convert-to-3wa */
 const FIX_W3W = { words: 'dog.happy.trail' };
 
+/* 🌎 Run 2 fixtures — every new host mocks BEFORE the catch-all */
+const FIX_NWS = { features: [
+  { properties: { event: 'Severe Thunderstorm Warning', severity: 'Severe',
+      headline: 'Severe Thunderstorm Warning until 9 PM for Grand Traverse County' },
+    geometry: { type: 'Polygon', coordinates: [[[-86.2, 44.2], [-85.0, 44.2], [-85.0, 45.2], [-86.2, 45.2], [-86.2, 44.2]]] } },
+  { properties: { event: 'Special Marine Warning', severity: 'Severe',
+      headline: 'Special Marine Warning for Grand Traverse Bay' }, geometry: null },
+  { properties: { event: 'Flood Watch', severity: 'Moderate',
+      headline: 'Flood Watch through Sunday morning' }, geometry: null },
+] };
+const usgsSeries = (site, name, lat, lng, code, val) => ({
+  sourceInfo: { siteName: name, siteCode: [{ value: site }], geoLocation: { geogLocation: { latitude: lat, longitude: lng } } },
+  variable: { variableCode: [{ value: code }] },
+  values: [{ value: [{ value: String(val) }] }],
+});
+const FIX_USGS_IV = { value: { timeSeries: [
+  usgsSeries('04127917', 'BOARDMAN RIVER NEAR TRAVERSE CITY, MI', 44.72, -85.60, '00060', 210),
+  usgsSeries('04127917', 'BOARDMAN RIVER NEAR TRAVERSE CITY, MI', 44.72, -85.60, '00065', 3.42),
+  usgsSeries('04127917', 'BOARDMAN RIVER NEAR TRAVERSE CITY, MI', 44.72, -85.60, '00010', 18.5),
+  usgsSeries('04127800', 'JORDAN RIVER NEAR EAST JORDAN, MI', 44.95, -85.10, '00060', 150),
+] } };
+const FIX_USGS_P7D = { value: { timeSeries: [ (function(){
+  const s = usgsSeries('04127917', 'BOARDMAN RIVER NEAR TRAVERSE CITY, MI', 44.72, -85.60, '00060', 100);
+  s.values[0].value = Array.from({ length: 28 }, (_, i) => ({ value: String(100 + i * 4) }));   /* steady climb → rising */
+  return s;
+})() ] } };
+const FIX_WFIGS = { type: 'FeatureCollection', features: [
+  { properties: { poly_IncidentName: 'CAMP TWELVE', poly_GISAcres: 5300.4, irwin_PercentContained: 40 },
+    geometry: { type: 'Polygon', coordinates: [[[-85.8, 44.6], [-85.5, 44.6], [-85.5, 44.9], [-85.8, 44.9], [-85.8, 44.6]]] } },
+] };
+
+
 /* 🏡 Regrid parcel point-lookup fixture — one 40-acre parcel near Traverse City */
 const FIX_REGRID = { parcels: { type: 'FeatureCollection', features: [
   { type: 'Feature',
@@ -163,6 +195,7 @@ async function main(){
   let faaHits = 0;
   let dnrHits = 0;
   let regridMode = 'parcel';   // 'parcel' | 'empty'
+  const odCalls = [];          // 🌎 worker calls the app made
   let regridHits = 0;
   const mockRoute = (route) => {
     const url = route.request().url();
@@ -217,6 +250,26 @@ async function main(){
     if (url.includes('api.what3words.com')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_W3W) });
     }
+    /* 🌎 Run 2: NWS alerts */
+    if (url.includes('api.weather.gov')) {
+      return route.fulfill({ status: 200, contentType: 'application/geo+json', body: JSON.stringify(FIX_NWS) });
+    }
+    /* 🌎 Run 2: USGS gauges — bbox scan vs 7-day sparkline */
+    if (url.includes('waterservices.usgs.gov')) {
+      const body = url.includes('period=P7D') ? FIX_USGS_P7D : FIX_USGS_IV;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
+    /* 🌎 Run 2: NIFC/WFIGS fire perimeters (count probe vs full geojson) */
+    if (url.includes('services3.arcgis.com')) {
+      const body = url.includes('returnCountOnly=true') ? { count: 1 } : FIX_WFIGS;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
+    /* ⏳ Run 2: the overdue worker (register / checkin / cancel) */
+    if (url.includes('skydog-api.skydog8426.workers.dev')) {
+      odCalls.push(url.slice(url.indexOf('/overdue')));
+      const body = url.includes('/overdue/register') ? { ok: true, id: 'abcdef1234567890' } : { ok: true };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
     /* Firebase SDK stub — records writes/listeners so buddy tests are deterministic & offline */
     if (url.includes('gstatic.com/firebasejs')) {
       return route.fulfill({ status: 200, contentType: 'text/javascript', body: FB_STUB });
@@ -242,7 +295,7 @@ async function main(){
   T('12 discovery chips', await page.$$eval('#chips .chip', (e) => e.length) === 12);
   T('12 activity modes', await page.$$eval('#modes .modebtn', (e) => e.length) === 12);
   T('5 base maps in layer sheet', await page.evaluate('Object.keys(__sdmap.constructor ? window.BASES || {} : {}).length || (function(){ return document.querySelectorAll("#basegrid .modebtn").length; })()') !== -1 && (await page.evaluate('(function(){ document.getElementById("layerfab").click(); return document.querySelectorAll("#basegrid .modebtn").length; })()')) === 5, 'basegrid count');
-  T('6 overlays incl fishing pair + property lines in layer sheet', await page.$$eval('#ovchips .chip', (e) => e.length) === 6);
+  T('7 overlays incl fishing pair, property lines + live radar in layer sheet', await page.$$eval('#ovchips .chip', (e) => e.length) === 7);
   await page.evaluate('(function(){ document.getElementById("layerdone").click(); })()');
   const z0 = await page.evaluate('__sdmap.zoom');
   await page.click('#zoomin');
@@ -742,13 +795,13 @@ async function main(){
   console.log('\n— 🎡 Mode Wheel (free core navigation) —');
   await page.evaluate('__sdwheel.jumpTo("fishing")');
   T('wheel holds every mode + tool in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
-    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'buddy', 'spots', 'store',
+    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'world', 'buddy', 'spots', 'store',
                         'sos', 'night', 'layer', 'locate', 'saved', 'key', 'what', 'clear']));
   T('every configured pack auto-appears on the wheel', await page.evaluate(
     'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
   T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
     && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
-  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(14)') === -1);
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(15)') === -1);
   T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
     __sdwheel.spinBy(1.4);
     const drifting = __sdwheel.pos;
@@ -824,7 +877,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.3');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.4');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -1424,9 +1477,243 @@ async function main(){
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
   T('safety features are FREE — no Entitlements gate anywhere in Run 1 code', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
-    const seg = src.slice(src.indexOf('RUN 1 — SAFETY + NIGHT OPS'), src.indexOf('🎡 MODE WHEEL'));
+    const seg = src.slice(src.indexOf('RUN 1 — SAFETY + NIGHT OPS'), src.indexOf('🌎 WORLD DATA — RUN 2'));
     return seg.length > 1000 && !seg.includes('Entitlements.isUnlocked') && !seg.includes('openPaywall');
   })());
+
+  console.log('\n— 🌎 World Data: wheel + sheet + kill switches (Run 2) —');
+  T('🌎 rides the wheel and opens the World Data sheet', await page.evaluate(`(function(){
+    if(!__sdwheel.order.includes('world')) return false;
+    document.getElementById('worldfab').click();
+    return document.getElementById('worldsheet').classList.contains('open');
+  })()`));
+  T('all four rows present, all off by default', await page.evaluate(`(function(){
+    const ids = ['wradar', 'walerts', 'wgauges', 'wfire'];
+    return ids.every((id) => document.getElementById(id)) && !__sdworld.WORLD.radarOn
+      && !__sdworld.WORLD.alertsOn && !__sdworld.WORLD.gaugesOn && !__sdworld.WORLD.fireOn;
+  })()`));
+  T('kill switch: WORLD_CFG.enabled=false refuses the sheet', await page.evaluate(`(function(){
+    __sdworld.WORLD_CFG.enabled = false;
+    document.getElementById('backdrop').click();
+    __sdworld.WORLD.openSheet();
+    const refused = !document.getElementById('worldsheet').classList.contains('open');
+    __sdworld.WORLD_CFG.enabled = true;
+    __sdworld.WORLD.openSheet();
+    return refused && document.getElementById('worldsheet').classList.contains('open');
+  })()`));
+
+  console.log('\n— ⛈ Live radar (IEM NEXRAD, animated, public domain) —');
+  T('frame list: 11 frames, 5-min steps, newest frame is live', await page.evaluate(`(function(){
+    const f = __sdworld.worldRadarFrames();
+    return f.length === 11 && f[0] === 'nexrad-n0q-900913-m50m' && f[9] === 'nexrad-n0q-900913-m05m'
+      && f[10] === 'nexrad-n0q-900913';
+  })()`));
+  T('frame URL hits the IEM cache host (CSP-allowlisted)', await page.evaluate(`(function(){
+    return __sdworld.worldRadarFrameUrl('nexrad-n0q-900913', 8, 63, 92)
+      === 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/8/63/92.png';
+  })()`));
+  T('toggle on: overlay joins the tile stack, animation armed on the live frame', await page.evaluate(`(function(){
+    __sdworld.WORLD.toggleRadar(true);
+    return __sdmap.overlays.has('radar') && document.getElementById('wradar').classList.contains('on')
+      && __sdworld.WORLD.radarFrame === 10 && !!__sdworld.WORLD._radarT;
+  })()`));
+  T('toggle off: overlay + timer both die', await page.evaluate(`(function(){
+    __sdworld.WORLD.toggleRadar(false);
+    return !__sdmap.overlays.has('radar') && !__sdworld.WORLD._radarT;
+  })()`));
+  T('honesty copy: radar is “not a warning service”', await page.evaluate(
+    'document.getElementById("worldsheet").textContent.includes("not a warning service")'));
+
+  console.log('\n— 🚨 Weather alerts (NWS, incl. Special Marine Warnings) —');
+  T('severity rank: warnings first, watches next, the rest last', await page.evaluate(`(function(){
+    const r = __sdworld.worldAlertRank;
+    return r({ event: 'Severe Thunderstorm Warning', severity: 'Severe' }) === 0
+      && r({ event: 'Special Marine Warning', severity: 'Severe' }) === 0
+      && r({ event: 'Flood Watch', severity: 'Moderate' }) === 1
+      && r({ event: 'Dense Fog Advisory', severity: 'Minor' }) === 2;
+  })()`));
+  T('marine warnings get the boater look', await page.evaluate(`(function(){
+    return __sdworld.worldAlertClass({ event: 'Special Marine Warning' }) === 'walert marine'
+      && __sdworld.worldAlertClass({ event: 'Flood Watch' }) === 'walert watch'
+      && __sdworld.worldAlertClass({ event: 'Tornado Warning' }) === 'walert';
+  })()`));
+  await page.evaluate('__sdworld.WORLD.toggleAlerts(true)');
+  await page.waitForFunction('__sdworld.WORLD.alerts.length === 3', null, { timeout: 5000 });
+  T('alert list renders all three, warnings sorted to the top', await page.evaluate(`(function(){
+    const rows = [...document.querySelectorAll('#walertlist .walert')];
+    return rows.length === 3 && rows[0].textContent.includes('Warning')
+      && rows.some((r) => r.textContent.includes('Special Marine Warning'))
+      && rows[2].textContent.includes('Flood Watch');
+  })()`));
+  T('geofence: alert polygon covering YOUR position lights the storm pill', await page.evaluate(`(function(){
+    __sdsafety.SOS.fix = { lat: 44.7631, lng: -85.6206, accM: 5 };
+    __sdworld.WORLD.checkStormPill();
+    const pill = document.getElementById('stormpill');
+    const on = getComputedStyle(pill).display !== 'none'
+      && document.getElementById('stormpilltxt').textContent === 'Severe Thunderstorm Warning';
+    __sdsafety.SOS.fix = { lat: 25.76, lng: -80.19, accM: 5 };   /* Miami: outside the polygon */
+    __sdworld.WORLD.checkStormPill();
+    const off = getComputedStyle(pill).display === 'none';
+    return on && off;
+  })()`));
+  T('point-in-polygon: pure and picky about the ring', await page.evaluate(`(function(){
+    const fx = ${JSON.stringify(FIX_NWS.features)};
+    const inHit = __sdworld.worldCoveringAlert(fx, 44.76, -85.62);
+    const outMiss = __sdworld.worldCoveringAlert(fx, 25.76, -80.19);
+    return !!inHit && inHit.properties.event === 'Severe Thunderstorm Warning' && outMiss === null;
+  })()`));
+  await page.evaluate('__sdworld.WORLD.toggleAlerts(false)');
+
+  console.log('\n— 🌊 USGS river gauges (pins free, detail rides All Access) —');
+  T('USGS JSON parses into per-site gauges (flow + height + temp merge)', await page.evaluate(`(function(){
+    const fixJson = ${JSON.stringify(FIX_USGS_IV)};
+    const m = __sdworld.worldParseGauges(fixJson);
+    const g = m.get('04127917');
+    return m.size === 2 && g.flow === 210 && g.height === 3.42 && g.temp === 18.5
+      && g.name.includes('BOARDMAN');
+  })()`));
+  T('trend calls it straight: rising / falling / steady', await page.evaluate(`(function(){
+    const up = Array.from({ length: 24 }, (_, i) => 100 + i * 5);
+    const down = Array.from({ length: 24 }, (_, i) => 220 - i * 5);
+    const flat = Array.from({ length: 24 }, () => 150);
+    return __sdworld.worldGaugeTrend(up) === 'rising' && __sdworld.worldGaugeTrend(down) === 'falling'
+      && __sdworld.worldGaugeTrend(flat) === 'steady' && __sdworld.worldGaugeTrend([1, 2]) === 'steady';
+  })()`));
+  await page.evaluate('__sdmap.setView(44.76, -85.62, 10)');
+  await page.evaluate('__sdworld.WORLD.toggleGauges(true)');
+  await page.waitForFunction('__sdmap.countGroup("gauges") === 2', null, { timeout: 5000 });
+  T('two 🌊 pins dropped from the mocked bbox scan', await page.evaluate('__sdmap.countGroup("gauges") === 2'));
+  T('zoom gate: pins wait for z' + '9 (no country-wide sweeps)', await page.evaluate(`(function(){
+    return __sdworld.WORLD_CFG.gaugeMinZoom >= 9;
+  })()`));
+  T('locked: gauge tap opens the All Access paywall, not the sheet', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdworld.WORLD.openGauge('04127917');
+    const paywalled = document.getElementById('paysheet').classList.contains('open')
+      && !document.getElementById('gaugesheet').classList.contains('open');
+    document.getElementById('backdrop').click();
+    return paywalled;
+  })()`));
+  await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    __sdworld.WORLD.openGauge('04127917');
+  })()`);
+  await page.waitForFunction('document.getElementById("gaugesparklabel").textContent.includes("rising")', null, { timeout: 5000 });
+  T('unlocked: detail sheet shows flow, height, water temp + 7-day trend', await page.evaluate(`(function(){
+    const now = document.getElementById('gaugenow').textContent;
+    return document.getElementById('gaugesheet').classList.contains('open')
+      && now.includes('210 cfs') && now.includes('3.42 ft') && now.includes('65 °F')
+      && document.getElementById('gaugetitle').textContent.includes('BOARDMAN');
+  })()`));
+  T('flow formatter keeps big rivers readable', await page.evaluate(`(function(){
+    return __sdworld.worldFmtFlow(210) === '210 cfs' && __sdworld.worldFmtFlow(24500) === '25k cfs'
+      && __sdworld.worldFmtFlow(NaN) === '—';
+  })()`));
+  await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    document.getElementById('backdrop').click();
+    __sdworld.WORLD.toggleGauges(false);
+  })()`);
+  T('gauges off: pins cleared', await page.evaluate('__sdmap.countGroup("gauges") === 0'));
+
+  console.log('\n— 🔥 Wildfire perimeters (NIFC/WFIGS, free, honest about age) —');
+  await page.evaluate('__sdworld.WORLD.toggleFire(true)');
+  await page.waitForFunction('__sdworld.WORLD.fires.length === 1', null, { timeout: 5000 });
+  T('perimeter loaded + 🔥 pin carries name, acres, containment', await page.evaluate(`(function(){
+    const m = __sdmap.markers.find((mk) => mk.group === 'fire');
+    return __sdworld.WORLD.fires[0].name === 'CAMP TWELVE' && !!m
+      && m.popup.includes('CAMP TWELVE') && m.popup.includes('5,300 acres') && m.popup.includes('40% contained');
+  })()`));
+  T('fire painting owns the shared drawHook while on', await page.evaluate(
+    '__sdmap.drawHook === __sdworld.worldDrawFire'));
+  T('stale badge: silent while fresh, loud once the data ages out', await page.evaluate(`(function(){
+    const f = __sdworld.worldFireStaleText;
+    return f(5 * 60000) === '' && f(59 * 60000) === ''
+      && f(75 * 60000).includes('STALE') && f(75 * 60000).includes('75 minutes')
+      && f(5 * 3600000).includes('5 hours') && f(NaN) === '';
+  })()`));
+  T('centroid puts the pin inside the box', await page.evaluate(`(function(){
+    const c = __sdworld.worldGeoCentroid({ type: 'Polygon',
+      coordinates: [[[-85.8, 44.6], [-85.5, 44.6], [-85.5, 44.9], [-85.8, 44.9], [-85.8, 44.6]]] });
+    return Math.abs(c[0] - 44.72) < 0.1 && Math.abs(c[1] + 85.66) < 0.1;
+  })()`));
+  T('fire off: hook released, pins gone', await page.evaluate(`(function(){
+    __sdworld.WORLD.toggleFire(false);
+    return __sdmap.drawHook === null && __sdmap.countGroup('fire') === 0;
+  })()`));
+  T('honesty copy: never a road-safety call, evacuations come from authorities', await page.evaluate(
+    'document.getElementById("worldsheet").textContent.includes("Evacuation orders come from local authorities")'));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+
+  console.log('\n— 📧 Overdue phase 2: worker auto-email (opt-in, off by default) —');
+  T('email validator: junk out, good in, capped at 3', await page.evaluate(`(function(){
+    const v = __sdoverdue2.odValidEmails;
+    return JSON.stringify(v(['mel@example.com', 'nope', '', 'x@y.zz', 'a@b.cc', 'd@e.ff'])) ===
+      JSON.stringify(['mel@example.com', 'x@y.zz', 'a@b.cc']) && v([]).length === 0;
+  })()`));
+  T('register payload: exactly plan/backBy/name/emails/coarse fix — nothing else', await page.evaluate(`(function(){
+    const p = __sdoverdue2.odRegisterPayload(
+      { backBy: 1750000000000, plan: 'x'.repeat(999), emails: ['mel@example.com'], remoteId: null },
+      { lat: 44.76314159, lng: -85.62061234 }, 'SKYDOG');
+    return JSON.stringify(Object.keys(p).sort()) === JSON.stringify(['backBy','emails','fix','id','name','plan'])
+      && p.plan.length === 400 && p.fix.lat === 44.7631 && p.fix.lng === -85.6206;
+  })()`));
+  T('opt-in fields hidden until the user flips the switch', await page.evaluate(`(function(){
+    __sdsafety.OVERDUE.openPlan();
+    const hidden = document.getElementById('odemails').style.display === 'none';
+    document.getElementById('odemailopt').click();
+    return hidden && document.getElementById('odemails').style.display !== 'none';
+  })()`));
+  await page.evaluate(`(function(){
+    document.getElementById('odq2').click();
+    document.getElementById('odname1').value = 'Mel';
+    document.getElementById('odphone1').value = '(231) 555-0100';
+    document.getElementById('odemail1').value = 'mel@example.com';
+    document.getElementById('odstart').click();
+  })()`);
+  await page.waitForFunction('__sdsafety.OVERDUE.state && __sdsafety.OVERDUE.state.remoteId === "abcdef1234567890"', null, { timeout: 5000 });
+  T('start + opt-in: plan registers with the worker, id comes home', await page.evaluate(`(function(){
+    const st = __sdsafety.OVERDUE.state;
+    return st.emailOpt && st.remoteId === 'abcdef1234567890'
+      && JSON.parse(localStorage.getItem('sd-safety-emails'))[0] === 'mel@example.com';
+  })()`));
+  T('armed state is spelled out on the sheet', await page.evaluate(`(function(){
+    __sdsafety.OVERDUE.renderEmailState();
+    return document.getElementById('odemailstate').textContent.includes('ARMED');
+  })()`));
+  T('back safe: the worker hears the cancel too', await page.evaluate(
+    '(function(){ document.getElementById("odsafe").click(); return !__sdsafety.OVERDUE.state; })()'));
+  await page.waitForTimeout(400);   /* let the fire-and-forget cancel land on the mock */
+  T('worker heard register + cancel in order', (function(){
+    return odCalls.some((u) => u.startsWith('/overdue/register')) && odCalls[odCalls.length - 1].startsWith('/overdue/cancel');
+  })());
+  T('sheet copy: honest about what auto-email uploads', await page.evaluate(`(function(){
+    const t = document.getElementById('overduesheet').textContent;
+    return t.includes('switch on auto-email') && t.includes('deleted within 48');
+  })()`));
+  T('opt-out untouched: no auto-email = nothing ever uploads (worker calls only after opt-in)', (function(){
+    return odCalls.every((u) => u.startsWith('/overdue/'));
+  })());
+
+  console.log('\n— 🛠 Worker: overdue endpoints + safety cron (file contract) —');
+  const odWorkerSrc = fs.readFileSync(path.join(APP_DIR, 'worker', 'worker.js'), 'utf8');
+  const odToml = fs.readFileSync(path.join(APP_DIR, 'worker', 'wrangler.toml'), 'utf8');
+  T('worker: register/checkin/cancel routes + origin & rate checks on register', odWorkerSrc.includes("'/overdue/register'")
+    && odWorkerSrc.includes("'/overdue/checkin'") && odWorkerSrc.includes("'/overdue/cancel'")
+    && /overdue\/register[^]*?originOK[^]*?rateOK/.test(odWorkerSrc));
+  T('worker: cron sweep = overdue + silent + grace period, one email ever', odWorkerSrc.includes('async scheduled')
+    && odWorkerSrc.includes('OD_GRACE_MS') && odWorkerSrc.includes('rec.lastPing < rec.backBy')
+    && odWorkerSrc.includes('!rec.sent'));
+  T('worker: records self-destruct via KV TTL (≤72 h)', odWorkerSrc.includes('expirationTtl')
+    && odWorkerSrc.includes('72 * 3600'));
+  T('worker: email seam is Resend (MailChannels EOL documented), never hardcoded keys', odWorkerSrc.includes('api.resend.com')
+    && odWorkerSrc.includes('env.RESEND_KEY') && /MailChannels/.test(odWorkerSrc)
+    && !/re_[A-Za-z0-9]{10,}/.test(odWorkerSrc));
+  T('worker: safety email tells contacts to call authorities, not SkyDog', odWorkerSrc.includes('contact local authorities')
+    && odWorkerSrc.includes('not a rescue service'));
+  T('wrangler.toml: OD KV binding + */10 cron wired', odToml.includes('binding = "OD"')
+    && odToml.includes('crons = ["*/10 * * * *"]'));
+
 
   console.log('\n— 🛡 Fort SkyDog Phase A: CSP + tamper containment —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
@@ -1442,6 +1729,8 @@ async function main(){
     'overpass-api.de', 'nominatim.openstreetmap.org', 'api.open-meteo.com', 'services6.arcgis.com',
     'www.gstatic.com', 'firebaseio.com', 'api.skydoggps.com', 's3.amazonaws.com',
     'services.swpc.noaa.gov', 'api.what3words.com',
+    'mesonet.agron.iastate.edu', 'api.weather.gov', 'waterservices.usgs.gov', 'services3.arcgis.com',
+    'skydog-api.skydog8426.workers.dev',
   ];
   T('CSP allowlists every origin the app talks to (' + CSP_ORIGINS.length + ')',
     CSP_ORIGINS.every((o) => csp.includes(o)), CSP_ORIGINS.filter((o) => !csp.includes(o)).join(', '));
@@ -1600,7 +1889,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v28 (Safety + Night Ops ships fresh)', sw.includes("skydog-gps-v28") && !sw.includes("skydog-gps-v27") && !sw.includes("skydog-gps-v26"));
+  T('sw.js cache bumped to v29 (World Data ships fresh)', sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28") && !sw.includes("skydog-gps-v27"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

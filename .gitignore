@@ -7,3 +7,8 @@ www/
 build/
 *.pdf
 .DS_Store
+android/
+skydog-keys/
+*.keystore
+*.jks
+SKYDOG_BUSINESS_INFO.md

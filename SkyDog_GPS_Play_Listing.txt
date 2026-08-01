@@ -1,0 +1,87 @@
+SkyDog GPS — GOOGLE PLAY listing copy (v1.1 model: subscription, ads permanent)
+================================================================================
+NOTE: Nowhere in this file does any wording say or imply that a purchase removes
+ads. Ads are shown to everyone, forever. Do not reintroduce "removes ads" copy.
+
+APP NAME (max 30)
+SkyDog GPS
+
+SHORT DESCRIPTION (max 80) — 64 chars
+Maps, live GPS tracking, discovery & GPX export. Find your spot.
+
+FULL DESCRIPTION (max 4000)
+--------------------------------------------------------------------------------
+Your adventure tracker for trails, beaches, waves & wheels — powered by SkyDog AI.
+
+SkyDog GPS puts you on the map and keeps you moving. Pick your map, find your
+spot, hit Start, and go. No account, no sign-up, no nonsense.
+
+THREE MAPS, ONE TAP
+• Streets — clean and fast for getting around
+• Topo — contour lines for hunting land, hills and trail country
+• Satellite — see the actual terrain, shorelines and structure
+
+FIND SOMETHING TO DO
+One-tap discovery drops pins on Trails, Beaches, Boat Launches, Waterfalls,
+Overlooks, Camping, Picnic spots, Parking, Fishing spots and more — all near
+you, anywhere in the world. Tap a pin and Drive There hands off to navigation.
+
+TRACK YOUR ADVENTURE
+Hike, Boat, Kayak, Bike, Wave Runner, 4-Wheeler, Snowmobile and more — with
+live time, miles, current speed and max speed on a clean HUD. Save the trip,
+then share a summary or export a GPX file that opens in Google Earth, OnX,
+Gaia and AllTrails.
+
+BUDDY TRIPS
+Share a live trip with the people you are out with, so everyone can see where
+everyone is.
+
+WHAT'S THIS?
+Tap anything on the map — SkyDog identifies it. A Map Key explains every color
+and symbol on whichever map style you are on.
+
+🎒 SKYDOG ALL ACCESS (optional subscription)
+• Fishing Pack — real DNR lake depth contours, NOAA charts on the Great Lakes,
+  depth-at-tap, launch intel, local rules, records and stocking info
+• Drone Pack — FAA airspace ceilings, recreational flying fields, wind and a
+  go / no-go flight check
+• ORV Trails — Michigan snowmobile and ORV network with open/closed status,
+  pit stops and staging
+One low subscription unlocks every pack — and the map stays free.
+
+🏡 PROPERTY LINES (early preview)
+Flip on the Property Lines layer and tap a parcel to see boundaries, owner and
+acreage. Live in our first preview areas now — wider coverage is on the way.
+
+FREE FOREVER
+GPS tracking, all three maps, discovery, saving and GPX export stay 100% free.
+SkyDog GPS is ad-supported and ads are shown to everyone.
+
+A SkyDog AI app. Made with love. Find your spot. 🐾
+--------------------------------------------------------------------------------
+
+CATEGORY:            Maps & Navigation
+TAGS:                Navigation, Outdoors, Travel
+CONTENT RATING:      expect Teen (users can share live location with each other)
+PRICE:               Free
+IN-APP PRODUCTS:     SkyDog All Access — com.skydog.skygps.allaccess.monthly — $2.99/month
+CONTAINS ADS:        Yes
+PRIVACY POLICY:      https://skydoggps.com/privacy-policy.html
+TERMS:               https://skydoggps.com/terms.html
+SUPPORT:             https://skydoggps.com/support.html
+SUPPORT EMAIL:       skydog8426@gmail.com
+DEVELOPER NAME:      SkyDog AI
+
+DATA SAFETY ANSWERS
+- Location (Precise): COLLECTED. Purpose: App functionality. Shared: yes, with
+  other users the person invites to a Buddy Trip. Not linked to identity.
+  Optional (only when the user starts a Buddy Trip). Reason: Buddy Trips
+  transmits live position through Firebase.
+- Device or other IDs: COLLECTED by AdMob. Purpose: Advertising. Shared: yes.
+  Used for tracking: yes.
+- App activity (product interaction): COLLECTED by AdMob. Purpose: Advertising.
+- Everything else: not collected.
+- Data is encrypted in transit: yes. Users can request deletion: yes (support email).
+
+LAUNCH RESTRICTION (until Google UMP consent is built)
+Exclude EEA countries and the UK from the release country list.

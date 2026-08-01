@@ -70,3 +70,29 @@ views cost zero Regrid quota.
 - Stripe keys: roll them in the Stripe dashboard, update the Worker secret.
 - SIGNING_KEY: run generate-keys.mjs again, update the Worker secret AND
   `SkySigned.pubkey` in index.html; old codes die at their expiry month.
+
+## ⏳ Overdue auto-email (Run 2, 2026-08-01)
+
+The Worker now also runs the Back-by timer's phase-2 safety net:
+
+- `POST /overdue/register` — the app registers {plan, back-by, contact
+  emails, coarse fix} ONLY after the user flips the auto-email switch.
+- `POST /overdue/checkin` — a live phone pings near its deadline.
+- `POST /overdue/cancel` — "I'm back safe" deletes the record.
+- cron `*/10 * * * *` — overdue + silent (+10-min grace) → email the
+  contacts once. Records self-destruct via KV TTL (≤72 h).
+
+KV namespace: binding `OD` (created 2026-08-01). Email ships via
+**Resend** (MailChannels killed their free Workers API mid-2024):
+
+1. Create a free Resend account (resend.com — 100 emails/day free).
+2. Verify the domain `skydogai.com` (it's already on this Cloudflare
+   account — Resend shows the DNS records to add; add them in the
+   Cloudflare DNS dashboard for skydogai.com).
+3. `npx wrangler secret put RESEND_KEY` — paste the API key.
+4. Optional: `npx wrangler secret put MAIL_FROM` to override the default
+   `SkyDog GPS Safety <alerts@skydogai.com>`.
+
+Until RESEND_KEY is set the endpoints all work (register/checkin/cancel)
+but the cron quietly skips sending — the phone-side alarm + SMS flow is
+untouched either way.

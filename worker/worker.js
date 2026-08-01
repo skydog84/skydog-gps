@@ -38,7 +38,7 @@ const ALLOWED_ORIGINS = [
 /* per-IP sliding-hour rate limits. In-memory = per-isolate best effort,
    which is plenty to stop casual quota-burning; upgrade to Durable
    Objects / KV counters only if the Regrid dashboard ever shows abuse. */
-const LIMITS = { point: 30, tiles: 4000 };
+const LIMITS = { point: 30, tiles: 4000, overdue: 20 };
 const hits = new Map();     /* ip:kind -> [timestamps] */
 
 function rateOK(ip, kind){
@@ -131,6 +131,63 @@ const CLAIM_PAGE = (inner) => new Response(
   + 'font-size:13px;word-break:break-all;color:#4aa3ff}</style></head><body><div>' + inner + '</div></body></html>',
   { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
 
+
+/* ---- the safety cron: overdue + silent = email the contacts ----
+   Grace period keeps "walked to the truck 5 minutes late" from paging
+   anyone. Email ships via Resend (free tier, RESEND_KEY secret) from
+   MAIL_FROM — MailChannels' free Workers API died mid-2024, documented. */
+const OD_GRACE_MS = 10 * 60000;
+
+async function odSendEmail(env, rec){
+  if(!env.RESEND_KEY) return false;                 /* seam not armed yet — cron just logs */
+  const who = rec.name ? rec.name : 'A SkyDog GPS user you know';
+  const when = new Date(rec.backBy).toUTCString();
+  let text = who + ' set a safety timer in SkyDog GPS and has NOT checked in.\n\n'
+    + 'Trip plan: ' + (rec.plan || '(none given)') + '\n'
+    + 'Due back: ' + when + '\n'
+    + (rec.fix ? 'Last known position: https://maps.google.com/?q=' + rec.fix.lat + ',' + rec.fix.lng + '\n' : '')
+    + '\nTheir phone may be dead or out of signal. Try calling or texting them first. '
+    + 'If you cannot reach them and you believe they are in danger, contact local authorities '
+    + '(in the US, call the county sheriff for backcountry emergencies) and share this email.\n\n'
+    + 'This is an automated safety message the user set up themselves in SkyDog GPS (skydoggps.com). '
+    + 'SkyDog is not a rescue service.';
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.RESEND_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM || 'SkyDog GPS Safety <alerts@skydogai.com>',
+      to: rec.emails,
+      subject: '🚨 Safety alert: ' + who + ' is overdue (SkyDog GPS)',
+      text }),
+  });
+  return r.ok;
+}
+
+async function odSweep(env){
+  if(!env.OD) return { checked: 0, sent: 0 };
+  const now = Date.now();
+  let checked = 0, sent = 0, cursor;
+  do{
+    const page = await env.OD.list({ prefix: 'od:', cursor, limit: 1000 });
+    cursor = page.list_complete ? null : page.cursor;
+    for(const k of page.keys){
+      const raw = await env.OD.get(k.name);
+      if(!raw) continue;
+      const rec = JSON.parse(raw); checked++;
+      const overdue = now > rec.backBy + OD_GRACE_MS;
+      const silent = rec.lastPing < rec.backBy;      /* no sign of life since the deadline */
+      if(!rec.sent && overdue && silent){
+        const ok = await odSendEmail(env, rec);
+        if(ok){
+          rec.sent = true; sent++;
+          await env.OD.put(k.name, JSON.stringify(rec), { expirationTtl: 24 * 3600 });
+        }
+      }
+    }
+  } while(cursor);
+  return { checked, sent };
+}
+
 export default {
   async fetch(req, env){
     const url = new URL(req.url);
@@ -213,6 +270,66 @@ export default {
       return json({ received: true });
     }
 
+
+    /* ---------- ⏳ OVERDUE AUTO-EMAIL (Run 2 phase 2) ----------
+       Opt-in only: the app registers {plan, back-by, contact emails} when
+       the USER flips the auto-email switch. A live phone checks in; the
+       cron below emails the contacts if the phone goes silent past
+       back-by. Records self-destruct via KV TTL (<=72 h) — same honesty
+       window as everything else SkyDog stores. */
+    if(url.pathname === '/overdue/register' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!rateOK(ip, 'overdue')) return cors(req, json({ error: 'rate' }, 429));
+      if(!env.OD) return cors(req, json({ error: 'kv not bound' }, 503));
+      let b; try{ b = await req.json(); }catch(e){ return cors(req, json({ error: 'bad json' }, 400)); }
+      const now = Date.now();
+      const backBy = +b.backBy;
+      if(!isFinite(backBy) || backBy < now - 3600000 || backBy > now + 48 * 3600000)
+        return cors(req, json({ error: 'bad backBy' }, 400));
+      const emails = (Array.isArray(b.emails) ? b.emails : []).map(String)
+        .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)).slice(0, 3);
+      if(!emails.length) return cors(req, json({ error: 'no emails' }, 400));
+      const id = (typeof b.id === 'string' && /^[a-f0-9-]{8,40}$/.test(b.id)) ? b.id : crypto.randomUUID();
+      const fix = b.fix && isFinite(+b.fix.lat) && isFinite(+b.fix.lng)
+        ? { lat: +(+b.fix.lat).toFixed(4), lng: +(+b.fix.lng).toFixed(4) } : null;
+      const rec = { backBy, plan: String(b.plan || '').slice(0, 400), name: String(b.name || '').slice(0, 60),
+        emails, fix, created: now, lastPing: now, sent: false };
+      const ttl = Math.min(72 * 3600, Math.max(3600, Math.ceil((backBy - now) / 1000) + 24 * 3600));
+      await env.OD.put('od:' + id, JSON.stringify(rec), { expirationTtl: ttl });
+      return cors(req, json({ ok: true, id }));
+    }
+
+    if(url.pathname === '/overdue/checkin' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!env.OD) return cors(req, json({ error: 'kv not bound' }, 503));
+      let b; try{ b = await req.json(); }catch(e){ return cors(req, json({ error: 'bad json' }, 400)); }
+      const id = String(b.id || '');
+      const raw = /^[a-f0-9-]{8,40}$/.test(id) ? await env.OD.get('od:' + id) : null;
+      if(!raw) return cors(req, json({ error: 'unknown id' }, 404));
+      const rec = JSON.parse(raw);
+      rec.lastPing = Date.now();
+      if(isFinite(+b.backBy) && +b.backBy > Date.now() - 3600000 && +b.backBy < Date.now() + 48 * 3600000)
+        rec.backBy = +b.backBy;                       /* +1 hour button pushes the new time */
+      const ttl = Math.min(72 * 3600, Math.max(3600, Math.ceil((rec.backBy - Date.now()) / 1000) + 24 * 3600));
+      await env.OD.put('od:' + id, JSON.stringify(rec), { expirationTtl: ttl });
+      return cors(req, json({ ok: true }));
+    }
+
+    if(url.pathname === '/overdue/cancel' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!env.OD) return cors(req, json({ error: 'kv not bound' }, 503));
+      let b; try{ b = await req.json(); }catch(e){ return cors(req, json({ error: 'bad json' }, 400)); }
+      const id = String(b.id || '');
+      if(/^[a-f0-9-]{8,40}$/.test(id)) await env.OD.delete('od:' + id);
+      return cors(req, json({ ok: true }));
+    }
+
     return json({ error: 'not found' }, 404);
+  },
+
+  /* cron (wrangler.toml [triggers]) — the whole point of phase 2: a DEAD
+     phone can still get its owner looked for */
+  async scheduled(event, env, ctx){
+    ctx.waitUntil(odSweep(env));
   },
 };
