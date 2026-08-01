@@ -393,6 +393,27 @@
     font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 18px rgba(0,0,0,.45)}
   .gaugemark{font-size:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));cursor:pointer}
   .firemark{font-size:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));cursor:pointer}
+  /* 🦌 Hunt Intelligence + 🩸 Recovery (Run 3 «Hunt Intelligence») */
+  #spotrose{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
+  #spotrose button{flex:0 0 calc(12.5% - 6px);min-width:40px;padding:8px 0;border-radius:10px;font-size:12px;
+    font-weight:800;border:1px solid var(--line);background:#101a28;color:var(--dim);cursor:pointer;font-family:inherit}
+  #spotrose button.sel{background:#0e2a1a;border-color:#35e08a;color:#35e08a}
+  .huntwin{background:#0e2216;border:1px solid #2f7d43;border-radius:10px;padding:8px 10px;font-size:13px;
+    line-height:1.45;margin-top:6px}
+  .huntwin.bad{background:#221312;border-color:#7a3327}
+  .huntwin.thermal{background:#101c2e;border-color:#274468}
+  #recbar{position:absolute;left:8px;right:8px;bottom:calc(96px + var(--safe-bottom));z-index:1400;display:flex;gap:8px}
+  #recbar button{flex:1;font-size:24px;padding:12px 0 8px;border-radius:16px;border:1px solid #7a2733;
+    background:rgba(32,10,12,.92);color:#fff;cursor:pointer;font-family:inherit;line-height:1.15;
+    box-shadow:0 4px 18px rgba(0,0,0,.45)}
+  #recbar button small{display:block;font-size:11px;font-weight:800;color:#ff9a8a}
+  #recbar button:active{background:#5c1408}
+  .recmark{font-size:18px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));cursor:pointer}
+  .recmark.shot{font-size:24px}
+  #recwait{display:flex;flex-wrap:wrap;gap:6px}
+  #recwait button{flex:1 1 30%;padding:9px 4px;border-radius:10px;font-size:12.5px;font-weight:700;
+    border:1px solid var(--line);background:#101a28;color:var(--text);cursor:pointer;font-family:inherit}
+  #recwait button.sel{background:#2a1114;border-color:#ff6a4a;color:#ff9a8a}
   #gaugespark{width:100%;height:80px;background:#0d1622;border:1px solid var(--line);border-radius:10px;margin-top:8px}
   #gaugenow .nightrow span{color:var(--text)}
   #sunstrip{display:flex;gap:1px;height:44px;border-radius:8px;overflow:hidden;margin:10px 0 4px}
@@ -451,6 +472,7 @@
   <button class="wfab" id="dronefab" data-mode="drone" aria-label="Drone Mode" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
   <button class="wfab" id="orvfab" data-mode="orv" aria-label="ORV Trails" title="ORV Trails — snowmobile, ORV &amp; motorcycle trails">🏔</button>
   <button class="wfab" id="worldfab" data-mode="world" aria-label="World Data — live radar, weather alerts, river gauges and wildfire" title="World Data — live radar, weather alerts, river gauges &amp; wildfire">🌎</button>
+  <button class="wfab" id="huntfab" data-mode="hunt" aria-label="Hunt Intelligence — wind, thermals and recovery mode" title="Hunt Intelligence — wind &amp; thermals per stand, blood-trail recovery">🦌</button>
   <button class="wfab" id="buddyfab" data-mode="buddy" aria-label="Buddy Trip" title="Buddy Trip — see your crew live on the map">👥</button>
   <button class="wfab" id="spotsfab" data-mode="spots" aria-label="My Spots" title="My Spots — save your own places on the map">➕</button>
   <button class="wfab" id="packsfab" data-mode="store" aria-label="Feature Packs store" title="Feature Packs — optional add-ons">🎒</button>
@@ -656,6 +678,11 @@
   <input class="field" id="spotname" aria-label="Spot name" placeholder="Name it — e.g. Secret walleye hole" maxlength="40">
   <div id="spoticons"></div>
   <input class="field" id="spotnotes" aria-label="Spot notes" placeholder="Notes (optional)" maxlength="120">
+  <div id="spothunt">
+    <div class="lg-note" style="margin:8px 0 4px">🦌 <b>Huntable winds</b> (optional) — tap the directions this spot
+      hunts well on, and 🦌 Hunt Intelligence will watch the forecast for you. Stays on this phone.</div>
+    <div id="spotrose"></div>
+  </div>
   <div class="btnrow">
     <button class="btn red" id="spotdelete" style="display:none">🗑 Delete</button>
     <button class="btn gray" id="spotcancel">Cancel</button>
@@ -801,6 +828,60 @@
 </div>
 
 <button id="stormpill" style="display:none">🚨 <b id="stormpilltxt">Weather alert</b></button>
+
+<!-- 🦌 Hunt Intelligence — Run 3 -->
+<div class="sheet" id="huntsheet">
+  <div class="grabber"></div>
+  <h3>🦌 Hunt Intelligence</h3>
+  <div class="lg-note" style="margin:0 0 8px">Set the winds each stand hunts well on, and SkyDog watches the forecast
+    for you — plus modeled thermal windows nobody else ships. Wind &amp; thermals ride All Access; 🩸 Recovery Mode
+    below is free for every hunter.</div>
+  <div id="huntstands"></div>
+  <button class="worldrow" id="huntrecbtn" style="border-color:#a03030">🩸 <b>Recovery Mode</b> — track a blood trail<span class="wstate">free</span></button>
+  <div class="lg-note" style="margin:6px 0 0">Forecast wind is Open-Meteo; thermals are <b>modeled, not measured</b> —
+    slope, sun &amp; cloud cover, the same physics guides teach. Deer don't read forecasts either.</div>
+</div>
+
+<div class="sheet" id="huntspotsheet">
+  <div class="grabber"></div>
+  <h3 id="hunttitle">🦌 Hunt Wind</h3>
+  <div id="huntnow" class="lg-note" style="margin:0 0 6px"></div>
+  <div id="huntwindows"></div>
+  <div id="huntthermals" style="margin-top:10px"></div>
+  <div class="lg-note" style="margin-top:10px" id="hunthonesty">Wind forecast: Open-Meteo hourly. Thermals:
+    <b>modeled, not measured</b> — computed from slope, sun angle &amp; cloud cover. Trust your milkweed over any app.</div>
+</div>
+
+<div class="sheet" id="recoverysheet">
+  <div class="grabber"></div>
+  <h3>🩸 Recovery Mode</h3>
+  <div id="recsetup">
+    <div class="lg-note" style="margin:0 0 8px">Mark where the animal stood at the shot, then work the trail with the
+      big buttons. Every mark is time-stamped and the trail draws itself.</div>
+    <button class="worldrow" id="recstartgps">📡 <b>Shot site = my GPS position</b></button>
+    <button class="worldrow" id="recstarttap">👆 <b>Tap the map</b> where the animal stood</button>
+  </div>
+  <div id="recactive" style="display:none">
+    <div id="recstats" class="lg-note" style="margin:0 0 8px"></div>
+    <div style="font-weight:800;margin:6px 0 4px">⏱ Before you push — where did you hit?</div>
+    <div id="recwait"></div>
+    <div id="recwaitout" class="lg-note" style="margin:4px 0 8px"></div>
+    <button class="worldrow" id="recsearch">🌀 <b>Trail died?</b> Spiral search from last blood<span class="wstate" id="recsearchstate">off</span></button>
+    <button class="worldrow" id="recred">🔴 <b>Red-Light Mode</b> — 2am eyes<span class="wstate" id="recredstate">off</span></button>
+    <a class="worldrow" style="display:block;text-decoration:none;color:inherit" href="https://www.unitedbloodtrackers.org/" target="_blank" rel="noopener">🐕 <b>Call in a tracking dog</b> — United Blood Trackers directory</a>
+    <button class="worldrow" id="recdone" style="border-color:#2f7d43">✅ <b>Done</b> — end recovery &amp; clear the trail</button>
+  </div>
+  <div class="lg-note" style="margin-top:10px">Wait times follow standard bowhunter-education guidance — advisory only.
+    Know your state's rules on tracking dogs &amp; retrieval. SkyDog can't smell blood; you can.</div>
+</div>
+
+<!-- 🩸 on-map giant buttons while recovery is live (gloves, panic, cold) -->
+<div id="recbar" style="display:none" aria-live="polite">
+  <button data-rec="blood">🩸<small>Blood</small></button>
+  <button data-rec="good">🩸🩸<small>Good blood</small></button>
+  <button data-rec="hair">🐾<small>Hair</small></button>
+  <button data-rec="lost">❓<small>Lost trail</small></button>
+</div>
 
 <!-- 🌙 Night Ops -->
 <div id="nightveil" aria-hidden="true"></div>
@@ -1529,7 +1610,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.4';
+const SD_VERSION = '1.5';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2180,6 +2261,7 @@ const PACKS_CONFIG = {
     tagline:'Every pack — one cheap subscription',
     features:[
       ['🎁','<b>Everything unlocked</b> — fishing, drone &amp; every future pack, automatically'],
+      ['🦌','<b>Wind &amp; thermals per stand</b> — huntable-wind windows &amp; modeled thermal calls (they charge $30–100/yr for less)'],
       ['🆓','<b>The map stays free</b> — this only adds the specialist extras on top']
     ],
     price:'$2.99/mo', priceNote:'subscription',
@@ -2544,7 +2626,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet','worldsheet','gaugesheet'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet','worldsheet','gaugesheet','huntsheet','huntspotsheet','recoverysheet'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -3961,6 +4043,10 @@ function spotPopup(s){
     + (s.notes ? '<div style="font-size:11px;color:var(--dim);margin-bottom:8px">'+esc(s.notes)+'</div>' : '')
     + '<div class="popbtns">'
     + '<button class="popbtn go" onclick="window.__sdspots.editUI(\''+s.id+'\')">✏️ Edit</button>'
+    + (window.__sdhunt && HUNT_CFG.enabled && s.hunt && s.hunt.dirs && s.hunt.dirs.length
+      ? '<button class="popbtn go" onclick="window.__sdhunt.HUNT.openStand(\''+s.id+'\')">🦌 Wind</button>' : '')
+    + (window.__sdhunt && RECOVERY_CFG.enabled
+      ? '<button class="popbtn go" onclick="window.__sdhunt.RECOVERY.begin('+s.lat+','+s.lng+')">🩸 Recover</button>' : '')
     + '<a class="popbtn nav" href="'+gmapsDir(s.lat, s.lng)+'" target="_blank" rel="noopener">🚗 Drive</a>'
     + '</div>';
 }
@@ -4015,6 +4101,7 @@ function openSpotEdit(id){
   $('spotname').value = s ? (s.name || '') : '';
   $('spotnotes').value = s ? (s.notes || '') : '';
   buildSpotIcons(s ? (s.icon || '📍') : '📍');
+  buildSpotRose(s && s.hunt ? s.hunt.dirs : []);   /* 🦌 huntable winds (hoisted from Run 3) */
   $('spotdelete').style.display = s ? '' : 'none';
   openSheet('spoteditsheet');
 }
@@ -4049,11 +4136,13 @@ $('spotsave').addEventListener('click', () => {
   const icon = ($('spoticons').querySelector('button.sel') || {}).textContent || '📍';
   const name = $('spotname').value.trim() || 'My spot';
   const notes = $('spotnotes').value.trim();
+  const dirs = readSpotRose();                       /* 🦌 huntable winds */
+  const hunt = dirs.length ? { dirs } : null;
   if(spotEditingId){
-    MYSPOTS.update(spotEditingId, {name, icon, notes});
+    MYSPOTS.update(spotEditingId, {name, icon, notes, hunt});
     toast('💾 Spot updated');
   } else if(spotPending){
-    MYSPOTS.add({lat: spotPending.lat, lng: spotPending.lng, name, icon, notes});
+    MYSPOTS.add({lat: spotPending.lat, lng: spotPending.lng, name, icon, notes, hunt});
     toast('📍 Spot saved — it lives on this phone only');
   }
   spotEditingId = null; spotPending = null;
@@ -5979,6 +6068,527 @@ window.__sdworld = { WORLD, WORLD_CFG, worldRadarFrames, worldRadarFrameUrl, wor
   worldDrawSpark, worldDrawFire };
 
 /* =====================================================================
+   🦌🩸 HUNT INTELLIGENCE — RUN 3 «WIND & THERMALS + RECOVERY» (⑥⑦)
+   Per-stand huntable winds + Open-Meteo hourly forecast windows, a scent
+   cone on the map, thermals v1 (slope + sun + cloud — MODELED, first in
+   market), and Recovery Mode: one-thumb blood-trail workflow over the
+   existing map/track engines. Wind & thermals ride All Access (owner
+   decision 2026-08-01); Recovery Mode is FREE with ads (owner decision).
+   Stand data NEVER leaves the phone (owner decision — email alerts
+   deferred until native push exists). Kill switches: HUNT_CFG.enabled /
+   RECOVERY_CFG.enabled. No new external hosts: Open-Meteo (existing
+   connect-src) + Terrarium DEM tiles (existing img-src) only.
+   NO camera blood-detection AI, on purpose — patent risk documented in
+   the spec; the WORKFLOW is the gap.
+   ===================================================================== */
+const HUNT_CFG = {
+  enabled: true,                /* kill switch: 🦌 wheel stop + hunt sheets     */
+  forecastHours: 48,            /* window horizon shown per stand               */
+  cacheMins: 30,                /* forecast reuse per ~1 km cell                */
+  coneSpreadDeg: 20, coneMinM: 120, coneMaxM: 600,   /* scent cone geometry     */
+  demZ: 12,                     /* Terrarium DEM zoom for slope/aspect (~30 m/px)*/
+  slopeMinDeg: 3,               /* flatter than this = too flat for thermal calls*/
+  cloudMaxPct: 60,              /* cloudier than this = daytime thermals fizzle */
+  maxHuntMph: 18                /* stronger than this = swirling, no window     */
+};
+const RECOVERY_CFG = {
+  enabled: true,                /* kill switch: recovery entries + big-button bar*/
+  coneDeg: 30, coneM: 220,      /* auto travel-direction cone                   */
+  spiralGapM: 15, spiralTurns: 4/* ~15 m ring spacing = visual scan distance    */
+};
+
+/* ---- pure helpers (unit-tested via window.__sdhunt) ---- */
+const HUNT_DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+function huntSectorOf(deg){ return Math.round((((deg % 360) + 360) % 360) / 22.5) % 16; }
+function huntWindGood(deg, dirs){ return Array.isArray(dirs) && dirs.includes(huntSectorOf(deg)); }
+/* hourly [{t,mph,deg}] + chosen sectors → merged huntable windows */
+function huntWindows(hours, dirs){
+  const out = []; let cur = null;
+  for (const h of (hours || [])){
+    const good = huntWindGood(h.deg, dirs) && h.mph <= HUNT_CFG.maxHuntMph;
+    if (good){
+      if (cur){ cur.to = h.t; cur.sum += h.mph; cur.n++; }
+      else cur = { from: h.t, to: h.t, sum: h.mph, n: 1 };
+    } else if (cur){ out.push(cur); cur = null; }
+  }
+  if (cur) out.push(cur);
+  return out.map(w => ({ from: w.from, to: w.to, avgMph: Math.round(w.sum / w.n) }));
+}
+/* 3×3 elevation grid (meters; row 0 = north) + sample spacing → slope° +
+   downhill compass bearing (Horn's method — the standard GIS gradient) */
+function huntSlopeAspect(grid, spacingM){
+  if (!grid || grid.length !== 3 || !isFinite(spacingM) || spacingM <= 0) return null;
+  const [a, b, c] = grid[0], [d, e, f] = grid[1], [g, h, i] = grid[2];
+  const all = [a, b, c, d, e, f, g, h, i];
+  if (!all.every(v => isFinite(v) && v > -30000)) return null;   /* black/ocean pixels = no data */
+  const dzdx = ((c + 2*f + i) - (a + 2*d + g)) / (8 * spacingM);   /* + = rises to the east  */
+  const dzdy = ((g + 2*h + i) - (a + 2*b + c)) / (8 * spacingM);   /* + = rises to the south */
+  const slopeDeg = Math.atan(Math.hypot(dzdx, dzdy)) * 180 / Math.PI;
+  const downhill = ((Math.atan2(-dzdx, dzdy) * 180 / Math.PI) + 360) % 360;
+  return { slopeDeg, downhillDeg: downhill };
+}
+/* honest thermal model: real slope + sun on it → upslope (rising) flow
+   from ~1 h after sunrise to ~1 h before sunset unless heavy cloud;
+   otherwise the air drains downslope. Modeled, not measured — copy says so. */
+function huntThermal(t, sun, slopeDeg, cloudPct){
+  if (!isFinite(slopeDeg) || slopeDeg < HUNT_CFG.slopeMinDeg) return 'weak';
+  if (!sun || !sun.sunrise || !sun.sunset) return 'weak';
+  const H = 3600000;
+  if (t > +sun.sunrise + H && t < +sun.sunset - H)
+    return (isFinite(cloudPct) && cloudPct > HUNT_CFG.cloudMaxPct) ? 'weak' : 'rising';
+  return 'dropping';
+}
+/* great-circle destination + bearing + distance (pure, shared) */
+function huntDestPoint(lat, lng, bearingDeg, distM){
+  const R = 6371000, br = bearingDeg * Math.PI / 180, la1 = lat * Math.PI / 180, lo1 = lng * Math.PI / 180, dr = distM / R;
+  const la2 = Math.asin(Math.sin(la1) * Math.cos(dr) + Math.cos(la1) * Math.sin(dr) * Math.cos(br));
+  const lo2 = lo1 + Math.atan2(Math.sin(br) * Math.sin(dr) * Math.cos(la1), Math.cos(dr) - Math.sin(la1) * Math.sin(la2));
+  return { lat: la2 * 180 / Math.PI, lng: lo2 * 180 / Math.PI };
+}
+function recBearingDeg(aLat, aLng, bLat, bLng){
+  const la1 = aLat * Math.PI / 180, la2 = bLat * Math.PI / 180, dLo = (bLng - aLng) * Math.PI / 180;
+  const y = Math.sin(dLo) * Math.cos(la2);
+  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLo);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+function recDistM(aLat, aLng, bLat, bLng){
+  const R = 6371000, dLa = (bLat - aLat) * Math.PI / 180, dLo = (bLng - aLng) * Math.PI / 180;
+  const s = Math.sin(dLa / 2) ** 2 + Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+/* scent drifts DOWNWIND of the stand — cone points where deer smell you */
+function huntConePoints(lat, lng, windFromDeg, windMph){
+  const len = Math.max(HUNT_CFG.coneMinM, Math.min(HUNT_CFG.coneMaxM,
+    HUNT_CFG.coneMinM + (Math.max(0, windMph) / 20) * (HUNT_CFG.coneMaxM - HUNT_CFG.coneMinM)));
+  const to = (windFromDeg + 180) % 360;
+  const pts = [{ lat, lng }];
+  for (let a = -HUNT_CFG.coneSpreadDeg; a <= HUNT_CFG.coneSpreadDeg; a += 5)
+    pts.push(huntDestPoint(lat, lng, to + a, len));
+  return pts;
+}
+/* circular mean of the last few segment bearings = travel direction */
+function recCircularMeanDeg(degs){
+  if (!degs || !degs.length) return null;
+  let x = 0, y = 0;
+  degs.forEach(d => { x += Math.cos(d * Math.PI / 180); y += Math.sin(d * Math.PI / 180); });
+  if (Math.hypot(x, y) < 1e-9) return null;
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+function recTravelBearing(points){
+  if (!points || points.length < 2) return null;
+  const p = points.slice(-4), bs = [];
+  for (let i = 1; i < p.length; i++) bs.push(recBearingDeg(p[i-1].lat, p[i-1].lng, p[i].lat, p[i].lng));
+  return recCircularMeanDeg(bs);
+}
+/* archimedean spiral centered on last blood — ring gap ≈ what one person scans */
+function recSpiralPoints(lat, lng, gapM, turns){
+  const pts = [];
+  for (let th = 0; th <= turns * 2 * Math.PI + 1e-9; th += Math.PI / 16)
+    pts.push(huntDestPoint(lat, lng, th * 180 / Math.PI, gapM * th / (2 * Math.PI)));
+  return pts;
+}
+/* published bowhunter-education wait guidance — advisory, sourced in-sheet */
+function recWaitAdvice(place){
+  const T = {
+    heart:  ['💗 Heart / double lung', 'Wait 30–60 minutes. Usually fatal fast — but pushing early costs bucks every season.'],
+    liver:  ['🟤 Liver', 'Wait 4–6 hours. A liver-hit deer beds and dies close IF unpushed — push it and it can go a mile.'],
+    gut:    ['🟢 Gut / paunch', 'Wait 8–12+ hours (overnight if cool). The hardest trail — go slow and quiet; this is where a tracking dog earns its keep.'],
+    muscle: ['🦵 Shoulder / muscle', 'Wait 2–3 hours, then expect a long, thin trail. Muscle wounds clot — mark every drop, watch both sides.'],
+    unsure: ['❓ Not sure', 'Treat it like a liver hit: give it 4–6 hours unless weather or coyotes force your hand.']
+  };
+  return T[place] || T.unsure;
+}
+/* one-line boot outlook, pure for tests */
+function huntOutlookLine(name, w){
+  if (!w) return '';
+  const f = new Date(w.from), day = f.toLocaleDateString([], { weekday: 'short' });
+  const hr = t => new Date(t).toLocaleTimeString([], { hour: 'numeric' }).replace(' ', '').toLowerCase();
+  return '🦌 Good wind at ' + name + ' — ' + day + ' ' + hr(w.from) + '–' + hr(w.to + 3600000) + ' (' + w.avgMph + ' mph avg)';
+}
+
+/* ---- slope/aspect from the SAME free Terrarium DEM the 3D engine uses ---- */
+async function huntFetchSlope(lat, lng){
+  const z = HUNT_CFG.demZ, n = Math.pow(2, z), latR = lat * Math.PI / 180;
+  const xf = (lng + 180) / 360 * n;
+  const yf = (1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n;
+  const tx = Math.floor(xf), ty = Math.floor(yf);
+  const px = Math.min(254, Math.max(1, Math.round((xf - tx) * 256)));
+  const py = Math.min(254, Math.max(1, Math.round((yf - ty) * 256)));
+  const img = await new Promise((res, rej) => {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = () => res(im); im.onerror = () => rej(new Error('dem'));
+    im.src = t3dDemTileUrl(z, tx, ty);
+  });
+  const cv = document.createElement('canvas'); cv.width = cv.height = 3;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, px - 1, py - 1, 3, 3, 0, 0, 3, 3);
+  const d = cx.getImageData(0, 0, 3, 3).data;
+  const grid = [[], [], []];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++){
+    const o = (r * 3 + c) * 4;
+    grid[r][c] = t3dDecodeTerrarium(d[o], d[o + 1], d[o + 2]);
+  }
+  return huntSlopeAspect(grid, 40075016.7 * Math.cos(latR) / (256 * n));
+}
+
+/* ---- 🦌 the hunt module ---- */
+const HUNT = {
+  cone: null, standId: null, _fc: new Map(), _outlookDone: false,
+  openMain(){
+    if (!HUNT_CFG.enabled){ toast('Hunt Intelligence is switched off in this build'); return; }
+    this.buildStandList();
+    if (!RECOVERY_CFG.enabled) $('huntrecbtn').style.display = 'none';
+    openSheet('huntsheet');
+  },
+  buildStandList(){
+    const wrap = $('huntstands');
+    const stands = MYSPOTS.list.filter(s => s.hunt && s.hunt.dirs && s.hunt.dirs.length);
+    if (!stands.length){
+      wrap.innerHTML = '<div class="empty">No stands with huntable winds yet — edit any 📍 spot and tap the wind directions it hunts well on.</div>';
+      return;
+    }
+    wrap.innerHTML = stands.map(s => '<button class="worldrow huntstand" data-id="' + s.id + '">'
+      + esc(s.icon || '📍') + ' <b>' + esc(s.name || 'Stand') + '</b><span class="wstate">'
+      + s.hunt.dirs.map(i => HUNT_DIRS[i]).join(' ') + '</span></button>').join('');
+    wrap.querySelectorAll('.huntstand').forEach(b => b.addEventListener('click', () => this.openStand(b.dataset.id)));
+  },
+  async forecast(lat, lng){
+    const k = lat.toFixed(2) + ',' + lng.toFixed(2), hit = this._fc.get(k);
+    if (hit && Date.now() - hit.at < HUNT_CFG.cacheMins * 60000) return hit.hours;
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lng.toFixed(3)
+      + '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&forecast_days=3'
+      + '&wind_speed_unit=mph&timezone=UTC';
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error('forecast HTTP ' + r.status);
+    const H = (await r.json()).hourly || {};
+    const hours = (H.time || []).map((t, i) => ({
+      t: Date.parse(t.endsWith('Z') ? t : t + ':00Z') || Date.parse(t),
+      mph: +H.wind_speed_10m[i], deg: +H.wind_direction_10m[i],
+      cloud: +((H.cloud_cover || [])[i] || 0)
+    })).filter(h => isFinite(h.t) && h.t >= Date.now() - 3600000).slice(0, HUNT_CFG.forecastHours);
+    this._fc.set(k, { at: Date.now(), hours });
+    if (this._fc.size > 30) this._fc.delete(this._fc.keys().next().value);
+    return hours;
+  },
+  async openStand(id){
+    if (!HUNT_CFG.enabled) return;
+    if (!Entitlements.isUnlocked('allaccess')){ openPaywall('allaccess'); return; }
+    const s = MYSPOTS.get(id); if (!s) return;
+    this.standId = id;
+    $('hunttitle').textContent = '🦌 ' + (s.name || 'Stand');
+    $('huntnow').innerHTML = '⏳ reading the forecast…';
+    $('huntwindows').innerHTML = ''; $('huntthermals').innerHTML = '';
+    openSheet('huntspotsheet');
+    let hours = null;
+    try{
+      hours = await this.forecast(s.lat, s.lng);
+      const now = hours[0];
+      if (now){
+        const good = huntWindGood(now.deg, s.hunt && s.hunt.dirs);
+        $('huntnow').innerHTML = '💨 Right now: <b>' + Math.round(now.mph) + ' mph from ' + HUNT_DIRS[huntSectorOf(now.deg)]
+          + '</b> — ' + (good ? '<b style="color:#35e08a">huntable wind</b> ✅' : 'wrong wind for this stand')
+          + '. Blue cone on the map = where your scent is blowing.';
+        this.cone = { lat: s.lat, lng: s.lng, deg: now.deg, mph: now.mph };
+        huntSyncHook();
+      }
+      const wins = huntWindows(hours, s.hunt && s.hunt.dirs);
+      const fmt = t => new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric' });
+      $('huntwindows').innerHTML = '<div style="font-weight:800;margin:8px 0 2px">Huntable wind — next ' + HUNT_CFG.forecastHours + ' h</div>'
+        + (wins.length
+          ? wins.map(w => '<div class="huntwin">✅ <b>' + fmt(w.from) + ' → ' + fmt(w.to + 3600000) + '</b> · avg ' + w.avgMph + ' mph</div>').join('')
+          : '<div class="huntwin bad">❌ No huntable window in the next ' + HUNT_CFG.forecastHours + ' h — wind stays wrong or too strong for this stand.</div>');
+    }catch(e){
+      $('huntnow').innerHTML = '📡 No signal — the forecast needs a connection once. Your stand settings are safe on this phone.';
+    }
+    /* thermals — slope from cache or one DEM tile */
+    try{
+      if (s._sa === undefined) s._sa = await huntFetchSlope(s.lat, s.lng).catch(() => null);
+      this.renderThermals(s, s._sa, hours);
+    }catch(e){ this.renderThermals(s, null, hours); }
+  },
+  renderThermals(s, sa, hours){
+    const box = $('huntthermals');
+    let html = '<div style="font-weight:800;margin:0 0 2px">Thermals (modeled — first in any app)</div>';
+    if (!sa || !isFinite(sa.slopeDeg)){
+      box.innerHTML = html + '<div class="huntwin thermal">⛰ No terrain read here yet (needs signal once) — thermal calls need real slope data.</div>';
+      return;
+    }
+    if (sa.slopeDeg < HUNT_CFG.slopeMinDeg){
+      box.innerHTML = html + '<div class="huntwin thermal">⛰ This ground is basically flat (' + sa.slopeDeg.toFixed(1)
+        + '°) — thermals are too weak to matter here. Play the forecast wind.</div>';
+      return;
+    }
+    html += '<div class="huntwin thermal">⛰ Slope <b>' + Math.round(sa.slopeDeg) + '°</b>, draining <b>'
+      + HUNT_DIRS[huntSectorOf(sa.downhillDeg)] + '</b> — morning thermals pull scent <b>uphill</b>, evening thermals drain it <b>downhill</b>.</div>';
+    const list = (hours && hours.length) ? hours : [];
+    if (list.length){
+      const runs = []; let cur = null;
+      for (const h of list){
+        const day = new Date(h.t);
+        const sun = AST.sunTimes(day, s.lat, s.lng);
+        const st = huntThermal(h.t, sun, sa.slopeDeg, h.cloud);
+        if (cur && cur.st === st) cur.to = h.t;
+        else { if (cur) runs.push(cur); cur = { st, from: h.t, to: h.t }; }
+      }
+      if (cur) runs.push(cur);
+      const fmt = t => new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric' });
+      const label = { rising: '🔼 Rising — scent lifts uphill: hunt ABOVE the deer', dropping: '🔽 Dropping — scent drains downhill: hunt BELOW', weak: '☁️ Weak / cloudy — thermals fizzle, play the wind' };
+      html += runs.slice(0, 8).map(r => '<div class="huntwin thermal"><b>' + fmt(r.from) + ' → ' + fmt(r.to + 3600000) + '</b><br>' + label[r.st] + '</div>').join('');
+    }
+    box.innerHTML = html;
+  },
+  /* boot outlook — client-side ONLY, nothing uploads (owner decision) */
+  async outlook(){
+    if (this._outlookDone || !HUNT_CFG.enabled || !navigator.onLine) return;
+    if (!Entitlements.isUnlocked('allaccess')) return;
+    const stands = MYSPOTS.list.filter(s => s.hunt && s.hunt.dirs && s.hunt.dirs.length).slice(0, 3);
+    if (!stands.length) return;
+    this._outlookDone = true;
+    for (const s of stands){
+      try{
+        const wins = huntWindows(await this.forecast(s.lat, s.lng), s.hunt.dirs)
+          .filter(w => w.from > Date.now() + 2 * 3600000);
+        if (wins.length){ toast(huntOutlookLine(s.name || 'your stand', wins[0]) + ' — details under 🦌', 6000); return; }
+      }catch(e){ return; }
+    }
+  },
+  _drawCone(ctx, ws, ox, oy){
+    if (!this.cone) return;
+    const pts = huntConePoints(this.cone.lat, this.cone.lng, this.cone.deg, this.cone.mph);
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const [px, py] = map.project(p.lat, p.lng, ws);
+      i ? ctx.lineTo(px - ox, py - oy) : ctx.moveTo(px - ox, py - oy);
+    });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(74,163,255,.16)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(74,163,255,.8)'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+};
+
+/* ---- 🩸 recovery mode (FREE — the five-star-review machine) ---- */
+const RECOVERY = {
+  KEY: 'sd-recovery',
+  state: null, placing: false, _confirm: 0,
+  MARKS: { shot: '💥', blood: '🩸', good: '🩸', hair: '🐾', lost: '❓' },
+  load(){ try{ this.state = JSON.parse(sdStore.get(this.KEY) || 'null'); }catch(e){ this.state = null; } },
+  persist(){ sdStore.set(this.KEY, this.state ? JSON.stringify(this.state) : ''); },
+  active(){ return !!this.state; },
+  open(){
+    if (!RECOVERY_CFG.enabled){ toast('Recovery Mode is switched off in this build'); return; }
+    $('recsetup').style.display = this.state ? 'none' : '';
+    $('recactive').style.display = this.state ? '' : 'none';
+    if (this.state){ this.buildWait(); this.renderStats(); this.syncRows(); }
+    openSheet('recoverysheet');
+  },
+  begin(lat, lng){
+    this.state = { shot: { lat, lng, t: Date.now() }, pins: [], search: false, place: null };
+    this.persist(); this.render(); huntSyncHook();
+    $('recbar').style.display = '';
+    closeSheets();
+    map.flyTo(lat, lng, 17);
+    toast('🩸 Shot site marked. Breathe. The wait guidance lives under 🦌 → Recovery Mode.', 5200);
+  },
+  drop(kind, atLat, atLng){
+    if (!this.state) return;
+    const fin = (lat, lng) => {
+      this.state.pins.push({ k: kind, lat, lng, t: Date.now() });
+      this.persist(); this.render(); huntSyncHook();
+      if (kind === 'lost') toast('❓ Marked. Trail died? Open 🦌 → Recovery Mode and light up the 🌀 spiral search.', 4600);
+    };
+    if (isFinite(atLat) && isFinite(atLng)){ fin(atLat, atLng); return; }   /* explicit point (popups, tests) */
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(
+      p => fin(p.coords.latitude, p.coords.longitude),
+      () => fin(map.center.lat, map.center.lng),
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 5000 });
+    else fin(map.center.lat, map.center.lng);
+  },
+  trailPoints(){
+    return this.state ? [this.state.shot].concat(this.state.pins) : [];
+  },
+  trailLenM(){
+    const p = this.trailPoints(); let m = 0;
+    for (let i = 1; i < p.length; i++) m += recDistM(p[i-1].lat, p[i-1].lng, p[i].lat, p[i].lng);
+    return m;
+  },
+  render(){
+    map.clearGroup('recovery');
+    if (!this.state){ $('recbar').style.display = 'none'; return; }
+    const mk = (p, k, big) => map.addMarker({ lat: p.lat, lng: p.lng,
+      html: '<div class="recmark' + (big ? ' shot' : '') + '">' + this.MARKS[k] + '</div>', group: 'recovery',
+      popup: '<div class="poptitle">' + this.MARKS[k] + ' ' + (k === 'shot' ? 'Shot site' : k === 'good' ? 'Good blood' : k) + '</div>'
+        + '<div class="popsub">' + new Date(p.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</div>' });
+    mk(this.state.shot, 'shot', true);
+    this.state.pins.forEach(p => mk(p, p.k));
+    $('recbar').style.display = '';
+  },
+  renderStats(){
+    if (!this.state) return;
+    const mins = Math.round((Date.now() - this.state.shot.t) / 60000);
+    const ft = Math.round(this.trailLenM() * 3.28084);
+    $('recstats').innerHTML = '⏱ <b>' + (mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min')
+      + '</b> since the shot · <b>' + this.state.pins.length + '</b> marks · trail <b>' + ft.toLocaleString() + ' ft</b>';
+  },
+  buildWait(){
+    const wrap = $('recwait');
+    if (wrap.childElementCount) { this.syncWait(); return; }
+    [['heart','💗 Heart/lungs'],['liver','🟤 Liver'],['gut','🟢 Gut'],['muscle','🦵 Shoulder'],['unsure','❓ Not sure']].forEach(([k, lbl]) => {
+      const b = document.createElement('button');
+      b.dataset.place = k; b.textContent = lbl;
+      b.addEventListener('click', () => {
+        this.state.place = k; this.persist(); this.syncWait();
+      });
+      wrap.appendChild(b);
+    });
+    this.syncWait();
+  },
+  syncWait(){
+    const sel = this.state && this.state.place;
+    $('recwait').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.place === sel));
+    const out = $('recwaitout');
+    if (sel){ const [t, txt] = recWaitAdvice(sel); out.innerHTML = '<b>' + t + ':</b> ' + txt; }
+    else out.textContent = '';
+  },
+  syncRows(){
+    $('recsearchstate').textContent = this.state && this.state.search ? 'on' : 'off';
+    $('recsearch').classList.toggle('on', !!(this.state && this.state.search));
+    const red = document.documentElement.classList.contains('redmode');
+    $('recredstate').textContent = red ? 'on' : 'off';
+  },
+  toggleSearch(){
+    if (!this.state) return;
+    this.state.search = !this.state.search;
+    this.persist(); this.syncRows(); huntSyncHook();
+    if (this.state.search) toast('🌀 Spiral search on — walk the rings out from the last blood, watch both sides', 4600);
+  },
+  done(){
+    if (!this.state) return;
+    if (Date.now() - this._confirm > 4000){
+      this._confirm = Date.now();
+      toast('Tap ✅ Done again to end recovery and clear the trail', 3600);
+      return;
+    }
+    const pins = this.state.pins.length, ft = Math.round(this.trailLenM() * 3.28084);
+    this.state = null; this.persist(); this.render(); huntSyncHook();
+    closeSheets();
+    toast('✅ Recovery ended — ' + pins + ' marks, ' + ft.toLocaleString() + ' ft of trail. Hope it ended with your hands on him. 🦌', 5600);
+  },
+  searchCenter(){
+    if (!this.state) return null;
+    const blood = this.state.pins.filter(p => p.k === 'blood' || p.k === 'good');
+    return blood.length ? blood[blood.length - 1] : (this.state.pins[this.state.pins.length - 1] || this.state.shot);
+  },
+  _draw(ctx, ws, ox, oy){
+    if (!this.state) return;
+    const P = this.trailPoints();
+    const px = (p) => { const [x, y] = map.project(p.lat, p.lng, ws); return [x - ox, y - oy]; };
+    /* breadcrumb */
+    if (P.length > 1){
+      ctx.beginPath();
+      P.forEach((p, i) => { const [x, y] = px(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.strokeStyle = 'rgba(255,90,74,.85)'; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    /* auto travel-direction cone off the last mark */
+    const brg = recTravelBearing(P);
+    if (brg != null){
+      const tip = P[P.length - 1];
+      ctx.beginPath();
+      const [tx, ty] = px(tip); ctx.moveTo(tx, ty);
+      for (let a = -RECOVERY_CFG.coneDeg; a <= RECOVERY_CFG.coneDeg; a += 6){
+        const q = huntDestPoint(tip.lat, tip.lng, brg + a, RECOVERY_CFG.coneM);
+        const [qx, qy] = px(q); ctx.lineTo(qx, qy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,170,60,.14)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,170,60,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    /* spiral search pattern */
+    if (this.state.search){
+      const c = this.searchCenter();
+      const sp = recSpiralPoints(c.lat, c.lng, RECOVERY_CFG.spiralGapM, RECOVERY_CFG.spiralTurns);
+      ctx.beginPath();
+      sp.forEach((p, i) => { const [x, y] = px(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.strokeStyle = 'rgba(120,220,255,.75)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+};
+
+/* one shared Run-3 painter on the (single-owner) drawHook */
+function huntDrawScene(ctx, ws, ox, oy){ HUNT._drawCone(ctx, ws, ox, oy); RECOVERY._draw(ctx, ws, ox, oy); }
+function huntSyncHook(){
+  const need = !!HUNT.cone || RECOVERY.active();
+  if (need){
+    if (window.__sddrone && __sddrone.mode) __sddrone.setDroneMode(false);   /* one drawHook owner at a time */
+    if (window.__sdorv && __sdorv.mode) __sdorv.setOrvMode(false);
+    if (WORLD.fireOn) WORLD.toggleFire(false);
+    map.drawHook = huntDrawScene;
+  } else if (map.drawHook === huntDrawScene) map.drawHook = null;
+  map.draw();
+}
+
+/* ---- 🌹 compass rose in the spot editor (free for everyone) ---- */
+function buildSpotRose(sel){
+  const wrap = $('spotrose');
+  wrap.innerHTML = '';
+  HUNT_DIRS.forEach((d, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = d; b.dataset.dir = i;
+    if (Array.isArray(sel) && sel.includes(i)) b.classList.add('sel');
+    b.addEventListener('click', () => b.classList.toggle('sel'));
+    wrap.appendChild(b);
+  });
+}
+function readSpotRose(){
+  return [...$('spotrose').querySelectorAll('button.sel')].map(b => +b.dataset.dir);
+}
+
+/* ---- wiring ---- */
+$('huntfab').addEventListener('click', () => HUNT.openMain());
+$('huntrecbtn').addEventListener('click', () => RECOVERY.open());
+$('recstartgps').addEventListener('click', () => {
+  if (!navigator.geolocation){ RECOVERY.begin(map.center.lat, map.center.lng); return; }
+  toast('📡 Grabbing your GPS fix…');
+  navigator.geolocation.getCurrentPosition(
+    p => RECOVERY.begin(p.coords.latitude, p.coords.longitude),
+    () => { toast('📡 No GPS fix — mark the shot by tapping the map', 3600); RECOVERY.placing = true; closeSheets(); },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 });
+});
+$('recstarttap').addEventListener('click', () => {
+  RECOVERY.placing = true; closeSheets();
+  toast('👆 Tap the map where the animal stood at the shot', 3800);
+});
+$('recsearch').addEventListener('click', () => RECOVERY.toggleSearch());
+$('recred').addEventListener('click', () => { NIGHT.toggleRed(); RECOVERY.syncRows(); });
+$('recdone').addEventListener('click', () => RECOVERY.done());
+$('recbar').querySelectorAll('button').forEach(b => b.addEventListener('click', () => RECOVERY.drop(b.dataset.rec)));
+if (!HUNT_CFG.enabled) $('huntfab').style.display = 'none';
+
+/* recovery tap-to-place rides the same tap chain as spots/parcels */
+const _recPrevTap = map.onTap;
+map.onTap = ll => {
+  if (RECOVERY.placing){ RECOVERY.placing = false; RECOVERY.begin(ll.lat, ll.lng); return true; }
+  return _recPrevTap ? _recPrevTap(ll) : false;
+};
+/* the scent cone clears whenever sheets close (it belongs to the open stand) */
+const _huntPrevClose = closeSheets;
+closeSheets = function(){
+  _huntPrevClose();
+  if (HUNT.cone){ HUNT.cone = null; huntSyncHook(); }
+};
+
+/* a live recovery survives an app restart — 2am phone reboots happen */
+RECOVERY.load();
+if (RECOVERY.active()){ RECOVERY.render(); huntSyncHook(); }
+setTimeout(() => { HUNT.outlook().catch(() => {}); }, 4000);
+
+/* debug/test handle */
+window.__sdhunt = { HUNT, RECOVERY, HUNT_CFG, RECOVERY_CFG, HUNT_DIRS, huntSectorOf, huntWindGood, huntWindows,
+  huntSlopeAspect, huntThermal, huntDestPoint, huntConePoints, huntOutlookLine, huntFetchSlope, huntSyncHook,
+  huntDrawScene, recBearingDeg, recDistM, recCircularMeanDeg, recTravelBearing, recSpiralPoints, recWaitAdvice,
+  buildSpotRose, readSpotRose };
+
+/* =====================================================================
    🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility
    tool lives on a cyclic wheel anchored in the bottom-right thumb
    corner: flick to spin (momentum + firm snap detents), tap any button
@@ -6029,6 +6639,7 @@ function wheelBuildItems(){
     if(btn) items.push({ id: d.id, btn, pack: true });
   });
   items.push({ id:'world', btn: $('worldfab'), pack: false });
+  items.push({ id:'hunt', btn: $('huntfab'), pack: false });
   items.push({ id:'buddy', btn: $('buddyfab'), pack: false });
   items.push({ id:'spots', btn: $('spotsfab'), pack: false });
   items.push({ id:'store', btn: $('packsfab'), pack: false });

@@ -97,28 +97,28 @@ any sync, because Capacitor has been known to rewrite the manifest on plugin cha
 
 ---
 
-## 3. sw.js — bump the cache version (now v29 → v30 after Run 2)
+## 3. sw.js — bump the cache version (now v30 → v31 after Run 3)
 
 index.html changed, so the service worker version MUST move in the same commit.
 
-    line 3:  const CACHE = 'skydog-gps-v29';
-      →      const CACHE = 'skydog-gps-v30';
+    line 3:  const CACHE = 'skydog-gps-v30';
+      →      const CACHE = 'skydog-gps-v31';
 
 ---
 
 ## 4. tests/test.js — move the pin test with it
 
-Line 1235. The pin test and sw.js are a matched pair — bumping one without the
+Search test.js for "sw.js cache bumped" (the line number moves every run). The pin test and sw.js are a matched pair — bumping one without the
 other is an instant red suite.
 
 ```js
-T('sw.js cache bumped to v29 (World Data ships fresh)', sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28") && !sw.includes("skydog-gps-v27"));
+T('sw.js cache bumped to v30 (Hunt Intelligence ships fresh)', sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28"));
 ```
 
 becomes:
 
 ```js
-T('sw.js cache bumped to v30 (platform-aware AdMob ids ship fresh)', sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28"));
+T('sw.js cache bumped to v31 (platform-aware AdMob ids ship fresh)', sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29"));
 ```
 
 ---
@@ -133,7 +133,7 @@ SD_APP_DIR=$PWD node tests/test.js
 
 # 2. push the web change (skydoggps.com is GitHub Pages off main — this goes live)
 git -c user.name="SkyDog" -c user.email="skydog8426@gmail.com" \
-    commit -am "Android AdMob: platform-aware ad ids, sw v30"
+    commit -am "Android AdMob: platform-aware ad ids, sw v31"
 git push
 
 # 3. rebuild the Android bundle with the real ids
@@ -168,4 +168,4 @@ pattern that gets a fresh AdMob account flagged for invalid activity.
 Apply this patch **after** the 14-day closed test completes and **before** you
 submit for production access. That is the window.
 
-> ⚠️ Updated 2026-08-01 (Run 2): Run 1 took v28 and the Run 2 World Data build took v29, so this patch now bumps v29 → v30. Numbers above already reflect that.
+> ⚠️ Updated 2026-08-01 (Run 3): Run 2 took v29 and the Run 3 Hunt Intelligence build took v30, so this patch now bumps v30 → v31. Numbers above already reflect that.

@@ -1,0 +1,9 @@
+SkyDog GPS just got its biggest hunting update yet (v1.5, live now at skydoggps.com):
+
+- NEW: Wind & Thermals per stand. Tell SkyDog which winds your stand hunts well on, and it shows you exactly which hours the next 2 days are huntable — plus a scent cone on the map showing where you're blowing to. It even models morning/evening thermals off the actual slope of your ground. Nobody else has that, at any price.
+
+- NEW: Recovery Mode (free for everyone). Hit a deer? Mark the shot, then giant one-thumb buttons drop Blood / Hair / Lost Trail pins as you track. The trail draws itself, shows the direction he's heading, and if the blood dies it lays a spiral search grid on the map. Wait-time guidance built in. 2am blood trail? Red-light mode keeps your eyes.
+
+Same deal as always: the map is free, All Access is $2.99/mo for everything. The other guys charge $100/yr and still don't have thermals.
+
+Android tester? I still need you: skydoggps.com/testers

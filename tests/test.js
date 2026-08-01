@@ -58,6 +58,24 @@ const FIX_WEATHER = { current: { temperature_2m: 72.4, wind_speed_10m: 8.3, wind
   hourly: { surface_pressure: Array.from({ length: 24 }, (_, i) => 1018 - i * 1.2),
             wind_speed_10m: Array.from({ length: 24 }, () => 6) } };
 
+/* 🦌 Run 3 hourly wind fixture — 24-h pattern repeated 3 days, UTC times.
+   With dirs=[0] (N): hours 0–5 huntable (N 6 mph), 6–11 wrong wind (S),
+   12–17 right wind but too strong (N 25 mph), 18–23 wrong (E). */
+const FIX_HOURLY = () => {
+  const base = Date.now();
+  const time = [], ws = [], wd = [], wg = [], cc = [];
+  for (let i = 0; i < 72; i++){
+    const h = i % 24;
+    time.push(new Date(base + i * 3600000).toISOString().slice(0, 16));
+    if (h < 6){ wd.push(0); ws.push(6); }
+    else if (h < 12){ wd.push(180); ws.push(8); }
+    else if (h < 18){ wd.push(0); ws.push(25); }
+    else { wd.push(90); ws.push(5); }
+    wg.push(ws[i] + 4); cc.push(0);
+  }
+  return { hourly: { time, wind_speed_10m: ws, wind_direction_10m: wd, wind_gusts_10m: wg, cloud_cover: cc } };
+};
+
 /* 🌌 NOAA SWPC planetary-K forecast — one strong predicted row inside the next 36 h */
 const FIX_SWPC = () => {
   const fmt = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -229,6 +247,12 @@ async function main(){
         : layer === '0' ? FIX_DNR_CLOSURES
         : { features: [] };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
+    /* 🦌 Run 3 hunt forecast (cloud_cover marks it) MUST branch before the
+       generic /v1/forecast catch — solunar's hourly=surface_pressure and the
+       weather badge both ride that one (the ordering gotcha, again) */
+    if (url.includes('open-meteo') && url.includes('/v1/forecast') && url.includes('cloud_cover')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_HOURLY()) });
     }
     if (url.includes('open-meteo') && url.includes('/v1/forecast')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_WEATHER) });
@@ -795,13 +819,13 @@ async function main(){
   console.log('\n— 🎡 Mode Wheel (free core navigation) —');
   await page.evaluate('__sdwheel.jumpTo("fishing")');
   T('wheel holds every mode + tool in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
-    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'world', 'buddy', 'spots', 'store',
+    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'world', 'hunt', 'buddy', 'spots', 'store',
                         'sos', 'night', 'layer', 'locate', 'saved', 'key', 'what', 'clear']));
   T('every configured pack auto-appears on the wheel', await page.evaluate(
     'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
   T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
     && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
-  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(15)') === -1);
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(16)') === -1);
   T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
     __sdwheel.spinBy(1.4);
     const drifting = __sdwheel.pos;
@@ -877,7 +901,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.4');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.5');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -1715,6 +1739,238 @@ async function main(){
     && odToml.includes('crons = ["*/10 * * * *"]'));
 
 
+  console.log('\n— 🦌 Run 3: hunt math (pure, deterministic) —');
+  T('16-wind sectors: N/E/S/W + wraparound land where a compass says', await page.evaluate(`(function(){
+    const s = __sdhunt.huntSectorOf, D = __sdhunt.HUNT_DIRS;
+    return D[s(0)] === 'N' && D[s(90)] === 'E' && D[s(180)] === 'S' && D[s(270)] === 'W'
+      && D[s(359)] === 'N' && D[s(22.5)] === 'NNE' && D[s(-45)] === 'NW';
+  })()`));
+  T('huntWindGood honors the chosen sectors only', await page.evaluate(`(function(){
+    return __sdhunt.huntWindGood(3, [0]) && !__sdhunt.huntWindGood(180, [0])
+      && __sdhunt.huntWindGood(180, [8]) && !__sdhunt.huntWindGood(180, []) && !__sdhunt.huntWindGood(180, null);
+  })()`));
+  T('windows merge good hours and drop too-strong wind', await page.evaluate(`(function(){
+    const hrs = [];
+    for (let i = 0; i < 48; i++){
+      const h = i % 24;
+      hrs.push({ t: i * 3600000, deg: h < 6 ? 0 : h < 12 ? 180 : h < 18 ? 0 : 90, mph: h < 6 ? 6 : h < 12 ? 8 : h < 18 ? 25 : 5 });
+    }
+    const w = __sdhunt.huntWindows(hrs, [0]);
+    return w.length === 2 && w[0].from === 0 && w[0].to === 5 * 3600000 && w[0].avgMph === 6
+      && w[1].from === 24 * 3600000;
+  })()`));
+  T('slope/aspect: east-facing hill reads downhill E, ~9.5°', await page.evaluate(`(function(){
+    const g = [[100, 95, 90], [100, 95, 90], [100, 95, 90]];
+    const sa = __sdhunt.huntSlopeAspect(g, 30);
+    return sa && Math.abs(sa.slopeDeg - 9.46) < 0.2 && __sdhunt.HUNT_DIRS[__sdhunt.huntSectorOf(sa.downhillDeg)] === 'E';
+  })()`));
+  T('slope/aspect: north-facing reads N, flat reads 0°, nodata reads null', await page.evaluate(`(function(){
+    const north = __sdhunt.huntSlopeAspect([[90, 90, 90], [95, 95, 95], [100, 100, 100]], 30);
+    const flat = __sdhunt.huntSlopeAspect([[100, 100, 100], [100, 100, 100], [100, 100, 100]], 30);
+    const bad = __sdhunt.huntSlopeAspect([[100, 100, 100], [100, -32768, 100], [100, 100, 100]], 30);
+    return north && __sdhunt.HUNT_DIRS[__sdhunt.huntSectorOf(north.downhillDeg)] === 'N'
+      && flat && flat.slopeDeg === 0 && bad === null;
+  })()`));
+  T('thermal model: sunny midday rises, cloud kills it, night drains, flat never calls', await page.evaluate(`(function(){
+    const sun = { sunrise: new Date(8 * 3600000), sunset: new Date(20 * 3600000) };
+    const noon = 13 * 3600000, night = 23 * 3600000;
+    return __sdhunt.huntThermal(noon, sun, 10, 0) === 'rising'
+      && __sdhunt.huntThermal(noon, sun, 10, 90) === 'weak'
+      && __sdhunt.huntThermal(night, sun, 10, 0) === 'dropping'
+      && __sdhunt.huntThermal(noon, sun, 1, 0) === 'weak';
+  })()`));
+  T('scent cone points DOWNWIND and scales with speed (clamped)', await page.evaluate(`(function(){
+    const calm = __sdhunt.huntConePoints(45, -85, 0, 0);     /* wind FROM N → scent goes S */
+    const gale = __sdhunt.huntConePoints(45, -85, 0, 99);
+    const southOK = calm.slice(1).every((p) => p.lat < 45) && gale.slice(1).every((p) => p.lat < 45);
+    const dCalm = __sdhunt.recDistM(45, -85, calm[5].lat, calm[5].lng);
+    const dGale = __sdhunt.recDistM(45, -85, gale[5].lat, gale[5].lng);
+    return southOK && Math.abs(dCalm - __sdhunt.HUNT_CFG.coneMinM) < 8 && Math.abs(dGale - __sdhunt.HUNT_CFG.coneMaxM) < 8;
+  })()`));
+  T('bearing + distance ground truth (N=0°, E=90°, ~111 km per degree)', await page.evaluate(`(function(){
+    return Math.abs(__sdhunt.recBearingDeg(45, -85, 46, -85) - 0) < 0.5
+      && Math.abs(__sdhunt.recBearingDeg(45, -85, 45, -84) - 90) < 1
+      && Math.abs(__sdhunt.recDistM(45, -85, 46, -85) - 111195) < 300;
+  })()`));
+  T('circular mean survives the 360° wrap (350°+10° = 0°, not 180°)', await page.evaluate(`(function(){
+    const m = __sdhunt.recCircularMeanDeg([350, 10]);
+    return (m < 1 || m > 359) && __sdhunt.recCircularMeanDeg([]) === null
+      && __sdhunt.recCircularMeanDeg([0, 180]) === null;   /* opposite pulls cancel — no call */
+  })()`));
+  T('travel bearing needs two points, then averages the last legs', await page.evaluate(`(function(){
+    const one = __sdhunt.recTravelBearing([{ lat: 45, lng: -85 }]);
+    const b = __sdhunt.recTravelBearing([{ lat: 45, lng: -85 }, { lat: 45.001, lng: -85 }, { lat: 45.002, lng: -85 }]);
+    return one === null && Math.abs(b - 0) < 0.5;
+  })()`));
+  T('spiral search: radius grows to gap × turns at the outer ring', await page.evaluate(`(function(){
+    const cfg = __sdhunt.RECOVERY_CFG;
+    const sp = __sdhunt.recSpiralPoints(45, -85, cfg.spiralGapM, cfg.spiralTurns);
+    const last = sp[sp.length - 1];
+    const r = __sdhunt.recDistM(45, -85, last.lat, last.lng);
+    return sp.length > 100 && Math.abs(r - cfg.spiralGapM * cfg.spiralTurns) < 3;
+  })()`));
+  T('wait coach cites the published ranges (liver 4–6 h, gut overnight)', await page.evaluate(`(function(){
+    const w = __sdhunt.recWaitAdvice;
+    return w('liver')[1].includes('4–6 hours') && w('gut')[1].includes('8–12+')
+      && w('heart')[1].includes('30–60') && w('nonsense')[0].includes('Not sure');
+  })()`));
+  T('boot outlook line is plain hunter-speak', await page.evaluate(`(function(){
+    const line = __sdhunt.huntOutlookLine('North Ridge', { from: Date.now(), to: Date.now() + 3 * 3600000, avgMph: 7 });
+    return line.includes('Good wind at North Ridge') && line.includes('7 mph');
+  })()`));
+
+  console.log('\n— 🦌 Hunt Intelligence: wheel + stands + All Access gate —');
+  T('🦌 rides the wheel and opens the Hunt sheet', await page.evaluate(`(function(){
+    if (!__sdwheel.order.includes('hunt')) return false;
+    document.getElementById('huntfab').click();
+    return document.getElementById('huntsheet').classList.contains('open');
+  })()`));
+  T('no stands yet → honest empty state + free 🩸 recovery row', await page.evaluate(`(function(){
+    return document.getElementById('huntstands').textContent.includes('No stands')
+      && document.getElementById('huntrecbtn').textContent.includes('Recovery Mode');
+  })()`));
+  T('kill switch: HUNT_CFG.enabled=false refuses the sheet', await page.evaluate(`(function(){
+    __sdhunt.HUNT_CFG.enabled = false;
+    document.getElementById('backdrop').click();
+    __sdhunt.HUNT.openMain();
+    const refused = !document.getElementById('huntsheet').classList.contains('open');
+    __sdhunt.HUNT_CFG.enabled = true;
+    return refused;
+  })()`));
+  T('compass rose in the spot editor saves huntable winds (free, on-phone)', await page.evaluate(`(function(){
+    __sdspots.placeAt(44.7601, -85.6201);
+    document.getElementById('spotname').value = 'North Ridge';
+    const chips = document.querySelectorAll('#spotrose button');
+    if (chips.length !== 16) return false;
+    chips[0].click();          /* N */
+    chips[15].click();         /* NNW */
+    document.getElementById('spotsave').click();
+    const s = __sdspots.MYSPOTS.list.find((x) => x.name === 'North Ridge');
+    window.__standId = s && s.id;
+    return !!s && JSON.stringify(s.hunt.dirs) === '[0,15]';
+  })()`));
+  T('stand shows up on the Hunt sheet with its wind letters', await page.evaluate(`(function(){
+    __sdhunt.HUNT.openMain();
+    const row = document.querySelector('#huntstands .huntstand');
+    return !!row && row.textContent.includes('North Ridge') && row.textContent.includes('N NNW');
+  })()`));
+  T('locked: stand tap opens the All Access paywall, not the wind sheet', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdhunt.HUNT.openStand(window.__standId);
+    const paywalled = document.getElementById('paysheet').classList.contains('open')
+      && !document.getElementById('huntspotsheet').classList.contains('open');
+    document.getElementById('backdrop').click();
+    return paywalled;
+  })()`));
+  await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    __sdhunt.HUNT.openStand(window.__standId);
+  })()`);
+  await page.waitForFunction('document.getElementById("huntwindows").innerHTML.includes("✅")', null, { timeout: 5000 });
+  T('unlocked: two huntable windows from the mocked forecast, avg 6 mph', await page.evaluate(`(function(){
+    const wins = document.querySelectorAll('#huntwindows .huntwin:not(.bad)');
+    return wins.length === 2 && wins[0].textContent.includes('6 mph');
+  })()`));
+  T('now-line calls the current N wind huntable + scent cone owns the draw hook', await page.evaluate(`(function(){
+    return document.getElementById('huntnow').textContent.includes('huntable wind')
+      && !!__sdhunt.HUNT.cone && __sdmap.drawHook === __sdhunt.huntDrawScene;
+  })()`));
+  await page.waitForFunction('document.getElementById("huntthermals").textContent.length > 40', null, { timeout: 5000 });
+  T('thermals stay honest when the DEM has no real read', await page.evaluate(`(function(){
+    const t = document.getElementById('huntthermals').textContent;
+    return t.includes('No terrain read') || t.includes('basically flat') || t.includes('Slope');
+  })()`));
+  T('paywall copy sells wind & thermals inside All Access', await page.evaluate(`(function(){
+    return __sdpacks.PACKS_CONFIG.bundle.features.some((f) => f[1].includes('thermals'));
+  })()`));
+  T('closing the sheet clears the cone and frees the draw hook', await page.evaluate(`(function(){
+    document.getElementById('backdrop').click();
+    return __sdhunt.HUNT.cone === null && __sdmap.drawHook !== __sdhunt.huntDrawScene;
+  })()`));
+  T('stand privacy: Run 3 code never talks to the worker (nothing uploads)', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('HUNT INTELLIGENCE — RUN 3'), src.indexOf('🎡 MODE WHEEL'));
+    return seg.length > 1000 && !seg.includes('workerBase') && !seg.includes('/overdue/') && !seg.includes('firebase');
+  })());
+  T('honesty copy: "modeled, not measured" ships in the sheet', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    return src.includes('modeled, not measured') || src.includes('Modeled, not measured');
+  })());
+
+  console.log('\n— 🩸 Recovery Mode (free — the five-star-review machine) —');
+  T('free: recovery opens with All Access OFF', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdhunt.RECOVERY.open();
+    return document.getElementById('recoverysheet').classList.contains('open')
+      && !document.getElementById('paysheet').classList.contains('open');
+  })()`));
+  T('kill switch: RECOVERY_CFG.enabled=false refuses', await page.evaluate(`(function(){
+    document.getElementById('backdrop').click();
+    __sdhunt.RECOVERY_CFG.enabled = false;
+    __sdhunt.RECOVERY.open();
+    const refused = !document.getElementById('recoverysheet').classList.contains('open');
+    __sdhunt.RECOVERY_CFG.enabled = true;
+    return refused;
+  })()`));
+  T('shot site marked → big-button bar up, 💥 on the map, state persisted', await page.evaluate(`(function(){
+    __sdhunt.RECOVERY.begin(44.7605, -85.6205);
+    return document.getElementById('recbar').style.display !== 'none'
+      && __sdmap.countGroup('recovery') === 1
+      && JSON.parse(sdStore.get('sd-recovery')).shot.lat === 44.7605;
+  })()`));
+  T('blood marks drop, breadcrumb grows, travel cone computes itself', await page.evaluate(`(function(){
+    __sdhunt.RECOVERY.drop('blood', 44.7610, -85.6205);
+    __sdhunt.RECOVERY.drop('good', 44.7615, -85.6204);
+    __sdhunt.RECOVERY.drop('hair', 44.7620, -85.6204);
+    const brg = __sdhunt.recTravelBearing(__sdhunt.RECOVERY.trailPoints());
+    return __sdmap.countGroup('recovery') === 4 && __sdhunt.RECOVERY.state.pins.length === 3
+      && brg !== null && (brg < 15 || brg > 345);   /* trail runs basically north */
+  })()`));
+  T('recovery owns the (single-owner) draw hook — fire layer steps aside', await page.evaluate(`(function(){
+    __sdworld.WORLD.toggleFire(true);
+    const fireTook = __sdmap.drawHook !== __sdhunt.huntDrawScene;
+    __sdhunt.huntSyncHook();   /* recovery is active → hook comes home */
+    const cameBack = __sdmap.drawHook === __sdhunt.huntDrawScene && !__sdworld.WORLD.fireOn;
+    return fireTook && cameBack;
+  })()`));
+  T('🌀 spiral search toggles + centers on the last blood', await page.evaluate(`(function(){
+    __sdhunt.RECOVERY.toggleSearch();
+    const c = __sdhunt.RECOVERY.searchCenter();
+    const on = __sdhunt.RECOVERY.state.search && c.k === 'good';   /* last BLOOD, not the hair */
+    __sdhunt.RECOVERY.toggleSearch();
+    return on && !__sdhunt.RECOVERY.state.search;
+  })()`));
+  T('wait coach: pick a hit, get the published advice', await page.evaluate(`(function(){
+    __sdhunt.RECOVERY.open();
+    const btn = document.querySelector('#recwait button[data-place="liver"]');
+    btn.click();
+    return document.getElementById('recwaitout').textContent.includes('4–6 hours')
+      && __sdhunt.RECOVERY.state.place === 'liver';
+  })()`));
+  T('a live recovery survives a restart (sdStore, not memory)', await page.evaluate(`(function(){
+    const saved = __sdhunt.RECOVERY.state;
+    __sdhunt.RECOVERY.state = null;
+    __sdhunt.RECOVERY.load();
+    return __sdhunt.RECOVERY.state && __sdhunt.RECOVERY.state.pins.length === 3
+      && __sdhunt.RECOVERY.state.place === 'liver' && saved !== __sdhunt.RECOVERY.state;
+  })()`));
+  T('✅ Done asks twice, then clears trail + storage + bar', await page.evaluate(`(function(){
+    __sdhunt.RECOVERY.done();                        /* first tap = arm the confirm */
+    const stillOn = !!__sdhunt.RECOVERY.state;
+    __sdhunt.RECOVERY.done();                        /* second tap = really done */
+    return stillOn && __sdhunt.RECOVERY.state === null && __sdmap.countGroup('recovery') === 0
+      && !sdStore.get('sd-recovery') && document.getElementById('recbar').style.display === 'none';
+  })()`));
+  T('tracking-dog link-out points at United Blood Trackers', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    return src.includes('unitedbloodtrackers.org') && src.includes('rel="noopener"');
+  })());
+  T('no blood-detection AI anywhere (patent trap stays documented)', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('HUNT INTELLIGENCE — RUN 3'), src.indexOf('🎡 MODE WHEEL'));
+    return seg.includes('NO camera blood-detection AI') && !seg.includes('getUserMedia');
+  })());
+
   console.log('\n— 🛡 Fort SkyDog Phase A: CSP + tamper containment —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
   const cspMatch = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(appSrc);
@@ -1889,7 +2145,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v29 (World Data ships fresh)', sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28") && !sw.includes("skydog-gps-v27"));
+  T('sw.js cache bumped to v30 (Hunt Intelligence ships fresh)', sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29") && !sw.includes("skydog-gps-v28"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
