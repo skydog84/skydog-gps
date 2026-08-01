@@ -38,7 +38,8 @@ const ALLOWED_ORIGINS = [
 /* per-IP sliding-hour rate limits. In-memory = per-isolate best effort,
    which is plenty to stop casual quota-burning; upgrade to Durable
    Objects / KV counters only if the Regrid dashboard ever shows abuse. */
-const LIMITS = { point: 30, tiles: 4000, overdue: 20, camreg: 10, camlist: 240, camphoto: 2000 };
+const LIMITS = { point: 30, tiles: 4000, overdue: 20, camreg: 10, camlist: 240, camphoto: 2000,
+  pttsend: 240, pttclip: 3000, printsadd: 30, printsget: 600 };
 const hits = new Map();     /* ip:kind -> [timestamps] */
 
 function rateOK(ip, kind){
@@ -293,6 +294,69 @@ async function camsTag(env, bytes){
   }catch(e){ return 'untagged'; }
 }
 
+/* =====================================================================
+   📻👣 PARTY + FOOTPRINTS — RUN 5 (features ⑨⑩, the flywheel)
+
+   📻 PTT voice clips (async, NOT WebRTC — that's v2 by design):
+   - Hold-to-talk in the app records a short opus/AAC clip; it lands here
+     and rides the SAME R2 bucket as the trail cams (owner-approved reuse,
+     $0 new spend) under ptt/<room>/. Party phones learn about new clips
+     over the Firebase room they already listen to, then stream the audio
+     from /ptt/clip.
+   - AUTH MODEL (honest): knowing the party room code IS the credential —
+     exactly the buddy-trip "house key" model the app already documents.
+     Codes are 8 chars from a 31-char alphabet (~8.5e11), unguessable at
+     rate-limited speeds.
+   - EPHEMERAL (privacy promise): clips die at 24 h. Enforced twice —
+     pruned opportunistically on every send, and refused on read even if
+     a prune hasn't caught them yet. Matches the buddy 24 h retention.
+
+   👣 Footprints (users-as-sensors asset #1, opt-in only):
+   - The app uploads BARE grid-cell ids (~78 m cells) from tracks the
+     user chose to contribute. No user id, no timestamps, no order, no
+     accuracy, nothing near the user's saved private spots — the app
+     strips all of that BEFORE upload; this endpoint accepts only cells.
+   - Aggregation: counts per cell, sharded into region keys in KV
+     (32×32 cells per region → one KV read covers a whole viewport
+     chunk). Free-tier math: a track save = a handful of region
+     read-modify-writes; KV's 1k writes/day carries the launch crowd.
+     Upgrade path when it pinches: same shapes on D1 or a Durable
+     Object counter — documented so future-us doesn't redesign.
+   - COST DISCIPLINE: batch ≤ 400 cells, ≤ 8 regions per request,
+     counts capped, region JSON size capped — one abuser can't bloat a
+     region key past KV's value limits.
+   ===================================================================== */
+const PTT_CFG = {
+  maxClipBytes: 1024 * 1024,        /* 1 MB ≈ 15 s of opus with headroom  */
+  maxAgeMs: 24 * 3600000,           /* clips die at 24 h — buddy promise  */
+  roomRe: /^[A-Z2-9]{5,8}$/,        /* same alphabet/length as trip codes */
+  keyRe: /^[\w.-]{1,80}$/
+};
+
+const FP_CFG = {
+  maxBatch: 400,                    /* cells per upload                    */
+  maxRegions: 8,                    /* region shards touched per upload    */
+  maxGetRegions: 12,                /* region shards per viewport read     */
+  maxCount: 60000,                  /* per-cell counter cap                */
+  maxRegionBytes: 60000,            /* region JSON cap (KV value safety)   */
+  cellRe: /^-?\d{1,7}_-?\d{1,7}$/   /* "x_y" grid ids — nothing else       */
+};
+const fpRegionOf = (cell) => {
+  const [x, y] = cell.split('_').map(Number);
+  return Math.floor(x / 32) + '_' + Math.floor(y / 32);
+};
+
+async function pttPruneRoom(env, room){
+  /* opportunistic 24 h sweep of one room — cheap (rooms hold a handful
+     of clips) and keeps the ephemeral promise true without a cron */
+  const cutoff = Date.now() - PTT_CFG.maxAgeMs;
+  const page = await env.CAM_PHOTOS.list({ prefix: 'ptt/' + room + '/', include: ['customMetadata'] });
+  for(const o of page.objects){
+    const ts = +((o.customMetadata || {}).ts || 0) || +o.uploaded;
+    if(ts < cutoff) await env.CAM_PHOTOS.delete(o.key);
+  }
+}
+
 export default {
   async fetch(req, env){
     const url = new URL(req.url);
@@ -485,6 +549,94 @@ export default {
       const k = String(b.k || '');
       if(/^[\w.-]{1,80}$/.test(k) && env.CAM_PHOTOS) await env.CAM_PHOTOS.delete('cams/' + b.id + '/' + k);
       return cors(req, json({ ok: true }));
+    }
+
+    /* ---------- 📻 PTT voice clips (Run 5) ---------- */
+    if(url.pathname === '/ptt/send' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!rateOK(ip, 'pttsend')) return cors(req, json({ error: 'rate' }, 429));
+      if(!env.CAM_PHOTOS) return cors(req, json({ error: 'r2 not bound' }, 503));
+      const room = String(url.searchParams.get('room') || '').toUpperCase();
+      if(!PTT_CFG.roomRe.test(room)) return cors(req, json({ error: 'bad room' }, 400));
+      const len = +(req.headers.get('Content-Length') || 0);
+      if(len > PTT_CFG.maxClipBytes) return cors(req, json({ error: 'too big' }, 413));
+      const bytes = new Uint8Array(await req.arrayBuffer());
+      if(bytes.length < 100 || bytes.length > PTT_CFG.maxClipBytes)
+        return cors(req, json({ error: 'bad clip' }, 400));
+      const type = String(req.headers.get('Content-Type') || 'audio/webm').slice(0, 60);
+      if(!type.startsWith('audio/')) return cors(req, json({ error: 'not audio' }, 400));
+      const now = Date.now();
+      const k = now + '-' + hexId(4) + '.bin';
+      await env.CAM_PHOTOS.put('ptt/' + room + '/' + k, bytes,
+        { customMetadata: { ts: String(now), type } });
+      /* prune old clips while we're here — keeps the 24 h promise true */
+      await pttPruneRoom(env, room);
+      return cors(req, json({ ok: true, k }));
+    }
+
+    if(url.pathname === '/ptt/clip'){
+      if(!rateOK(ip, 'pttclip')) return new Response('rate limited', { status: 429 });
+      const room = String(url.searchParams.get('room') || '').toUpperCase();
+      const k = url.searchParams.get('k') || '';
+      if(!PTT_CFG.roomRe.test(room) || !PTT_CFG.keyRe.test(k) || !env.CAM_PHOTOS)
+        return new Response('bad request', { status: 400 });
+      const obj = await env.CAM_PHOTOS.get('ptt/' + room + '/' + k);
+      if(!obj) return new Response('not found', { status: 404 });
+      const ts = +((obj.customMetadata || {}).ts || 0);
+      if(ts && Date.now() - ts > PTT_CFG.maxAgeMs){   /* expired but unpruned = still refused (24 h honesty) */
+        await env.CAM_PHOTOS.delete('ptt/' + room + '/' + k);
+        return new Response('expired', { status: 410 });
+      }
+      return cors(req, new Response(obj.body, { headers: {
+        'Content-Type': (obj.customMetadata || {}).type || 'audio/webm',
+        'Cache-Control': 'private, max-age=600' } }));
+    }
+
+    /* ---------- 👣 Footprints (Run 5) ---------- */
+    if(url.pathname === '/prints/add' && req.method === 'POST'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!rateOK(ip, 'printsadd')) return cors(req, json({ error: 'rate' }, 429));
+      if(!env.PRINTS) return cors(req, json({ error: 'kv not bound' }, 503));
+      let b; try{ b = await req.json(); }catch(e){ return cors(req, json({ error: 'bad json' }, 400)); }
+      /* cells only — a request carrying anything identity-shaped is refused
+         outright (the app never sends it; this keeps third parties honest) */
+      if(Object.keys(b).some((key) => key !== 'cells')) return cors(req, json({ error: 'cells only' }, 400));
+      const cells = (Array.isArray(b.cells) ? b.cells : []).map(String)
+        .filter((c) => FP_CFG.cellRe.test(c)).slice(0, FP_CFG.maxBatch);
+      if(!cells.length) return cors(req, json({ error: 'no cells' }, 400));
+      const byRegion = {};
+      for(const c of cells) (byRegion[fpRegionOf(c)] = byRegion[fpRegionOf(c)] || []).push(c);
+      const regions = Object.keys(byRegion).slice(0, FP_CFG.maxRegions);
+      let added = 0;
+      for(const r of regions){
+        let rec = {};
+        try{ rec = JSON.parse(await env.PRINTS.get('fp:' + r) || '{}') || {}; }catch(e){ rec = {}; }
+        for(const c of byRegion[r]){
+          rec[c] = Math.min(FP_CFG.maxCount, (rec[c] || 0) + 1); added++;
+        }
+        const out = JSON.stringify(rec);
+        if(out.length <= FP_CFG.maxRegionBytes) await env.PRINTS.put('fp:' + r, out);
+      }
+      return cors(req, json({ ok: true, added }));
+    }
+
+    if(url.pathname === '/prints/get'){
+      if(!originOK(req)) return cors(req, json({ error: 'origin' }, 403));
+      if(!rateOK(ip, 'printsget')) return cors(req, json({ error: 'rate' }, 429));
+      if(!env.PRINTS) return cors(req, json({ error: 'kv not bound' }, 503));
+      const regions = String(url.searchParams.get('regions') || '').split(',')
+        .filter((r) => FP_CFG.cellRe.test(r)).slice(0, FP_CFG.maxGetRegions);
+      if(!regions.length) return cors(req, json({ error: 'no regions' }, 400));
+      const cellsOut = {};
+      for(const r of regions){
+        try{
+          const rec = JSON.parse(await env.PRINTS.get('fp:' + r) || '{}') || {};
+          for(const c in rec) cellsOut[c] = rec[c];
+        }catch(e){ /* corrupt region = empty region, never a throw */ }
+      }
+      const res = json({ ok: true, cells: cellsOut });
+      res.headers.set('Cache-Control', 'public, max-age=300');   /* viewport reads coalesce */
+      return cors(req, res);
     }
 
     return json({ error: 'not found' }, 404);

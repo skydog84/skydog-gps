@@ -96,6 +96,9 @@ const FIX_CAMHIST = () => {
   return { hourly: { time, wind_speed_10m: ws, wind_direction_10m: wd, surface_pressure: sp } };
 };
 
+/* 📻👣 Run 5 fixtures — PTT worker + footprints regions */
+const FIX_PRINTS = { ok: true, cells: { '100_200': 3, '101_200': 2, '104_204': 5 } };
+
 /* 🌌 NOAA SWPC planetary-K forecast — one strong predicted row inside the next 36 h */
 const FIX_SWPC = () => {
   const fmt = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -235,6 +238,8 @@ async function main(){
   let regridMode = 'parcel';   // 'parcel' | 'empty'
   const odCalls = [];          // 🌎 worker calls the app made
   const camCalls = [];         // 📸 cams worker calls the app made
+  const pttCalls = [];         // 📻 Run 5 voice-clip worker calls
+  const printsCalls = [];      // 👣 Run 5 footprints worker calls {u, body}
   let regridHits = 0;
   const mockRoute = (route) => {
     const url = route.request().url();
@@ -314,6 +319,27 @@ async function main(){
       const body = url.includes('returnCountOnly=true') ? { count: 1 } : FIX_WFIGS;
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     }
+    /* 📻 Run 5: PTT voice-clip worker — BEFORE the overdue catch-all so
+       party traffic never pollutes odCalls (same rule as /cams/) */
+    if (url.includes('skydog-api.skydog8426.workers.dev/ptt/')) {
+      pttCalls.push(url.slice(url.indexOf('/ptt')));
+      if (url.includes('/ptt/send')) {
+        return route.fulfill({ status: 200, contentType: 'application/json',
+          body: JSON.stringify({ ok: true, k: '1785621111111-abcd.bin' }) });
+      }
+      /* /ptt/clip — bytes that are NOT decodable audio: exercises the honest
+         "clip waiting" path instead of pretending playback happened */
+      return route.fulfill({ status: 200, contentType: 'audio/webm', body: PNG1 });
+    }
+    /* 👣 Run 5: footprints worker — records bodies so the cells-only privacy
+       contract is asserted on what the app ACTUALLY sent */
+    if (url.includes('skydog-api.skydog8426.workers.dev/prints/')) {
+      printsCalls.push({ u: url.slice(url.indexOf('/prints')), body: route.request().postData() || '' });
+      if (url.includes('/prints/add')) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"added":3}' });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_PRINTS) });
+    }
     /* 📸 Run 4: the cams worker API — BEFORE the overdue branch so cams
        traffic never pollutes odCalls (its "only /overdue/" pin stays honest) */
     if (url.includes('skydog-api.skydog8426.workers.dev/cams/')) {
@@ -361,7 +387,7 @@ async function main(){
   T('12 discovery chips', await page.$$eval('#chips .chip', (e) => e.length) === 12);
   T('12 activity modes', await page.$$eval('#modes .modebtn', (e) => e.length) === 12);
   T('5 base maps in layer sheet', await page.evaluate('Object.keys(__sdmap.constructor ? window.BASES || {} : {}).length || (function(){ return document.querySelectorAll("#basegrid .modebtn").length; })()') !== -1 && (await page.evaluate('(function(){ document.getElementById("layerfab").click(); return document.querySelectorAll("#basegrid .modebtn").length; })()')) === 5, 'basegrid count');
-  T('7 overlays incl fishing pair, property lines + live radar in layer sheet', await page.$$eval('#ovchips .chip', (e) => e.length) === 7);
+  T('9 overlays incl fishing pair, property lines, live radar + footprints/solitude', await page.$$eval('#ovchips .chip', (e) => e.length) === 9);
   await page.evaluate('(function(){ document.getElementById("layerdone").click(); })()');
   const z0 = await page.evaluate('__sdmap.zoom');
   await page.click('#zoomin');
@@ -943,7 +969,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.6');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.7');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -2120,7 +2146,7 @@ async function main(){
   })()`));
   T('camera locations stay on the phone: register body carries no coordinates', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
-    const seg = src.slice(src.indexOf('TRAIL CAM HUB — RUN 4'), src.indexOf('🎡 MODE WHEEL'));
+    const seg = src.slice(src.indexOf('TRAIL CAM HUB — RUN 4'), src.indexOf('PARTY + FOOTPRINTS — RUN 5'));
     return seg.length > 1000 && seg.includes("body: '{}'") && !seg.includes('firebase')
       && seg.includes("sdStore.set('sd-cams'");
   })());
@@ -2150,6 +2176,262 @@ async function main(){
     T('wrangler.toml binds CAMS KV + skydog-cams R2 + AI', wt.includes('binding = "CAMS"')
       && wt.includes('bucket_name = "skydog-cams"') && wt.includes('[ai]'));
     T('no secrets anywhere near the cams code', !/re_[A-Za-z0-9]{8}/.test(w) && !/re_[A-Za-z0-9]{8}/.test(wt));
+  }
+
+  console.log('\n— 📻👣 Run 5 math: party + footprints (pure, deterministic) —');
+  T('partyHash: 8-char anonymous hash, deterministic, code-sensitive', await page.evaluate(`(function(){
+    const a = __sdparty.partyHash('ABCDEFGH'), b = __sdparty.partyHash('ABCDEFGH'), c = __sdparty.partyHash('ZYXWVUTS');
+    return /^[0-9a-f]{8}$/.test(a) && a === b && a !== c;
+  })()`));
+  T('rigsCellOf snaps to ~0.7 mi corridor cells', await page.evaluate(`(function(){
+    return __sdparty.rigsCellOf(44.7601, -85.6203) === __sdparty.rigsCellOf(44.7622, -85.6241)
+      && __sdparty.rigsCellOf(44.7601, -85.6203) !== __sdparty.rigsCellOf(44.79, -85.70);
+  })()`));
+  T('clip queue plays oldest-first', await page.evaluate(`(function(){
+    const now = Date.now();
+    const q = __sdparty.partyQueueFresh({ b: { k: 'b', ts: now - 1000, member: 'x', name: 'X' },
+      a: { k: 'a', ts: now - 5000, member: 'x', name: 'X' } }, 0, 'me', {});
+    return q.length === 2 && q[0].k === 'a' && q[1].k === 'b';
+  })()`));
+  T('clip queue filters: watermark, own voice, muted members, stale >24h', await page.evaluate(`(function(){
+    const now = Date.now();
+    const clips = { old: { k: 'o', ts: now - 90000, member: 'x' }, mine: { k: 'm', ts: now, member: 'me' },
+      hush: { k: 'h', ts: now, member: 'loud' }, dead: { k: 'd', ts: now - 25 * 3600000, member: 'x' },
+      good: { k: 'g', ts: now, member: 'x' } };
+    const q = __sdparty.partyQueueFresh(clips, now - 60000, 'me', { loud: 1 });
+    return q.length === 1 && q[0].k === 'g';
+  })()`));
+  T('telemetry: m/s→mph, battery rounded, heading kept — rule-shaped only', await page.evaluate(`(function(){
+    const t = __sdparty.partyTelemetryOf({ speed: 10, heading: 271.6 }, 86.6);
+    return t.spd === 22.4 && t.batt === 87 && t.hdg === 272;
+  })()`));
+  T('telemetry: junk in, NOTHING out (no rule-breaking upload shapes)', await page.evaluate(`(function(){
+    const t = __sdparty.partyTelemetryOf({ speed: null, heading: NaN }, NaN);
+    return Object.keys(t).length === 0;
+  })()`));
+  T('footprints cell↔center roundtrip lands inside the same cell', await page.evaluate(`(function(){
+    const c = __sdprints.printsCellOf(44.7602, -85.6203);
+    const ctr = __sdprints.printsCellCenter(c);
+    return __sdprints.printsCellOf(ctr.lat, ctr.lng) === c;
+  })()`));
+  T('a jittery track dedupes to its few real cells', await page.evaluate(`(function(){
+    const pts = []; for (let i = 0; i < 60; i++) pts.push({ lat: 0.14 + i * 0.00001, lng: 0.07 });
+    return __sdprints.printsCellsFrom(pts, []).length <= 2;
+  })()`));
+  T('privacy: cells near a saved spot NEVER contribute', await page.evaluate(`(function(){
+    const pts = [{ lat: 0.2, lng: 0.2 }, { lat: 0.5, lng: 0.5 }];
+    const out = __sdprints.printsCellsFrom(pts, [{ lat: 0.2001, lng: 0.2001 }]);
+    return out.length === 1 && out[0] === __sdprints.printsCellOf(0.5, 0.5);
+  })()`));
+  T('decoupling: upload order is shuffled but the cell SET is exact', await page.evaluate(`(function(){
+    const pts = []; for (let i = 0; i < 30; i++) pts.push({ lat: 0.1 + i * 0.01, lng: 0.3 });
+    const a = __sdprints.printsCellsFrom(pts, []), b = __sdprints.printsCellsFrom(pts, []);
+    return a.length === 30 && new Set(a).size === 30
+      && JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+  })()`));
+  T('viewport regions: center-out, capped at 12', await page.evaluate(`(function(){
+    const r = __sdprints.printsRegionsFor({ w: 0, e: 0.5, s: 0, n: 0.5 });
+    const rd = __sdprints.PRINTS_CFG.cellDeg * 32;
+    const cx = Math.floor(0.25 / rd), cy = Math.floor(0.25 / rd);
+    return r.length === 12 && r[0] === cx + '_' + cy;
+  })()`));
+  T('free tier renders coarse: 4×4 aggregation merges neighbors + sums', await page.evaluate(`(function(){
+    const agg = __sdprints.printsCoarse({ '100_200': 3, '101_200': 2, '140_240': 5 });
+    const keys = Object.keys(agg);
+    return keys.length === 2 && agg['102_202'] === 5 && agg['142_242'] === 5;
+  })()`));
+
+  console.log('\n— 📻 Party Mode: free-of-2 gate + PTT + rally + kick —');
+  await page.evaluate(`(async function(){
+    localStorage.setItem('sd-buddy-consent', '1');
+    localStorage.setItem('sd-allaccess-iap', '0');
+    document.getElementById('buddyname').value = 'Sky';
+    await __BUDDY.BUDDY.start('PARTYAA2', true);
+  })()`);
+  await page.waitForFunction('window.__sdparty && __sdparty.PARTY.code === "PARTYAA2"', null, { timeout: 5000 });
+  T('party rides the buddy room: listener on party/<code>, host=false on join', await page.evaluate(`(function(){
+    return !!(window.__fbCBs && __fbCBs['party/PARTYAA2']) && __sdparty.PARTY.isHost === false;
+  })()`));
+  T('party of 2 rides FREE: locked phone, small crew → the talk button is live', await page.evaluate(`(function(){
+    __sdparty.PARTY.render();
+    return !!document.getElementById('pttbtn') && !document.getElementById('partyunlock');
+  })()`));
+  T('crew of 3 + locked → All Access pitch, tap opens the paywall', await page.evaluate(`(function(){
+    const me = __BUDDY.BUDDY.memberId, now = Date.now();
+    __fbCBs['trips/PARTYAA2/members']({ val: () => ({
+      [me]: { name: 'Sky', lat: 44.76, lng: -85.62, ts: now, kind: 'person', color: '#4aa3ff' },
+      m2: { name: 'Dave', lat: 44.761, lng: -85.621, ts: now, kind: 'person', color: '#ff7a59', batt: 87, spd: 3.2 },
+      m3: { name: 'Hank', lat: 44.762, lng: -85.622, ts: now, kind: 'person', color: '#ffd166' } }) });
+    __sdparty.PARTY.render();
+    const gated = !document.getElementById('pttbtn') && !!document.getElementById('partyunlock');
+    document.getElementById('partyunlock').click();
+    const paywalled = document.getElementById('paysheet').classList.contains('open');
+    document.getElementById('backdrop').click();
+    return gated && paywalled;
+  })()`));
+  T('unlocked → full tools: PTT, rally, crew battery/speed, 24 h honesty copy', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    __sdparty.PARTY.render();
+    const w = document.getElementById('partyblock');
+    return !!document.getElementById('pttbtn') && !!document.getElementById('rallybtn')
+      && w.textContent.includes('87%') && w.textContent.includes('3 mph')
+      && w.textContent.includes('24 hours');
+  })()`));
+  T('hold-to-talk clip → uploaded to the worker, pointer rides the party node', await page.evaluate(`(async function(){
+    const blob = new Blob([new Uint8Array(1200)], { type: 'audio/webm' });
+    await __sdparty.PARTY.sendClip(blob, 1.5);
+    return (window.__fbWrites || []).some((w) => w.path.startsWith('party/PARTYAA2/clips/')
+      && w.v && w.v.k === '1785621111111-abcd.bin' && w.v.member === __BUDDY.BUDDY.memberId && w.v.name === 'Sky');
+  })()`) && pttCalls.some((u) => u.startsWith('/ptt/send?room=PARTYAA2')));
+  await page.evaluate(`(function(){
+    __fbCBs['party/PARTYAA2']({ val: () => ({ clips: { c1: { k: '1785621111111-abcd.bin',
+      ts: Date.now(), member: 'other1', name: 'Dave', dur: 2 } } }) });
+  })()`);
+  await page.waitForTimeout(700);
+  T('incoming clip fetched from /ptt/clip — undecodable audio stays honest, no crash', pttCalls.some((u) => u.startsWith('/ptt/clip?room=PARTYAA2'))
+    && await page.evaluate('__sdparty.PARTY.playing === false'));
+  T('rally point: validated write + 🚩 lands on every crew map', await page.evaluate(`(function(){
+    __sdparty.PARTY.rallySet(44.75, -85.61);
+    const wrote = (window.__fbWrites || []).some((w) => w.path === 'party/PARTYAA2/rally'
+      && w.v.lat === 44.75 && w.v.name === 'Sky');
+    __fbCBs['party/PARTYAA2']({ val: () => ({ rally: { lat: 44.75, lng: -85.61, ts: Date.now(), by: 'x', name: 'Sky' } }) });
+    return wrote && __sdmap.countGroup('party') === 1;
+  })()`));
+  T('per-member mute persists on-phone (sd-pttmute)', await page.evaluate(`(function(){
+    __sdparty.PARTY.muteToggle('other1');
+    const muted = JSON.parse(sdStore.get('sd-pttmute'))['other1'] === 1;
+    __sdparty.PARTY.muteToggle('other1');
+    return muted && !JSON.parse(sdStore.get('sd-pttmute'))['other1'];
+  })()`));
+  T('host kick honored: my id on the kick list = I leave, immediately', await page.evaluate(`(function(){
+    __fbCBs['party/PARTYAA2']({ val: () => ({ kick: { [__BUDDY.BUDDY.memberId]: Date.now() } }) });
+    return __BUDDY.BUDDY.active() === false && document.getElementById('partyblock').innerHTML === ''
+      && __sdparty.PARTY.code === null;
+  })()`));
+  T('kill switch: PARTY_CFG.enabled=false mutes telemetry + party UI', await page.evaluate(`(function(){
+    __sdparty.PARTY.code = 'TESTKILL';
+    __sdparty.PARTY_CFG.enabled = false;
+    const t = __sdparty.PARTY.telemetry({ coords: { speed: 10, heading: 90 } });
+    __sdparty.PARTY.render();
+    const quiet = Object.keys(t).length === 0 && document.getElementById('partyblock').innerHTML === '';
+    __sdparty.PARTY_CFG.enabled = true; __sdparty.PARTY.code = null;
+    return quiet;
+  })()`));
+  T('file contract: async clips NOT WebRTC, codec honesty, 24 h stated in-code', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('PARTY + FOOTPRINTS — RUN 5'), src.indexOf('🎡 MODE WHEEL'));
+    return seg.length > 1000 && seg.includes('NOT WebRTC') && seg.includes('Codec honesty')
+      && seg.includes('clipMaxAgeMs: 24 * 3600000');
+  })());
+
+  console.log('\n— 👣 Footprints: opt-in + cells-only upload + Solitude gate —');
+  T('save sheet carries the opt-in — DEFAULT OFF, plainly worded', await page.evaluate(`(function(){
+    const box = document.getElementById('printsopt');
+    const label = document.getElementById('printsoptrow').textContent;
+    return !!box && box.checked === false && label.includes('anonymous') && label.includes('never near');
+  })()`));
+  const printsBefore = printsCalls.length;
+  await page.evaluate(`(function(){
+    document.getElementById('printsopt').checked = true;
+    __sdprints.PRINTS.onTripSave({ points: [
+      { lat: 0.14, lng: 0.07, t: 1, alt: 200 }, { lat: 0.1407, lng: 0.07, t: 2, alt: 201 },
+      { lat: 0.1414, lng: 0.07, t: 3, alt: 202 } ] });
+  })()`);
+  await page.waitForTimeout(400);
+  T('opted-in save uploads CELLS ONLY — no times, no names, no order', (function(){
+    const call = printsCalls.slice(printsBefore).find((c) => c.u.startsWith('/prints/add'));
+    if (!call) return false;
+    const body = JSON.parse(call.body);
+    return Object.keys(body).length === 1 && Array.isArray(body.cells) && body.cells.length === 3
+      && body.cells.every((c) => /^-?\d+_-?\d+$/.test(c)) && !call.body.includes('ts') && !call.body.includes('name');
+  })());
+  const printsBefore2 = printsCalls.length;
+  await page.evaluate(`(function(){
+    document.getElementById('printsopt').checked = false;
+    __sdprints.PRINTS.onTripSave({ points: [{ lat: 0.3, lng: 0.3, t: 1 }] });
+  })()`);
+  await page.waitForTimeout(250);
+  T('opt-out save uploads NOTHING (and the choice is remembered)', printsCalls.length === printsBefore2
+    && await page.evaluate(`sdStore.get('sd-prints') === '0'`));
+  await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdmap.flyTo(0.14, 0.07, 13, 0);
+    __sdprints.PRINTS.toggle('foot');
+  })()`);
+  await page.waitForFunction('__sdmap.countGroup("prints") === 2', null, { timeout: 5000 });
+  T('👣 free tier: viewport regions fetched, COARSE dots rendered', printsCalls.some((c) => c.u.startsWith('/prints/get?regions='))
+    && await page.evaluate('__sdmap.countGroup("prints") === 2'));
+  T('All Access: same data at full ~250 ft resolution', await page.evaluate(`(async function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    await __sdprints.PRINTS.refresh();
+    return __sdmap.countGroup('prints') === 3;
+  })()`));
+  T('young-layer honesty note fired (no fake density)', await page.evaluate('__sdprints.PRINTS._youngToasted === true'));
+  T('🤫 Solitude locked → paywall; unlocked → inverted (dark = pressured)', await page.evaluate(`(async function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdprints.PRINTS.toggle('solo');
+    const paywalled = document.getElementById('paysheet').classList.contains('open') && __sdprints.PRINTS.mode === 'foot';
+    document.getElementById('backdrop').click();
+    localStorage.setItem('sd-allaccess-iap', '1');
+    __sdprints.PRINTS.toggle('solo');
+    await __sdprints.PRINTS.refresh();
+    const mk = __sdmap.markers.find((m) => m.group === 'prints');
+    const dark = !!mk && mk.el.innerHTML.includes('rgba(200,40,40');
+    return paywalled && __sdprints.PRINTS.mode === 'solo' && dark;
+  })()`));
+  T('kill switch: PRINTS_CFG.enabled=false pulls the chips + blocks uploads', await page.evaluate(`(function(){
+    __sdprints.PRINTS_CFG.enabled = false;
+    document.getElementById('layerfab').click();
+    const bare = document.querySelectorAll('#ovchips .chip').length === 7;
+    const n = 0;
+    document.getElementById('printsopt').checked = true;
+    __sdprints.PRINTS.onTripSave({ points: [{ lat: 0.4, lng: 0.4, t: 1 }] });
+    __sdprints.PRINTS_CFG.enabled = true;
+    document.getElementById('layerdone').click();
+    return bare;
+  })()`) && (function(){ return printsCalls.filter((c) => c.u.startsWith('/prints/add')).length === 1; })());
+  T('paywall copy sells full-crew party + Solitude inside All Access', await page.evaluate(`(function(){
+    const F = __sdpacks.PACKS_CONFIG.bundle.features;
+    return F.some((f) => f[1].includes('Party')) && F.some((f) => f[1].includes('Solitude'));
+  })()`));
+  T('CSP gained exactly media-src blob: (clips play from local blobs only)', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const m = /media-src ([^;]+);/.exec(src);
+    return !!m && m[1] === 'blob:';
+  })());
+  T('privacy policy names both features: opt-in, anonymous, 24 h', (function(){
+    const p = fs.readFileSync(path.join(APP_DIR, 'privacy-policy.html'), 'utf8');
+    return p.includes('Party voice clips') && p.includes('Footprints community layer')
+      && p.includes('off by default') && p.includes('24 hours') && p.includes('anonymous');
+  })());
+  T('rules: party clips/rally/kick validated, rigs anonymous, telemetry bounded', (function(){
+    const r = fs.readFileSync(path.join(APP_DIR, 'database.rules.json'), 'utf8');
+    return r.includes('"party"') && r.includes('"clips"') && r.includes('"rally"') && r.includes('"kick"')
+      && r.includes('"rigs"') && r.includes('"batt"') && r.includes('"spd"') && r.includes('"hdg"');
+  })());
+  await page.evaluate(`(function(){
+    __sdprints.PRINTS.toggle('solo');   /* off */
+    document.getElementById('printsopt').checked = false;
+    localStorage.setItem('sd-allaccess-iap', '0');   /* relock so Fort B's redeem tests start cold */
+  })()`);
+
+  console.log('\n— 📻👣 Worker: PTT + footprints endpoints (file contract) —');
+  {
+    const w = fs.readFileSync(path.join(APP_DIR, 'worker', 'worker.js'), 'utf8');
+    const wt = fs.readFileSync(path.join(APP_DIR, 'worker', 'wrangler.toml'), 'utf8');
+    T('all four Run 5 endpoints are routed', ['/ptt/send', '/ptt/clip', '/prints/add', '/prints/get']
+      .every((p) => w.includes("'" + p + "'")));
+    T('clips are ephemeral TWICE over: pruned on send, refused on read', w.includes('pttPruneRoom')
+      && w.includes('maxAgeMs: 24 * 3600000') && w.includes("'expired'"));
+    T('clip cost discipline: 1 MB cap + audio-only content types', w.includes('maxClipBytes: 1024 * 1024')
+      && w.includes("type.startsWith('audio/')"));
+    T('footprints privacy enforced SERVER-side: cells-only or refused', w.includes("'cells only'")
+      && w.includes('cellRe'));
+    T('footprints cost discipline: batch, region + size caps are real', w.includes('maxBatch: 400')
+      && w.includes('maxRegionBytes') && w.includes('maxCount'));
+    T('wrangler.toml: PRINTS KV bound, clips ride the existing cams bucket', wt.includes('binding = "PRINTS"')
+      && wt.includes('ptt/<room>/'));
+    T('no secret material anywhere near Run 5 worker code', !/re_[A-Za-z0-9]{8}/.test(w) && !/re_[A-Za-z0-9]{8}/.test(wt));
   }
 
   console.log('\n— 🛡 Fort SkyDog Phase A: CSP + tamper containment —');
@@ -2326,7 +2608,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v31 (Trail Cam Hub ships fresh)', sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30") && !sw.includes("skydog-gps-v29"));
+  T('sw.js cache bumped to v32 (Party + Footprints ship fresh)', sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

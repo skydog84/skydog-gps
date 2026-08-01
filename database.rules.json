@@ -28,6 +28,15 @@
             "color": {
               ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{3,8}$/)"
             },
+            "batt": {
+              ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 100"
+            },
+            "spd": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 250"
+            },
+            "hdg": {
+              ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 360"
+            },
             "$other": {
               ".validate": false
             }
@@ -36,6 +45,51 @@
         "$other": {
           ".validate": false
         }
+      }
+    },
+    "party": {
+      "$code": {
+        ".read": true,
+        ".validate": "$code.matches(/^[A-Z2-9]{8}$/) || $code.matches(/^[A-Z2-9]{5}$/)",
+        "clips": {
+          "$clip": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['k','ts','member','name'])",
+            "k": { ".validate": "newData.isString() && newData.val().matches(/^[\\w.-]{1,80}$/)" },
+            "ts": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+            "member": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40" },
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24" },
+            "dur": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 30" },
+            "$other": { ".validate": false }
+          }
+        },
+        "rally": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['lat','lng','ts'])",
+          "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+          "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "ts": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+          "by": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "name": { ".validate": "newData.isString() && newData.val().length <= 24" },
+          "$other": { ".validate": false }
+        },
+        "kick": {
+          "$member": {
+            ".write": true,
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "rigs": {
+      "$cell": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$cell.matches(/^-?[0-9]{1,7}_-?[0-9]{1,7}$/) && newData.hasChildren(['ts','p'])",
+        "ts": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+        "p": { ".validate": "newData.isString() && newData.val().length >= 4 && newData.val().length <= 12" },
+        "$other": { ".validate": false }
       }
     },
     "rescue": {

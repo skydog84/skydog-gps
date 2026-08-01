@@ -24,7 +24,7 @@
      api.skydoggps.com is pre-allowlisted for the Phase B Cloudflare
      Worker (Regrid proxy + signed unlock codes) so flipping it on
      never requires a CSP change. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://mesonet.agron.iastate.edu https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://services3.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev https://api.weather.gov https://waterservices.usgs.gov https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://mesonet.agron.iastate.edu https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev; media-src blob:; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://services3.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://skydog-api.skydog8426.workers.dev https://api.weather.gov https://waterservices.usgs.gov https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
 <meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
@@ -576,6 +576,11 @@
   <div id="savesummary" style="color:var(--dim);font-size:13px;margin-bottom:12px"></div>
   <input class="field" id="tripname" aria-label="Trip name" placeholder="Name it — e.g. Sunset Point with Kiddo">
   <input class="field" id="tripnotes" aria-label="Trip notes" placeholder="Notes (optional)">
+  <!-- 👣 Run 5: Footprints opt-in — DEFAULT OFF, every save, plainly worded -->
+  <label id="printsoptrow" style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--dim);margin:2px 0 10px;cursor:pointer;line-height:1.45">
+    <input type="checkbox" id="printsopt" style="margin-top:2px">
+    <span>👣 Add this trip to the <b>anonymous</b> community Footprints layer — just where-people-go dots on a ~250 ft grid. No name, no times, no order, and never near your saved spots or cams.</span>
+  </label>
   <div class="btnrow">
     <button class="btn gray" id="discardbtn">Discard</button>
     <button class="btn green" id="savetripbtn">💾 Save</button>
@@ -672,6 +677,8 @@
     <div class="lg-note" id="buddykeynote2" style="margin:8px 0 0">🔑 Anyone with this code can see the trip while it's live — share it like a house key.</div>
     <button class="btn blue" id="buddyshare" style="width:100%;margin:10px 0">📤 Invite buddies — share the link</button>
     <div id="buddylist"></div>
+    <!-- 📻 Run 5: Party tools (PTT + rally + crew list) render here while a trip is live -->
+    <div id="partyblock"></div>
     <button class="btn gray" id="buddyend" style="width:100%;margin-top:12px">⏹ End Trip — stop sharing</button>
   </div>
 </div>
@@ -1566,6 +1573,8 @@ function buildLayerSheet(){
     });
     oc.appendChild(c);
   });
+  /* 👣 Run 5: Footprints + Solitude chips (data dots, not tiles — guarded) */
+  if(window.__sdprints) __sdprints.PRINTS.chips(oc);
 }
 $('layerfab').addEventListener('click', () => { buildLayerSheet(); openSheet('layersheet'); });
 $('layerdone').addEventListener('click', () => closeSheets());
@@ -1672,7 +1681,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.6';
+const SD_VERSION = '1.7';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2325,6 +2334,8 @@ const PACKS_CONFIG = {
       ['🎁','<b>Everything unlocked</b> — fishing, drone &amp; every future pack, automatically'],
       ['🦌','<b>Wind &amp; thermals per stand</b> — huntable-wind windows &amp; modeled thermal calls (they charge $30–100/yr for less)'],
       ['📸','<b>Trail Cam Hub</b> — every cam brand emails photos to one private address, auto-tagged on your map (no per-camera fees)'],
+      ['📻','<b>Full-crew Party Mode</b> — up to 12 on one map with push-to-talk voice, rally point &amp; battery/speed readouts (party of 2 is free)'],
+      ['👣','<b>Solitude Mode + full-res Footprints</b> — the community heat layer inverted, so untouched country stands out'],
       ['🆓','<b>The map stays free</b> — this only adds the specialist extras on top']
     ],
     price:'$2.99/mo', priceNote:'subscription',
@@ -2831,6 +2842,8 @@ function resetTracking(){
 $('discardbtn').addEventListener('click', () => { resetTracking(); toast('Discarded'); });
 $('savetripbtn').addEventListener('click', () => {
   if(!trk) return;
+  /* 👣 Run 5: opted-in saves contribute anonymous cells (guarded — TDZ rule) */
+  if(window.__sdprints) __sdprints.PRINTS.onTripSave(trk);
   trips.unshift({
     id: Date.now()+'-'+trips.length,
     name: $('tripname').value.trim() || 'Untitled adventure',
@@ -3068,13 +3081,16 @@ const BUDDY = {
     const send = p => {
       if(!this.myRef) return;
       this.notePos(p.coords.latitude, p.coords.longitude);
-      this.myRef.set({
+      /* 📻 Run 5 telemetry (batt/spd/hdg) folds in when the party module is
+         parsed — guarded so the buddy core never depends on it (TDZ rule) */
+      const extra = window.__sdparty ? __sdparty.PARTY.telemetry(p) : {};
+      this.myRef.set(Object.assign({
         name: sdStore.get('sd-buddy-name') || 'SkyDog',
         lat: p.coords.latitude, lng: p.coords.longitude,
         ts: Date.now(),
         kind: $('buddypet').checked ? 'pet' : 'person',
         color: buddyColor(this.memberId)
-      }).catch(()=>{});
+      }, extra)).catch(()=>{});
     };
     if(!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(send, () => {
@@ -7001,6 +7017,589 @@ CAMS.render();   /* saved camera pins reappear on every boot */
 
 /* debug/test handle */
 window.__sdcams = { CAMS, CAMS_CFG, CAM_BRANDS, camsFilterPhotos, camsCondsAt, camsPatternLine, camsSolunarAt };
+
+/* =====================================================================
+   📻👣 PARTY + FOOTPRINTS — RUN 5 «THE FLYWHEEL» (features ⑨⑩)
+   The network-effect run: the more SkyDogs in the woods, the better
+   both features get.
+
+   📻 PARTY MODE rides the existing Buddy Trip room (same code, same
+   Firebase plumbing, same house-key model). It adds, while a trip is
+   live: crew telemetry (battery / speed / heading — validated by the
+   published rules), a 📍 rally point everyone sees with distance +
+   bearing, host kick, per-member mute, and PUSH-TO-TALK.
+   PTT v1 is deliberately ASYNC VOICE CLIPS, NOT WebRTC (that is v2 —
+   the spec is explicit): hold 🎙, a short opus/AAC clip uploads to the
+   worker (same R2 bucket as the cams, ptt/ prefix, $0 new spend), the
+   clip's pointer rides the party node, and every crew phone plays the
+   queue in order. Clips queue while you're in a dead zone and send when
+   signal returns — feels 90% live and survives WebView background
+   limits. Clips are EPHEMERAL: gone at 24 h (worker enforces on both
+   write and read), matching the buddy 24 h promise.
+   💰 Gate (owner decision #4, locked): party of 2 is FREE; a crew of
+   3+ rides All Access. Position sharing itself stays free forever.
+   ⚠️ Codec honesty: Android records webm/opus, iPhones record mp4/AAC.
+   Android↔Android and iPhone↔iPhone always play; a mixed crew may hit
+   clips the other OS can't decode — stated in-sheet, improved post-v1.
+
+   👣 FOOTPRINTS is users-as-sensors asset #1 — the China/Japan pattern
+   no US app commits to. STRICTLY OPT-IN (checkbox on every trip save,
+   default OFF). Before one byte uploads the app: snaps points to a
+   ~250 ft grid, throws away timestamps/order/identity entirely, drops
+   any cell near your saved spots or cameras, and shuffles what's left.
+   The upload is literally {cells:["x_y",...]} — the worker refuses
+   anything more. Render: 👣 Footprints dots, or 🤫 SOLITUDE MODE — the
+   same data inverted (dark = pressured, clear = untouched), the
+   hunter's screenshot feature nobody in the US ships.
+   💰 Gate (owner decision #6, locked): coarse dots free, full-res +
+   Solitude ride All Access.
+   Kill switches: PARTY_CFG.enabled / PRINTS_CFG.enabled.
+   ===================================================================== */
+const PARTY_CFG = {
+  enabled: true,
+  api: 'https://skydog-api.skydog8426.workers.dev',
+  freeCrew: 2,                 /* party of 2 free — bigger crews ride All Access */
+  maxCrew: 12,                 /* honest cap, stated in-sheet                    */
+  clipMaxSec: 15,              /* hold-to-talk hard stop                         */
+  clipMaxBytes: 1024 * 1024,   /* mirrors the worker cap                         */
+  clipMaxAgeMs: 24 * 3600000,  /* never play (or send) anything older            */
+  rigCellDeg: 0.01,            /* ~0.7 mi corridor cells for oncoming-rig checks */
+  rigFreshMs: 5 * 60000,       /* a cell pinged in the last 5 min = live traffic */
+  rigPushMs: 3 * 60000,        /* how often we ping our own cell                 */
+  rigWarnMs: 10 * 60000        /* don't repeat the heads-up more than 10-minutely */
+};
+
+/* ---- pure helpers (unit-tested via window.__sdparty) ---- */
+/* one-way 8-char hash of the room code — rigs cells stay anonymous but a
+   party can tell its own pings from a stranger's */
+function partyHash(code){
+  let h = 5381;
+  for(const ch of String(code)) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+  return ('00000000' + h.toString(16)).slice(-8);
+}
+function rigsCellOf(lat, lng){
+  return Math.round(lng / PARTY_CFG.rigCellDeg) + '_' + Math.round(lat / PARTY_CFG.rigCellDeg);
+}
+/* which incoming clips actually play: newer than the watermark, not mine,
+   not muted, not stale — oldest first so conversations stay in order */
+function partyQueueFresh(clips, sinceTs, myId, muted){
+  return Object.entries(clips || {})
+    .map(([id, c]) => Object.assign({ id }, c))
+    .filter(c => c && c.k && isFinite(c.ts)
+      && c.ts > sinceTs
+      && c.member !== myId
+      && !(muted || {})[c.member]
+      && Date.now() - c.ts <= PARTY_CFG.clipMaxAgeMs)
+    .sort((a, b) => a.ts - b.ts);
+}
+/* telemetry that folds into the buddy position write — only finite,
+   rule-shaped values ever leave the phone */
+function partyTelemetryOf(coords, batt){
+  const out = {};
+  if(isFinite(batt) && batt >= 0) out.batt = Math.round(Math.min(100, batt));
+  const mph = coords && coords.speed != null && isFinite(coords.speed) ? coords.speed * 2.23694 : NaN;
+  if(isFinite(mph) && mph >= 0) out.spd = Math.min(250, Math.round(mph * 10) / 10);
+  const hdg = coords && coords.heading != null && isFinite(coords.heading) ? coords.heading : NaN;
+  if(isFinite(hdg) && hdg >= 0) out.hdg = Math.round(hdg) % 360;
+  return out;
+}
+
+const PARTY = {
+  code: null, ref: null, isHost: false, _onVal: null,
+  clips: {}, rally: null, kick: {},
+  queue: [], playing: false, pending: 0, outbox: [],
+  _since: 0, _batt: NaN, _rec: null, _recT: null, _stream: null,
+  _rallyPlacing: false, _rallyMk: null, _uiT: null,
+  _rigT: null, _rigWarnedAt: 0, _audio: null,
+
+  mutedGet(){ try{ return JSON.parse(sdStore.get('sd-pttmute') || '{}') || {}; }catch(e){ return {}; } },
+  muteToggle(id){
+    const m = this.mutedGet();
+    if(m[id]) delete m[id]; else m[id] = 1;
+    sdStore.set('sd-pttmute', JSON.stringify(m));
+    this.render();
+  },
+  beepOn(){ return sdStore.get('sd-pttbeep') !== '0'; },
+
+  crewCount(){ return Object.keys(BUDDY.members || {}).length || 1; },
+  /* the owner-locked gate: 2 ride free, a real crew rides All Access */
+  allowed(){ return this.crewCount() <= PARTY_CFG.freeCrew || Entitlements.isUnlocked('allaccess'); },
+
+  telemetry(p){
+    if(!PARTY_CFG.enabled) return {};
+    /* trips that started BEFORE this section parsed (the ?buddy= invite
+       link boots the buddy core at parse time) lazily attach here */
+    if(!this.code && BUDDY.active()) this.attach(true);
+    if(!this.code) return {};
+    this.rigPing(p && p.coords);
+    return partyTelemetryOf(p && p.coords, this._batt);
+  },
+
+  async attach(isJoin){
+    if(!PARTY_CFG.enabled || !BUDDY.active()) return;
+    if(this.code === BUDDY.code && this.ref) return;   /* already riding this room */
+    this.code = BUDDY.code;
+    this.isHost = !isJoin;
+    this._since = Date.now();          /* only clips talked AFTER I joined play */
+    this.clips = {}; this.rally = null; this.kick = {};
+    try{
+      const fb = await BUDDY.loadFirebase();
+      this.ref = fb.database().ref('party/' + this.code);
+      this._onVal = snap => this.onValue(snap.val() || {});
+      this.ref.on('value', this._onVal);
+    }catch(e){ /* offline start — party tools light up when signal returns */ }
+    if(navigator.getBattery){
+      navigator.getBattery().then(b => {
+        this._batt = b.level * 100;
+        b.addEventListener('levelchange', () => { this._batt = b.level * 100; });
+      }).catch(()=>{});
+    }
+    this._uiT = setInterval(() => this.render(), 10000);
+    this.render();
+  },
+
+  detach(){
+    if(this.ref && this._onVal){ try{ this.ref.off('value', this._onVal); }catch(e){} }
+    if(this._uiT){ clearInterval(this._uiT); this._uiT = null; }
+    if(this._rec){ try{ this._rec.stop(); }catch(e){} this._rec = null; }
+    if(this._stream){ try{ this._stream.getTracks().forEach(t => t.stop()); }catch(e){} this._stream = null; }
+    if(this._audio){ try{ this._audio.pause(); }catch(e){} this._audio = null; }
+    this.ref = null; this.code = null; this.isHost = false;
+    this.clips = {}; this.rally = null; this.kick = {}; this.queue = []; this.outbox = [];
+    this.playing = false; this.pending = 0; this._rallyPlacing = false;
+    map.clearGroup('party'); this._rallyMk = null;
+    const w = $('partyblock'); if(w) w.innerHTML = '';
+  },
+
+  onValue(v){
+    this.clips = v.clips || {}; this.rally = v.rally || null; this.kick = v.kick || {};
+    /* host kick honored: my id in the kick list = I leave, immediately */
+    if(this.kick[BUDDY.memberId]){
+      toast('👋 The trip host removed you from this party');
+      BUDDY.end(true);
+      return;
+    }
+    const fresh = partyQueueFresh(this.clips, this._since, BUDDY.memberId, this.mutedGet());
+    if(fresh.length){
+      this._since = fresh[fresh.length - 1].ts;
+      this.queue.push(...fresh);
+      this.playNext();
+    }
+    this.syncRally();
+    this.render();
+  },
+
+  /* ---- 🎙 push-to-talk ---- */
+  canRecord(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); },
+  recMime(){
+    if(!window.MediaRecorder || !MediaRecorder.isTypeSupported) return 'audio/webm';
+    return MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+      : MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+  },
+  async recStart(){
+    if(!this.code) return;
+    if(!this.allowed()){ openPaywall('allaccess'); return; }
+    if(!this.canRecord()){ toast('😕 This phone can\'t record voice — you can still hear your crew'); return; }
+    if(this._rec) return;
+    try{ this._stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch(e){ toast('🎙 Allow the microphone to talk to your crew'); return; }
+    const chunks = [], t0 = Date.now(), mime = this.recMime();
+    this._rec = new MediaRecorder(this._stream, { mimeType: mime, audioBitsPerSecond: 32000 });
+    this._rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    this._rec.onstop = () => {
+      const dur = Math.min(PARTY_CFG.clipMaxSec, (Date.now() - t0) / 1000);
+      if(this._stream){ this._stream.getTracks().forEach(t => t.stop()); this._stream = null; }
+      this._rec = null;
+      const blob = new Blob(chunks, { type: mime.split(';')[0] });
+      const btn = $('pttbtn'); if(btn){ btn.classList.remove('rec'); btn.textContent = '🎙 Hold to talk'; }
+      if(blob.size < 500 || dur < 0.4){ return; }      /* accidental tap — nothing to say */
+      if(blob.size > PARTY_CFG.clipMaxBytes){ toast('🎙 Too long — keep it under ' + PARTY_CFG.clipMaxSec + 's'); return; }
+      this.sendClip(blob, Math.round(dur * 10) / 10);
+    };
+    this._rec.start();
+    this._recT = setTimeout(() => this.recStop(), PARTY_CFG.clipMaxSec * 1000);
+    const btn = $('pttbtn'); if(btn){ btn.classList.add('rec'); btn.textContent = '🔴 Talking… release to send'; }
+  },
+  recStop(){
+    if(this._recT){ clearTimeout(this._recT); this._recT = null; }
+    if(this._rec && this._rec.state !== 'inactive'){ try{ this._rec.stop(); }catch(e){} }
+  },
+  async sendClip(blob, dur){
+    const item = { blob, dur, tries: 0 };
+    const ok = await this.pushClip(item);
+    if(!ok){
+      this.outbox.push(item);
+      toast('📡 No signal — your clip is queued and sends the moment you get bars');
+      this.render();
+    }
+  },
+  async pushClip(item){
+    if(!this.code) return false;
+    try{
+      const r = await fetch(PARTY_CFG.api + '/ptt/send?room=' + encodeURIComponent(this.code), {
+        method: 'POST', headers: { 'Content-Type': item.blob.type || 'audio/webm' }, body: item.blob });
+      const b = await r.json();
+      if(!b.ok) throw new Error(b.error || 'send');
+      const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      await this.ref.child('clips/' + id).set({
+        k: b.k, ts: Date.now(), member: BUDDY.memberId,
+        name: (sdStore.get('sd-buddy-name') || 'SkyDog').slice(0, 24), dur: item.dur || 0 });
+      return true;
+    }catch(e){ return false; }
+  },
+  async flushOutbox(){
+    while(this.outbox.length){
+      const item = this.outbox[0];
+      if(!(await this.pushClip(item))) break;
+      this.outbox.shift();
+    }
+    this.render();
+  },
+
+  clipUrl(k){ return PARTY_CFG.api + '/ptt/clip?room=' + encodeURIComponent(this.code) + '&k=' + encodeURIComponent(k); },
+  rogerBeep(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC || !this.beepOn()) return;
+      this._ac = this._ac || new AC();
+      const o = this._ac.createOscillator(), g = this._ac.createGain();
+      o.frequency.value = 1050; g.gain.value = 0.08;
+      o.connect(g); g.connect(this._ac.destination);
+      o.start(); o.stop(this._ac.currentTime + 0.09);
+    }catch(e){}
+  },
+  async playNext(){
+    if(this.playing || !this.queue.length || !this.code) return;
+    this.playing = true;
+    const clip = this.queue.shift();
+    try{
+      const r = await fetch(this.clipUrl(clip.k));
+      if(!r.ok) throw new Error('clip ' + r.status);
+      const url = URL.createObjectURL(await r.blob());
+      const a = new Audio(url);
+      this._audio = a;
+      a.onended = a.onerror = () => {
+        URL.revokeObjectURL(url); this._audio = null;
+        this.playing = false; this.playNext();
+      };
+      this.rogerBeep();
+      await a.play();
+      this.pending = 0;
+      toast('📻 ' + esc(clip.name || 'Crew') + (clip.dur ? ' · ' + clip.dur + 's' : ''), 1800);
+    }catch(e){
+      /* autoplay refused (no gesture yet) or undecodable codec — keep the
+         clip and surface a tap-to-play button instead of failing silent */
+      this.queue.unshift(clip);
+      this.pending = this.queue.length;
+      this.playing = false;
+      this.render();
+    }
+  },
+
+  /* ---- 📍 rally point ---- */
+  rallyPlace(){
+    if(!this.allowed()){ openPaywall('allaccess'); return; }
+    this._rallyPlacing = true; closeSheets();
+    toast('👆 Tap the map — everyone gets the rally point', 3600);
+  },
+  rallySet(lat, lng){
+    if(!this.ref) return;
+    this.ref.child('rally').set({ lat, lng, ts: Date.now(), by: BUDDY.memberId,
+      name: (sdStore.get('sd-buddy-name') || 'SkyDog').slice(0, 24) }).catch(()=>{});
+    toast('📍 Rally point set — your crew sees it now');
+  },
+  rallyClear(){ if(this.ref) this.ref.child('rally').remove(); },
+  syncRally(){
+    map.clearGroup('party'); this._rallyMk = null;
+    if(this.rally && isFinite(this.rally.lat)){
+      this._rallyMk = map.addMarker({ lat: this.rally.lat, lng: this.rally.lng, group: 'party', z: 900,
+        html: '<div class="bdymark"><div style="font-size:26px;line-height:1">🚩</div><div class="bname">Rally · ' + esc(this.rally.name || '') + '</div></div>', anchor: [0, 14] });
+    }
+    map.requestDraw();
+  },
+
+  /* ---- 🛻 oncoming-rig seed (quiet and simple, headline later) ----
+     While a party is live each phone pings its ~0.7 mi corridor cell with
+     an ANONYMOUS party hash (no code, no member, no exact position). If a
+     fresh ping from a DIFFERENT party sits in our cell, both crews get a
+     quiet heads-up. First in America; grows with the user base. */
+  rigPing(coords){
+    if(!this.code || !coords || !isFinite(coords.latitude)) return;
+    const now = Date.now();
+    if(now - (this._rigT || 0) < PARTY_CFG.rigPushMs) return;
+    this._rigT = now;
+    const cell = rigsCellOf(coords.latitude, coords.longitude);
+    try{
+      const fb = firebase;      /* loaded — we're mid-trip */
+      const myHash = partyHash(this.code);
+      const cref = fb.database().ref('rigs/' + cell);
+      const once = snap => {
+        try{ cref.off('value', once); }catch(e){}
+        const v = snap && snap.val ? snap.val() : null;
+        if(v && v.p && v.p !== myHash && now - (v.ts || 0) < PARTY_CFG.rigFreshMs
+           && now - this._rigWarnedAt > PARTY_CFG.rigWarnMs){
+          this._rigWarnedAt = now;
+          toast('🛻 Heads up — another SkyDog crew is running this same corridor', 5000);
+        }
+        cref.set({ ts: now, p: myHash }).catch(()=>{});
+      };
+      cref.on('value', once);
+    }catch(e){}
+  },
+
+  /* ---- the party block inside the buddy sheet ---- */
+  render(){
+    const w = $('partyblock');
+    if(!w) return;
+    if(!PARTY_CFG.enabled || !this.code){ w.innerHTML = ''; return; }
+    const unlocked = this.allowed();
+    const rows = Object.entries(BUDDY.members || {})
+      .filter(([id]) => id !== BUDDY.memberId).map(([id, m]) => {
+        const bits = [];
+        if(m && isFinite(m.batt)) bits.push('🔋' + Math.round(m.batt) + '%');
+        if(m && isFinite(m.spd) && m.spd >= 1) bits.push(Math.round(m.spd) + ' mph');
+        const muted = !!this.mutedGet()[id];
+        return '<div class="spotrow"><span class="sem">' + (m && m.kind === 'pet' ? '🐾' : '📻') + '</span>'
+          + '<span style="min-width:0"><span class="snm">' + esc((m && m.name) || '?') + '</span>'
+          + (bits.length ? '<br><span class="snt">' + bits.join(' · ') + '</span>' : '') + '</span>'
+          + '<button data-mute="' + id + '" aria-label="Mute voice">' + (muted ? '🔇' : '🔊') + '</button>'
+          + (this.isHost ? '<button data-kick="' + id + '" aria-label="Remove from party">✕</button>' : '')
+          + '</div>';
+      }).join('');
+    w.innerHTML = '<h3 style="margin:14px 0 6px">📻 Party tools</h3>'
+      + (unlocked
+        ? '<button id="pttbtn" class="btn green" style="width:100%;padding:16px 12px;font-size:16px;touch-action:none">🎙 Hold to talk</button>'
+          + (this.pending ? '<button id="pttplaypend" class="btn blue" style="width:100%;margin-top:8px">🔊 Play ' + this.pending + ' waiting clip' + (this.pending > 1 ? 's' : '') + '</button>' : '')
+          + (this.outbox.length ? '<div class="lg-note">📡 ' + this.outbox.length + ' clip' + (this.outbox.length > 1 ? 's' : '') + ' queued for signal</div>' : '')
+          + '<div class="btnrow" style="margin-top:8px">'
+          + '<button id="rallybtn" class="btn blue">🚩 Rally point</button>'
+          + (this.rally ? '<button id="rallyclear" class="btn gray">Clear rally</button>' : '')
+          + '</div>'
+          + (this.rally && BUDDY.myPos ? '<div class="lg-note">🚩 Rally: ' + buddyDistTxt(BUDDY.myPos, this.rally) + ' from you</div>' : '')
+          + rows
+          + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:8px;cursor:pointer">'
+          + '<input type="checkbox" id="pttbeep"' + (this.beepOn() ? ' checked' : '') + '> 📢 Roger beep before clips</label>'
+          + '<div class="lg-note">Voice is walkie-style clips (up to ' + PARTY_CFG.clipMaxSec + 's), not a live call — clips vanish after 24 hours. Crews cap at ' + PARTY_CFG.maxCrew + '. Mixed iPhone/Android crews: a clip may not play across systems yet.</div>'
+        : '<button id="partyunlock" class="worldrow" style="border-color:#2f7d43">🔓 <b>Crew of ' + this.crewCount() + ' — party tools ride All Access</b><span class="wstate">$2.99</span></button>'
+          + '<div class="lg-note">Party of 2 talks free. Bigger crews — push-to-talk voice, rally point, battery &amp; speed for everyone — ride All Access.</div>');
+    const ptt = $('pttbtn');
+    if(ptt){
+      ptt.addEventListener('pointerdown', e => { e.preventDefault(); this.recStart(); });
+      ptt.addEventListener('pointerup', () => this.recStop());
+      ptt.addEventListener('pointercancel', () => this.recStop());
+      ptt.addEventListener('pointerleave', () => this.recStop());
+    }
+    const pend = $('pttplaypend'); if(pend) pend.addEventListener('click', () => { this.pending = 0; this.playNext(); });
+    const rb = $('rallybtn'); if(rb) rb.addEventListener('click', () => this.rallyPlace());
+    const rc = $('rallyclear'); if(rc) rc.addEventListener('click', () => this.rallyClear());
+    const bp = $('pttbeep'); if(bp) bp.addEventListener('change', e => sdStore.set('sd-pttbeep', e.target.checked ? '1' : '0'));
+    const pu = $('partyunlock'); if(pu) pu.addEventListener('click', () => openPaywall('allaccess'));
+    w.querySelectorAll('[data-mute]').forEach(b => b.addEventListener('click', () => this.muteToggle(b.dataset.mute)));
+    w.querySelectorAll('[data-kick]').forEach(b => b.addEventListener('click', () => {
+      if(this.ref) this.ref.child('kick/' + b.dataset.kick).set(Date.now()).catch(()=>{});
+      toast('👋 Removed from the party');
+    }));
+  }
+};
+
+/* party rides the buddy lifecycle — wrap start/end, never fork them */
+const _partyBuddyStart = BUDDY.start.bind(BUDDY);
+BUDDY.start = async function(code, isJoin){
+  await _partyBuddyStart(code, isJoin);
+  if(BUDDY.active()) PARTY.attach(isJoin);
+};
+const _partyBuddyEnd = BUDDY.end.bind(BUDDY);
+BUDDY.end = function(silent){
+  PARTY.detach();
+  _partyBuddyEnd(silent);
+};
+window.addEventListener('online', () => PARTY.flushOutbox());
+
+/* rally tap-to-place rides the same tap chain as spots/recovery/cams */
+const _partyPrevTap = map.onTap;
+map.onTap = ll => {
+  if(PARTY._rallyPlacing){ PARTY._rallyPlacing = false; PARTY.rallySet(ll.lat, ll.lng); return true; }
+  return _partyPrevTap ? _partyPrevTap(ll) : false;
+};
+
+/* =====================================================================
+   👣 FOOTPRINTS / SOLITUDE — the community layer (opt-in, anonymous)
+   ===================================================================== */
+const PRINTS_CFG = {
+  enabled: true,
+  api: 'https://skydog-api.skydog8426.workers.dev',
+  cellDeg: 0.0007,             /* ~250 ft grid — coarse enough to be nobody   */
+  privacyM: 150,               /* cells this close to saved spots/cams: never */
+  minZoom: 11,                 /* below this the viewport outruns the shards  */
+  maxDots: 500,                /* render cap                                  */
+  maxUpload: 400,              /* mirrors the worker batch cap                */
+  cacheMins: 5,
+  youngN: 20                   /* fewer cells in view = honesty note          */
+};
+
+/* ---- pure helpers (unit-tested via window.__sdprints) ---- */
+function printsCellOf(lat, lng){
+  return Math.round(lng / PRINTS_CFG.cellDeg) + '_' + Math.round(lat / PRINTS_CFG.cellDeg);
+}
+function printsCellCenter(cell){
+  const [x, y] = cell.split('_').map(Number);
+  return { lat: y * PRINTS_CFG.cellDeg, lng: x * PRINTS_CFG.cellDeg };
+}
+/* track points → anonymous cells: dedupe, drop anything near private
+   places, then SHUFFLE so not even cell order survives the upload */
+function printsCellsFrom(points, privates){
+  const cells = new Set();
+  for(const p of (points || [])){
+    if(!p || !isFinite(p.lat) || !isFinite(p.lng)) continue;
+    cells.add(printsCellOf(p.lat, p.lng));
+  }
+  const out = [...cells].filter(c => {
+    const ctr = printsCellCenter(c);
+    return !(privates || []).some(s => s && isFinite(s.lat)
+      && haversineMi(ctr, s) * 1609.34 < PRINTS_CFG.privacyM);
+  }).slice(0, PRINTS_CFG.maxUpload);
+  for(let i = out.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+/* region shards (32×32 cells) covering a lat/lng box — CENTER-OUT, capped,
+   so a wide viewport always fetches what the user is looking at first */
+function printsRegionsFor(box, cap){
+  const rd = PRINTS_CFG.cellDeg * 32;
+  const x0 = Math.floor(box.w / rd), x1 = Math.floor(box.e / rd);
+  const y0 = Math.floor(box.s / rd), y1 = Math.floor(box.n / rd);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const all = [];
+  for(let x = x0; x <= x1; x++) for(let y = y0; y <= y1; y++)
+    all.push({ x, y, d: (x - cx) * (x - cx) + (y - cy) * (y - cy) });
+  all.sort((a, b) => a.d - b.d);
+  return all.slice(0, cap || 12).map(r => r.x + '_' + r.y);
+}
+/* free tier renders COARSE (4×4-cell ≈ 1000 ft blobs); All Access gets
+   the full ~250 ft grid + Solitude — owner decision #6 */
+function printsCoarse(cells){
+  const agg = {};
+  for(const [c, n] of Object.entries(cells || {})){
+    const [x, y] = c.split('_').map(Number);
+    const k = Math.floor(x / 4) * 4 + 2 + '_' + (Math.floor(y / 4) * 4 + 2);
+    agg[k] = (agg[k] || 0) + n;
+  }
+  return agg;
+}
+
+const PRINTS = {
+  mode: '',                    /* '' | 'foot' | 'solo' */
+  cells: {}, _cache: new Map(), _youngToasted: false,
+
+  optedIn(){ return sdStore.get('sd-prints') === '1'; },
+
+  /* trip save hook — the ONLY place uploads ever start */
+  onTripSave(tr){
+    const box = $('printsopt');
+    if(box) sdStore.set('sd-prints', box.checked ? '1' : '0');
+    if(!PRINTS_CFG.enabled || !box || !box.checked || !tr || !tr.points || !tr.points.length) return;
+    const privates = (MYSPOTS.list || []).concat((CAMS && CAMS.cams) || []);
+    const cells = printsCellsFrom(tr.points, privates);
+    if(!cells.length || !navigator.onLine) return;
+    fetch(PRINTS_CFG.api + '/prints/add', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cells }) })
+      .then(r => r.json())
+      .then(b => { if(b.ok) toast('👣 ' + cells.length + ' anonymous dots joined the community layer — thanks!'); })
+      .catch(()=>{});
+  },
+
+  chips(oc){
+    if(!PRINTS_CFG.enabled) return;
+    [['foot', '👣 Footprints'], ['solo', '🤫 Solitude Mode']].forEach(([m, label]) => {
+      const c = document.createElement('button');
+      c.className = 'chip' + (this.mode === m ? ' active' : '');
+      c.id = 'printschip-' + m;
+      c.textContent = label;
+      c.addEventListener('click', () => this.toggle(m));
+      oc.appendChild(c);
+    });
+  },
+  toggle(m){
+    if(m === 'solo' && this.mode !== 'solo' && !Entitlements.isUnlocked('allaccess')){ openPaywall('allaccess'); return; }
+    this.mode = this.mode === m ? '' : m;
+    if(typeof buildLayerSheet === 'function') buildLayerSheet();
+    if(!this.mode){ map.clearGroup('prints'); map.requestDraw(); toast('👣 Community layer off'); return; }
+    toast(this.mode === 'solo'
+      ? '🤫 Solitude Mode — dark = pressured ground, clear = untouched'
+      : '👣 Footprints ON — where SkyDogs actually go', 3600);
+    this.refresh();
+  },
+
+  async refresh(){
+    if(!this.mode || !PRINTS_CFG.enabled) return;
+    if(map.zoom < PRINTS_CFG.minZoom){
+      map.clearGroup('prints'); map.requestDraw();
+      return;
+    }
+    const [w, s, e, n] = worldViewBBox(0);   /* Run 2's viewport helper */
+    const regions = printsRegionsFor({ w, s, e, n });
+    const need = regions.filter(r => {
+      const hit = this._cache.get(r);
+      return !hit || Date.now() - hit.at > PRINTS_CFG.cacheMins * 60000;
+    });
+    if(need.length){
+      try{
+        const r = await fetch(PRINTS_CFG.api + '/prints/get?regions=' + need.join(','));
+        const body = await r.json();
+        if(body.ok){
+          const byRegion = {};
+          for(const [c, n] of Object.entries(body.cells || {})){
+            const [x, y] = c.split('_').map(Number);
+            const rk = Math.floor(x / 32) + '_' + Math.floor(y / 32);
+            (byRegion[rk] = byRegion[rk] || {})[c] = n;
+          }
+          for(const rk of need) this._cache.set(rk, { at: Date.now(), cells: byRegion[rk] || {} });
+          if(this._cache.size > 60) this._cache.delete(this._cache.keys().next().value);
+        }
+      }catch(e){ /* no signal = last cached view, never a throw */ }
+    }
+    const merged = {};
+    for(const rk of regions){
+      const hit = this._cache.get(rk);
+      if(hit) Object.assign(merged, hit.cells);
+    }
+    this.cells = Entitlements.isUnlocked('allaccess') ? merged : printsCoarse(merged);
+    this.draw();
+  },
+
+  draw(){
+    map.clearGroup('prints');
+    const entries = Object.entries(this.cells).slice(0, PRINTS_CFG.maxDots);
+    const solo = this.mode === 'solo';
+    for(const [c, n] of entries){
+      const ctr = printsCellCenter(c);
+      const a = Math.min(0.75, 0.25 + n * 0.08);
+      const sz = Math.min(22, 9 + n);
+      const bg = solo ? 'rgba(200,40,40,' + a + ')' : 'rgba(53,224,138,' + a + ')';
+      map.addMarker({ lat: ctr.lat, lng: ctr.lng, group: 'prints', z: 300, anchor: [0, 0],
+        html: '<div style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;background:' + bg + ';pointer-events:none"></div>' });
+    }
+    map.requestDraw();
+    if(!this._youngToasted && entries.length && entries.length < PRINTS_CFG.youngN){
+      this._youngToasted = true;
+      toast('👣 The community layer is young — it grows with every SkyDog trip', 4200);
+    }
+  }
+};
+
+settleFns.push(() => { if(PRINTS.mode) PRINTS.refresh(); });
+/* pre-fill the save-sheet opt-in with the remembered choice (default OFF) */
+$('stopbtn').addEventListener('click', () => {
+  const box = $('printsopt');
+  if(box) box.checked = PRINTS.optedIn();
+});
+
+/* debug/test handles */
+window.__sdparty = { PARTY, PARTY_CFG, partyHash, rigsCellOf, partyQueueFresh, partyTelemetryOf };
+window.__sdprints = { PRINTS, PRINTS_CFG, printsCellOf, printsCellCenter, printsCellsFrom, printsRegionsFor, printsCoarse };
 
 /* =====================================================================
    🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility

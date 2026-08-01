@@ -22,8 +22,15 @@ id = "84bb3d2b44d947bdafc312ecdbaac6e7"
 binding = "CAMS"
 id = "dd501631035746f4bb6eab0d1e61d600"
 
+# 👣 Footprints (Run 5): anonymous per-cell counters, sharded by region
+[[kv_namespaces]]
+binding = "PRINTS"
+id = "9c3ef1da072246bba22a24a39e701b05"
+
 # 📸 cam photos — R2 free tier (10 GB / 1M writes / 10M reads per month);
-# quotas in worker.js CAMS_CFG keep one user's cams from eating the tier
+# quotas in worker.js CAMS_CFG keep one user's cams from eating the tier.
+# 📻 Run 5 PTT voice clips ride the SAME bucket under ptt/<room>/ —
+# owner-approved reuse, 24 h ephemeral, $0 new spend.
 [[r2_buckets]]
 binding = "CAM_PHOTOS"
 bucket_name = "skydog-cams"
