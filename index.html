@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SkyDog's GPS">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-itunes-app" content="app-id=6792906988"><!-- Safari's own Smart App Banner → App Store -->
 <meta name="theme-color" content="#0b0f14">
 <!-- ============================================================
      🛡 Content-Security-Policy — Fort SkyDog Phase A1.
@@ -26,15 +27,15 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
-<meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & fishing intel. No account, no sign-up — free forever.">
+<meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="SkyDog GPS — Powered by SkyDog AI">
-<meta property="og:description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & fishing intel. No account, no sign-up — free forever.">
+<meta property="og:description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
 <meta property="og:url" content="https://skydoggps.com/">
 <meta property="og:image" content="https://skydoggps.com/skydog-logo.png">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="SkyDog GPS — Powered by SkyDog AI">
-<meta name="twitter:description" content="Topo maps, live GPS tracking & fishing intel. No account, no sign-up — free forever.">
+<meta name="twitter:description" content="Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
 <meta name="twitter:image" content="https://skydoggps.com/skydog-logo.png">
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -95,6 +96,14 @@
 
   #chips{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 6px;pointer-events:auto;scrollbar-width:none}
   #chips::-webkit-scrollbar{display:none}
+  /* 📲 Get-the-app banner — web only; JS adds .on unless native app / installed PWA / snoozed */
+  #appbanner{display:none;align-items:center;gap:6px;pointer-events:auto;background:linear-gradient(135deg,#10301f,#0e2233);border:1px solid var(--accent2);border-radius:14px;box-shadow:var(--shadow);padding:7px 8px 7px 12px;max-width:440px}
+  #appbanner.on{display:flex}
+  #appbannerlink{flex:1;display:flex;align-items:center;gap:9px;color:var(--text);text-decoration:none;font-weight:600;font-size:14px;min-width:0}
+  #appbanner .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #appbanner .cta{flex:0 0 auto;background:var(--accent);color:#04140b;border-radius:10px;padding:6px 12px;font-weight:800;font-size:13px;white-space:nowrap}
+  #appbannerx{flex:0 0 auto;border:0;background:transparent;color:var(--dim);font-size:15px;cursor:pointer;padding:4px 7px;border-radius:8px}
+  #appbannerx:hover{color:var(--text)}
   /* 🔁 cyclic rows: when a chip row overflows, its chips are absolutely
      placed on an endless loop — flick to spin, it never dead-ends */
   .cyc{position:relative;overflow:hidden;touch-action:pan-y}
@@ -107,7 +116,7 @@
   .chip{animation:chipGlow 2.8s ease-in-out infinite}
   .chip:nth-child(odd){animation-delay:-1.4s} /* stagger so the row shimmers, not blinks in unison */
   .chip.active{animation:none} /* active state is already visually loud */
-  @media (prefers-reduced-motion: reduce){.chip{animation:none}}
+  @media (prefers-reduced-motion: reduce){.chip{animation:none}#introhint{animation:none;opacity:1}#hud .rec{animation:none}.sheet,.backdrop{transition:none}}
 
   /* 🎣 fishing mode */
   #fishchips{display:none;gap:7px;overflow-x:auto;padding:2px 2px 6px;pointer-events:auto;scrollbar-width:none}
@@ -164,6 +173,8 @@
   .modebtn .em{font-size:25px;display:block;margin-bottom:5px}
   .modebtn .nm{font-size:11.5px;font-weight:700}
   .field{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:12px;font-size:15px;outline:0;margin-bottom:10px}
+  #searchbox:focus-visible,.field:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+  button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   .btnrow{display:flex;gap:8px}
   .btn{flex:1;border:0;border-radius:12px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer}
   .btn.green{background:var(--accent);color:#04140b}
@@ -290,11 +301,11 @@
 </head>
 <body>
 
-<div id="fatal"></div>
+<div id="fatal" role="alert"></div>
 <div id="map">
-  <canvas id="mapcanvas"></canvas>
+  <canvas id="mapcanvas" role="img" aria-label="Interactive map. Pan and zoom to explore; search results, tracks and layers are drawn here.">Interactive map</canvas>
   <div id="markerpane"></div>
-  <div id="popup"><button id="popupclose">✕</button><div id="popupbody"></div></div>
+  <div id="popup"><button id="popupclose" aria-label="Close popup">✕</button><div id="popupbody"></div></div>
 </div>
 <div id="attrib">© OpenStreetMap contributors</div>
 
@@ -306,13 +317,18 @@
   <div id="brandrow">
     <div id="searchwrap">
       <button id="brandbtn" title="About SkyDog GPS — version, support &amp; privacy"><img class="dog" src="data:image/png;base64,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" alt="SkyDog AI"></button>
-      <input id="searchbox" type="search" placeholder="Search beaches, trails, boat launches…" enterkeyhint="search">
-      <button id="searchbtn">GO</button>
+      <input id="searchbox" type="search" aria-label="Search beaches, trails, boat launches" placeholder="Search beaches, trails, boat launches…" enterkeyhint="search">
+      <button id="searchbtn" aria-label="Search">GO</button>
     </div>
   </div>
   <div id="chips"></div>
   <div id="fishchips"></div>
   <div id="orvchips"></div>
+  <!-- 📲 web-only "get the app" banner — boot JS decides whether it shows -->
+  <div id="appbanner" role="region" aria-label="Download the SkyDog GPS app">
+    <a id="appbannerlink" href="https://apps.apple.com/us/app/id6792906988" target="_blank" rel="noopener"><span aria-hidden="true">📲</span><span class="txt">SkyDog GPS — free app</span><span class="cta" id="appbannercta">Download</span></a>
+    <button id="appbannerx" aria-label="Dismiss the app download banner">✕</button>
+  </div>
 </div>
 
 <!-- 🎡 Mode Wheel — EVERYTHING lives here (owner request 2026-07-25:
@@ -322,36 +338,36 @@
      flick/snap/tap. Utility buttons wear .util for a subtler look. -->
 <div id="modewheel">
   <div id="wheeltouch"></div>
-  <button class="wfab" id="fishfab" data-mode="fishing" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
-  <button class="wfab" id="dronefab" data-mode="drone" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
-  <button class="wfab" id="orvfab" data-mode="orv" title="ORV Trails — snowmobile, ORV &amp; motorcycle trails">🏔</button>
-  <button class="wfab" id="buddyfab" data-mode="buddy" title="Buddy Trip — see your crew live on the map">👥</button>
-  <button class="wfab" id="spotsfab" data-mode="spots" title="My Spots — save your own places on the map">➕</button>
-  <button class="wfab" id="packsfab" data-mode="store" title="Feature Packs — optional add-ons">🎒</button>
-  <button class="wfab util" id="layerfab" title="Map style">🗺️</button>
-  <button class="wfab util" id="locatefab" title="My location">🎯</button>
-  <button class="wfab util" id="savedfab" title="Saved adventures">📁</button>
-  <button class="wfab util" id="keyfab" title="Map key">🔑</button>
-  <button class="wfab util" id="whatfab" title="What's this? Tap the map to identify anything">❓</button>
-  <button class="wfab util" id="clearfab" title="Clear pins">🧹</button>
-  <button class="wfab util" id="installfab" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
+  <button class="wfab" id="fishfab" data-mode="fishing" aria-label="Fishing Mode" title="Fishing Mode — lake depths, launches &amp; local rules">🎣</button>
+  <button class="wfab" id="dronefab" data-mode="drone" aria-label="Drone Mode" title="Drone Mode — airspace ceilings, wind &amp; flight check">🚁</button>
+  <button class="wfab" id="orvfab" data-mode="orv" aria-label="ORV Trails" title="ORV Trails — snowmobile, ORV &amp; motorcycle trails">🏔</button>
+  <button class="wfab" id="buddyfab" data-mode="buddy" aria-label="Buddy Trip" title="Buddy Trip — see your crew live on the map">👥</button>
+  <button class="wfab" id="spotsfab" data-mode="spots" aria-label="My Spots" title="My Spots — save your own places on the map">➕</button>
+  <button class="wfab" id="packsfab" data-mode="store" aria-label="Feature Packs store" title="Feature Packs — optional add-ons">🎒</button>
+  <button class="wfab util" id="layerfab" aria-label="Map style" title="Map style">🗺️</button>
+  <button class="wfab util" id="locatefab" aria-label="My location" title="My location">🎯</button>
+  <button class="wfab util" id="savedfab" aria-label="Saved adventures" title="Saved adventures">📁</button>
+  <button class="wfab util" id="keyfab" aria-label="Map key" title="Map key">🔑</button>
+  <button class="wfab util" id="whatfab" aria-label="What’s this? Identify a map spot" title="What's this? Tap the map to identify anything">❓</button>
+  <button class="wfab util" id="clearfab" aria-label="Clear pins" title="Clear pins">🧹</button>
+  <button class="wfab util" id="installfab" aria-label="Add SkyDog GPS to your phone" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
 </div>
 
 <div id="zoomctl">
-  <button id="zoomin">+</button>
-  <button id="zoomout">−</button>
+  <button id="zoomin" aria-label="Zoom in">+</button>
+  <button id="zoomout" aria-label="Zoom out">−</button>
 </div>
 
-<div id="spinner">Scanning the area…</div>
+<div id="spinner" role="status" aria-live="polite">Scanning the area…</div>
 
 <button id="buddypill" style="display:none">👥 sharing with <b id="buddycount">0</b></button>
 
-<div id="dronehud" style="display:none">
+<div id="dronehud" aria-live="polite" style="display:none">
   <div id="dh-air" class="dh-row"><span class="dh-dot"></span>✈️ checking airspace…</div>
   <div id="dh-wind" class="dh-row"><span class="dh-dot"></span>💨 fetching conditions…</div>
   <button id="dh-check">🛫 Flight check — can I fly here?</button>
 </div>
-<button id="tempbadge" style="display:none" title="Current temperature at map center">🌡 —</button>
+<button id="tempbadge" style="display:none" aria-label="Temperature — open wind and flight conditions" title="Current temperature at map center">🌡 —</button>
 
 <div id="dock">
   <div id="hud">
@@ -397,8 +413,8 @@
   <div class="grabber"></div>
   <h3>Save this adventure</h3>
   <div id="savesummary" style="color:var(--dim);font-size:13px;margin-bottom:12px"></div>
-  <input class="field" id="tripname" placeholder="Name it — e.g. Sunset Point with Kiddo">
-  <input class="field" id="tripnotes" placeholder="Notes (optional)">
+  <input class="field" id="tripname" aria-label="Trip name" placeholder="Name it — e.g. Sunset Point with Kiddo">
+  <input class="field" id="tripnotes" aria-label="Trip notes" placeholder="Notes (optional)">
   <div class="btnrow">
     <button class="btn gray" id="discardbtn">Discard</button>
     <button class="btn green" id="savetripbtn">💾 Save</button>
@@ -434,18 +450,19 @@
   <div id="payfeatures"></div>
   <a class="btn green" id="paysub" style="display:block;text-align:center;text-decoration:none;margin:14px 0 8px" target="_blank" rel="noopener">🔓 Subscribe</a>
   <a class="btn blue" id="paysubyr" style="display:none;text-align:center;text-decoration:none;margin:0 0 10px" target="_blank" rel="noopener">⭐ Year pass</a>
-  <input class="field" id="paycode" placeholder="Have an unlock code? Enter it here" autocapitalize="characters" autocomplete="off">
+  <input class="field" id="paycode" aria-label="Unlock code" placeholder="Have an unlock code? Enter it here" autocapitalize="characters" autocomplete="off">
   <div class="btnrow">
     <button class="btn blue" id="payunlock">✔ Unlock</button>
     <button class="btn gray" id="paytrial">🎁 Try it free today</button>
   </div>
   <div class="lg-note" id="paynote"></div>
+  <div class="lg-note" id="paylegal" style="margin-top:8px">SkyDog All Access is a monthly auto-renewing subscription: $2.99/month (or your local App Store price) until cancelled. Cancel anytime — iPhone: Settings → your name → Subscriptions. Ads stay the same for everyone; subscribing adds features. <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a> · <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
 </div>
 
 <div class="sheet" id="packsheet">
   <div class="grabber"></div>
   <h3>🎒 SkyDog All Access</h3>
-  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery &amp; buddy trips are <b>free forever</b>. One cheap subscription unlocks every specialist pack — current and future.</div>
+  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery &amp; buddy trips are <b>free</b> — and we plan to keep them that way. One cheap subscription unlocks every pack included in All Access — today that’s Fishing, Drone &amp; ORV Trails, plus new packs we add to it.</div>
   <div id="packlist"></div>
   <button class="btn green" id="packsub" style="width:100%;margin-top:4px">🔓 Unlock everything</button>
   <button class="btn gray" id="packrestore" style="width:100%;margin-top:8px;display:none">↻ Restore Purchases</button>
@@ -458,13 +475,13 @@
   <h3>🛫 Flight Check</h3>
   <div class="lg-note" id="laancloc" style="margin:0 0 10px"></div>
   <div class="laancrow">
-    <select id="laancalt" title="Planned altitude">
+    <select id="laancalt" aria-label="Planned altitude" title="Planned altitude">
       <option value="50">50 ft</option><option value="100">100 ft</option>
       <option value="150">150 ft</option><option value="200">200 ft</option>
       <option value="250">250 ft</option><option value="300">300 ft</option>
       <option value="350">350 ft</option><option value="400" selected>400 ft</option>
     </select>
-    <select id="laancdur" title="Flight window, starting now">
+    <select id="laancdur" aria-label="Flight window, starting now" title="Flight window, starting now">
       <option value="15">15 min</option><option value="30" selected>30 min</option>
       <option value="60">1 hour</option><option value="120">2 hours</option>
     </select>
@@ -479,12 +496,12 @@
   <div class="grabber"></div>
   <h3>👥 Buddy Trip</h3>
   <div id="buddyoff">
-    <div class="lg-note" style="margin:0 0 12px">Share one code with your crew and everyone shows up live on everyone's map — with distance &amp; direction. 100% free, no accounts. Ends the second you end it.</div>
-    <input class="field" id="buddyname" placeholder="Your name (what buddies will see)" maxlength="20" autocomplete="off">
+    <div class="lg-note" style="margin:0 0 12px">Share one code with your crew and everyone shows up live on everyone's map — with distance &amp; direction. 100% free, no accounts. Ends when you end it. Not an emergency service — if someone’s in danger, call 911.</div>
+    <input class="field" id="buddyname" aria-label="Your name" placeholder="Your name (what buddies will see)" maxlength="20" autocomplete="off">
     <label id="buddypetrow"><input type="checkbox" id="buddypet"> 🐾 This device is a pet / gear tracker</label>
     <button class="btn green" id="buddystart" style="width:100%;margin:10px 0">🚀 Start a Buddy Trip</button>
     <div style="display:flex;gap:8px">
-      <input class="field" id="buddycode" placeholder="Have a code? Enter it" maxlength="8" autocapitalize="characters" autocomplete="off" style="flex:1;margin:0">
+      <input class="field" id="buddycode" aria-label="Buddy trip code" placeholder="Have a code? Enter it" maxlength="8" autocapitalize="characters" autocomplete="off" style="flex:1;margin:0">
       <button class="btn blue" id="buddyjoin">Join</button>
     </div>
     <div class="lg-note" id="buddykeynote" style="margin:10px 0 0">🔑 Anyone with this code can see the trip while it's live — share it like a house key.</div>
@@ -501,7 +518,7 @@
 <div class="sheet" id="buddyconsent">
   <div class="grabber"></div>
   <h3>📍 Share your live location?</h3>
-  <div class="lg-note" style="margin:0 0 14px;font-size:13px;line-height:1.5">You'll share your <b>live location</b> with everyone in this trip while it's running. It stops the instant you end the trip or close the app. Nothing is stored afterward.</div>
+  <div class="lg-note" style="margin:0 0 14px;font-size:13px;line-height:1.5">You'll share your <b>live location</b> with everyone in this trip while it's running. It stops when you end the trip or close the app, and positions are never shown after 24 hours. Buddy Trips is not an emergency or rescue service — in an emergency, call 911.</div>
   <button class="btn green" id="buddyagree" style="width:100%;margin-bottom:8px">✔ I understand — share while on this trip</button>
   <button class="btn gray" id="buddynope" style="width:100%">Cancel</button>
 </div>
@@ -523,9 +540,9 @@
 <div class="sheet" id="spoteditsheet">
   <div class="grabber"></div>
   <h3 id="spotedittitle">📍 Save this spot</h3>
-  <input class="field" id="spotname" placeholder="Name it — e.g. Secret walleye hole" maxlength="40">
+  <input class="field" id="spotname" aria-label="Spot name" placeholder="Name it — e.g. Secret walleye hole" maxlength="40">
   <div id="spoticons"></div>
-  <input class="field" id="spotnotes" placeholder="Notes (optional)" maxlength="120">
+  <input class="field" id="spotnotes" aria-label="Spot notes" placeholder="Notes (optional)" maxlength="120">
   <div class="btnrow">
     <button class="btn red" id="spotdelete" style="display:none">🗑 Delete</button>
     <button class="btn gray" id="spotcancel">Cancel</button>
@@ -546,12 +563,14 @@
      style="display:block;text-align:center;text-decoration:none;margin:12px 0 9px">🛟 Support</a>
   <a class="btn gray" id="aboutprivacy" href="privacy-policy.html" target="_blank" rel="noopener"
      style="display:block;text-align:center;text-decoration:none">🔒 Privacy Policy</a>
-  <div class="lg-note">The map, GPS tracking &amp; discovery are free forever. 🐾</div>
+  <a class="btn gray" id="aboutterms" href="terms.html" target="_blank" rel="noopener"
+     style="display:block;text-align:center;text-decoration:none;margin:9px 0 0">📜 Terms of Use</a>
+  <div class="lg-note">The map, GPS tracking &amp; discovery are free. 🐾</div>
 </div>
 
 <div id="introhint">🐾 Tap anywhere to fly to your location</div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 "use strict";
@@ -713,6 +732,7 @@ class SDMap {
      while zoomed way out); zoom eases in-out over the FULL duration for the
      "falling from orbit" feel. Any touch (or wheel) mid-flight skips to the end. */
   flyToCinematic(lat, lng, targetZoom = INTRO.diveZoom, ms = INTRO.diveMs, panDoneAt = INTRO.panDoneAt){
+    if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches){ this.setView(lat, lng, targetZoom); return; }
     const from = {lat:this.center.lat, lng:this.center.lng, z:this.zoom};
     const to = {lat: clamp(lat,-85,85), lng, z: clamp(targetZoom, this.minZoom, this.maxZoom)};
     if(this._anim) cancelAnimationFrame(this._anim);
@@ -2003,7 +2023,8 @@ SkySigned.boot();
 /* ---- paywall sheet: sells All Access, spotlights the pack you tapped ---- */
 let currentPay = 'allaccess';           /* which pack drew them in (activation target) */
 function packDef(id){ return id==='allaccess' ? PACKS_CONFIG.bundle : PACKS_CONFIG.packs[id]; }
-function payPrice(){ return PACK_STATE.allaccess.iosPrice || PACKS_CONFIG.bundle.price; }
+function payPrice(){ const p = PACK_STATE.allaccess.iosPrice || PACKS_CONFIG.bundle.price;
+  return /\/|month/i.test(p) ? p : p + '/mo'; }   /* always show the billing period next to the price */
 function openPaywall(packId){
   currentPay = packId && packDef(packId) ? packId : 'allaccess';
   const def = packDef(currentPay), bundle = PACKS_CONFIG.bundle;
@@ -2024,8 +2045,8 @@ function openPaywall(packId){
   $('paycode').style.display = ''; $('payunlock').style.display = '';
   $('paytrial').style.display = (bundle.trial && !PACK_STATE.allaccess.trialUsed()) ? '' : 'none';
   $('paynote').textContent = bundle.web.stripeUrl
-    ? 'Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page & receipt. Cancel anytime. GPS tracking, maps & discovery stay 100% free forever.'
-    : 'One cheap subscription in the SkyDog GPS iOS app unlocks everything. Have an unlock code? Enter it below. GPS tracking, maps & discovery stay 100% free forever.';
+    ? 'Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page & receipt. Auto-renews monthly until you cancel (from your Stripe receipt, or email us). GPS tracking, maps & discovery stay free.'
+    : 'One cheap subscription in the SkyDog GPS iOS app unlocks everything. Have an unlock code? Enter it below. GPS tracking, maps & discovery stay free.';
   openSheet('paysheet');
 }
 function activatePack(id){ const fn = PACK_ACTIVATE[id]; if(fn) fn(); }
@@ -2153,9 +2174,9 @@ function setFishingMode(on){
     const svc = fishServiceFor(map.center);
     if(!svc && map.base!=='lake'){
       fishPrevBase = map.base; map.setBase('lake');
-      toast('🎣 Fishing Mode ON — no state depth survey here, showing Esri lake depths', 4200);
+      toast('🎣 Fishing Mode ON — no state depth survey here, showing Esri lake depths. Reference only — not for navigation', 4600);
     } else {
-      toast('🎣 Fishing Mode ON — zoom into a lake for contours, tap the water to read the depth', 4200);
+      toast('🎣 Fishing Mode ON — zoom into a lake for contours, tap the water to read the depth. Reference only — not for navigation', 4600);
     }
   } else {
     map.overlays.delete('fishdepth'); map.overlays.delete('fishchart');
@@ -2456,7 +2477,7 @@ function renderTrips(){
       + '<button class="btn blue" data-act="view">🗺 View</button>'
       + '<button class="btn green" data-act="share">📤 Share</button>'
       + '<button class="btn gray" data-act="gpx">⬇ GPX</button>'
-      + '<button class="btn red" data-act="del">✕</button></div>';
+      + '<button class="btn red" data-act="del" aria-label="Delete trip">✕</button></div>';
     d.querySelector('[data-act=view]').addEventListener('click', () => viewTrip(tr));
     d.querySelector('[data-act=share]').addEventListener('click', () => shareTrip(tr));
     d.querySelector('[data-act=gpx]').addEventListener('click', () => { download(safeName(tr.name)+'.gpx', tripGPX(tr)); toast('GPX exported'); });
@@ -2886,6 +2907,14 @@ const FaaAirspace = {
     return this._fetched.some(f =>
       bbox[0]>=f.bbox[0] && bbox[1]>=f.bbox[1] && bbox[2]<=f.bbox[2] && bbox[3]<=f.bbox[3]);
   },
+  /* fail-safe: is there fresh FAA data covering this point at all?
+     If not, the app must warn instead of implying clear sky. */
+  hasDataAt(lat, lng){
+    const now = Date.now();
+    this._fetched = this._fetched.filter(f => now - f.at < DRONE_CFG.cacheMins*60000);
+    return this._fetched.some(f =>
+      lat>=f.bbox[0] && lng>=f.bbox[1] && lat<=f.bbox[2] && lng<=f.bbox[3]);
+  },
   async _query(url, bbox, outFields, withGeom, cb){
     for(let page=0; page<DRONE_CFG.maxPages; page++){
       const q = url + '?f=json&where=1%3D1&geometryType=esriGeometryEnvelope&inSR=4326&outSR=4326'
@@ -2989,8 +3018,16 @@ function renderDroneSites(){
 /* ---- "can I fly here?" — the center readout ---- */
 function droneAirspaceSummary(lat, lng){
   const c = airspaceSource.cellAt(lat, lng);
-  if(!c) return { level:'ok', ceiling:400, cell:null,
-    text:'No controlled-airspace grid here — typically clear up to 400 ft' };
+  if(!c){
+    /* No cell found. Only call it clear if FAA data actually LOADED for this
+       spot — a failed fetch, low zoom, or an unfetched area must never read
+       as a green light (absence of data is not absence of airspace). */
+    if(airspaceSource.hasDataAt && !airspaceSource.hasDataAt(lat, lng))
+      return { level:'unknown', ceiling:null, cell:null,
+        text:'Airspace data hasn\u2019t loaded for this spot — zoom in over it to load the FAA grid, and verify in B4UFLY before launch' };
+    return { level:'ok', ceiling:400, cell:null,
+      text:'No controlled-airspace grid here — typically clear up to 400 ft' };
+  }
   const where = (c.airspace ? 'Class ' + c.airspace : 'controlled') + (c.apt ? ' · ' + c.apt : '');
   if(c.ceiling <= 0) return { level:'danger', ceiling:0, cell:c,
     text:'Controlled airspace (' + where + ') — 0 ft grid, no LAANC auto-approval here' };
@@ -3000,8 +3037,9 @@ function droneAirspaceSummary(lat, lng){
 function renderDroneHud(){
   const a = droneAirspaceSummary(map.center.lat, map.center.lng);
   const air = $('dh-air');
-  air.className = 'dh-row lvl-' + a.level;
-  air.innerHTML = '<span class="dh-dot"></span>✈️ <b>' + a.ceiling + ' ft</b>&nbsp;max — ' + esc(a.text);
+  air.className = 'dh-row lvl-' + (a.level === 'unknown' ? 'caution' : a.level);
+  air.innerHTML = '<span class="dh-dot"></span>✈️ ' +
+    (a.level === 'unknown' ? '<b>?</b>&nbsp;— ' : '<b>' + a.ceiling + ' ft</b>&nbsp;max — ') + esc(a.text);
   const w = $('dh-wind');
   if(lastWx){
     const lvl = windLevel(lastWx.windMph, lastWx.gustMph);
@@ -3054,7 +3092,7 @@ $('dronefab').addEventListener('click', () => {
 });
 function droneTapInfo(lat, lng){
   const a = droneAirspaceSummary(lat, lng);
-  toast((a.level==='ok' ? '🟢 ' : a.level==='caution' ? '🟡 ' : '🔴 ') + a.text, 4600);
+  toast((a.level==='ok' ? '🟢 ' : a.level==='danger' ? '🔴 ' : '🟡 ') + a.text, 4600);
 }
 
 const DRONE_LEGEND = [
@@ -3094,6 +3132,7 @@ const LaancService = {
   check(lat, lng, altFt){
     const s = droneAirspaceSummary(lat, lng);
     return {
+      dataAvailable: s.level !== 'unknown',
       required: !!s.cell,
       ceilingFt: s.ceiling,
       autoApprovable: !!s.cell && s.ceiling > 0 && altFt <= s.ceiling,
@@ -3117,6 +3156,10 @@ function laancEvaluate(){
   if(altFt > 400){
     cls = 'danger';
     html = '<b>⛔ Over the 400 ft limit</b> — recreational &amp; Part 107 flights cap at 400 ft AGL.';
+  } else if(!v.dataAvailable){
+    cls = 'caution';
+    html = '<b>⚠️ Airspace data hasn\u2019t loaded for this spot</b> — move and zoom the map here until the FAA grid loads, ' +
+      'and verify in the FAA\u2019s B4UFLY service before launch. Never treat missing data as clear sky.';
   } else if(!v.required){
     cls = 'ok';
     html = '<b>✅ No authorization required</b> — uncontrolled airspace (typical). Keep it at or under ' +
@@ -3648,7 +3691,7 @@ function buildSpotList(){
     + '<span class="sem">'+esc(s.icon || '📍')+'</span>'
     + '<span style="min-width:0"><span class="snm">'+esc(s.name || 'My spot')+'</span>'
     + (s.notes ? '<br><span class="snt">'+esc(s.notes)+'</span>' : '') + '</span>'
-    + '<button data-act="go">🔍</button><button data-act="edit">✏️</button>'
+    + '<button data-act="go" aria-label="Zoom to spot">🔍</button><button data-act="edit" aria-label="Edit spot">✏️</button>'
     + '</div>').join('');
   wrap.querySelectorAll('.spotrow button').forEach(b => {
     b.addEventListener('click', () => {
@@ -3769,7 +3812,7 @@ Object.values(PACKS_CONFIG.packs).forEach(d => {
   if(document.querySelector('#modewheel [data-mode="'+d.id+'"]')) return;
   const b = document.createElement('button');
   b.className = 'wfab'; b.id = d.id + 'fab'; b.dataset.mode = d.id;
-  b.textContent = d.icon; b.title = d.name;
+  b.textContent = d.icon; b.title = d.name; b.setAttribute('aria-label', d.name);
   b.addEventListener('click', () => {
     if(!Entitlements.isUnlocked(d.id)){ openPaywall(d.id); return; }
     activatePack(d.id);
@@ -3823,6 +3866,7 @@ function wheelLayout(){
     it.btn.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
     it.btn.style.opacity = ad > visAd ? 0 : 1;
     it.btn.style.pointerEvents = ad > visAd ? 'none' : 'auto';
+      it.btn.tabIndex = ad > visAd ? -1 : 0;   /* invisible wheel slots leave the tab order */
     it.btn.style.zIndex = String(100 - Math.round(ad * 10));
     it.btn.classList.toggle('front', front);
     if(it.pack) it.btn.classList.toggle('locked', !Entitlements.isUnlocked(it.id));
@@ -4092,7 +4136,8 @@ if (SD_NATIVE){
     $('paysubyr').style.display = 'none';
     $('paycode').style.display = 'none';
     $('payunlock').style.display = 'none';
-    $('paynote').textContent = 'Auto-renewing App Store subscription — cancel anytime in Settings. Unlocks every pack, current & future. GPS tracking, maps & discovery stay 100% free forever.';
+    $('paynote').textContent = 'SkyDog All Access: $2.99/month (or your local price), auto-renews monthly until cancelled — cancel anytime in Settings \u2192 your name \u2192 Subscriptions. Unlocks every pack included in All Access. GPS tracking, maps & discovery stay free.';
+    $('paytrial').style.display = 'none';   /* Apple 3.1.2: no DIY trials on the native paywall — use a StoreKit intro offer instead */
     if (!$('payrestore')){
       const r = document.createElement('button');
       r.id = 'payrestore'; r.className = 'btn gray';
@@ -4151,6 +4196,35 @@ window.__SKYDOG_READY = true;
   window.addEventListener('appinstalled', function(){
     setInstallable(false);
     toast('SkyDog’s GPS added to your phone 🐾');
+  });
+})();
+
+/* ---- 📲 Get-the-app banner (web only) ----
+   A high-visibility download pill under the search hero. NEVER shows inside
+   the native iOS app (Capacitor) or an installed PWA; ✕ snoozes it 14 days. */
+(function(){
+  var bar = $('appbanner'); if(!bar) return;
+  var native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if(native || standalone) return;
+  var snooze = Number(sdStore.get('sd-appbanner-snooze') || 0);
+  if(snooze && Date.now() < snooze) return;
+  var PLAY_URL = '';   /* ← paste the Google Play listing URL here the day the Android app ships */
+  var isAndroid = /android/i.test(navigator.userAgent);
+  var link = $('appbannerlink');
+  if(isAndroid && PLAY_URL){
+    link.href = PLAY_URL;
+    $('appbannercta').textContent = 'Get it on Google Play';
+  } else if(isAndroid){
+    /* Android before the Play listing ships: offer the home-screen install instead */
+    $('appbannercta').textContent = 'Add to phone';
+    link.removeAttribute('target');
+    link.addEventListener('click', function(e){ e.preventDefault(); $('installfab').click(); });
+  }
+  bar.classList.add('on');
+  $('appbannerx').addEventListener('click', function(){
+    sdStore.set('sd-appbanner-snooze', String(Date.now() + 14*86400000));
+    bar.classList.remove('on');
   });
 })();
 

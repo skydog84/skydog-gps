@@ -1,3 +1,13 @@
+> ⚠️ **SUPERSEDED — DO NOT PASTE.** This file is the original **v1.0** listing copy.
+> It contains claims that are **no longer true in v1.1** (the Fishing Pack does NOT
+> remove ads — ads stay for everyone; the current product is the $2.99/mo SkyDog
+> All Access auto-renewing subscription). The v1.1 listing source of truth is
+> `SkyDog_GPS_v1.1_Paste_Text.txt`. Kept for history only.
+>
+> **Privacy label correction (use for v1.2 submission):** Location (Precise) →
+> **Collected**, purpose App Functionality, Not linked to identity, not used for
+> tracking — required because Buddy Trips transmits live position via Firebase.
+
 # SkyDog GPS — App Store Connect Listing Copy
 
 Paste-ready. Character limits noted per field.

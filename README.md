@@ -15,7 +15,7 @@
 
 ## What it does
 
-- 🗺️ **Three map styles** — Streets, Topo (OnX-style contour lines), and Satellite
+- 🗺️ **Three map styles** — Streets, Topo (detailed contour lines for hills, hunting land & trail country), and Satellite
 - 🔍 **Search anything** — beaches, boat launches, rivers, trailheads, parks
 - 📍 **One-tap discovery** — Trails, Parking, Overlooks, Beaches, Boat Launches, Waterfalls, Camping, Picnic & Fishing spots near you
 - 🚗 **Drive there** — every pin hands off to Google Maps navigation
@@ -23,7 +23,7 @@
 - 💾 **Save & share** — share a summary + GPX file (opens in Google Earth, OnX, Gaia, AllTrails)
 - 🔑 **Map Key** — explains every color and symbol on whichever map style you're on
 - ❓ **What's this?** — tap any spot on the map and SkyDog identifies it
-- 📴 **No accounts, no tracking, no subscription.** One file. Your GPS data stays on your phone.
+- 📴 **No accounts, no sign-up.** Your GPS tracks stay on your phone (Buddy Trips relay live location only while you choose to share). The iOS app is ad-supported; an optional All Access subscription adds feature packs.
 
 ## Put it on your phone
 

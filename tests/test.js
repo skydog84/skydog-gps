@@ -659,9 +659,18 @@ async function main(){
     const s = __sddrone.droneAirspaceSummary(44.76, -85.52);
     return s.level === 'caution' && s.ceiling === 400;
   })()`));
-  T('outside every grid → clear to 400', await page.evaluate(`(function(){
-    const s = __sddrone.droneAirspaceSummary(44.76, -85.90);
+  T('inside coverage, outside every grid → clear to 400', await page.evaluate(`(function(){
+    const f = __sddrone.airspace._fetched[0].bbox;              /* [s,w,n,e] of loaded FAA data */
+    const s = __sddrone.droneAirspaceSummary((f[0]+f[2])/2, f[1] + 0.002);  /* inside coverage, west of both cells */
     return s.level === 'ok' && s.ceiling === 400 && s.cell === null;
+  })()`));
+  T('NO data coverage → fail-safe unknown, never a green light', await page.evaluate(`(function(){
+    const s = __sddrone.droneAirspaceSummary(44.76, -85.90);
+    return s.level === 'unknown' && s.cell === null;
+  })()`));
+  T('flight check with no data → warns instead of clearing', await page.evaluate(`(function(){
+    const v = __sddrone.LaancService.check(44.76, -85.90, 300);
+    return v.dataAvailable === false && v.required === false;
   })()`));
   T('grid colors: red at 0, green at 400 (config-driven)', await page.evaluate(
     '__sddrone.droneColor(0).fill.includes("255,90,90") && __sddrone.droneColor(400).fill.includes("53,224,138")'));
@@ -690,8 +699,11 @@ async function main(){
     const v = __sddrone.LaancService.check(44.76, -85.52, 200);
     return v.required === true && v.autoApprovable === true;
   })()`));
-  T('check: open country at 300 ft → no authorization needed', await page.evaluate(
-    '__sddrone.LaancService.check(44.76, -85.90, 300).required === false'));
+  T('check: open country at 300 ft → no authorization needed', await page.evaluate(`(function(){
+    const f = __sddrone.airspace._fetched[0].bbox;
+    const v = __sddrone.LaancService.check((f[0]+f[2])/2, f[1] + 0.002, 300);
+    return v.required === false && v.dataAvailable === true;
+  })()`));
   await page.evaluate('(function(){ document.getElementById("dh-check").click(); })()');
   T('flight check sheet opens with a verdict', await page.$eval('#dronesheet', (el) => el.classList.contains('open'))
     && await page.$eval('#laancverdict', (el) => el.textContent.length > 20));
@@ -1205,12 +1217,22 @@ async function main(){
   T('no purchase copy promises ad removal', !/removes ads|ads gone|ad-free|removes the ads/i.test(appSrc));
   T('grant path never touches the ad banner', !appSrc.slice(appSrc.indexOf('function sdGrantPack')).includes('SkyGPSAds.remove'));
 
+  console.log('\n— 📲 Get-the-app banner —');
+  T('web visitors see the Get-the-app banner', await page.$eval('#appbanner', (el) => el.classList.contains('on') && getComputedStyle(el).display !== 'none'));
+  T('banner links to the real App Store listing', await page.$eval('#appbannerlink', (el) => el.href.includes('apps.apple.com') && el.href.includes('6792906988')));
+  T('banner guarded against native app + installed PWA', (function(){
+    const seg = appSrc.slice(appSrc.indexOf('Get-the-app banner (web only)'));
+    return seg.includes('isNativePlatform') && seg.includes('display-mode: standalone');
+  })());
+  T('Safari Smart App Banner meta present (app-id pinned)', appSrc.includes('apple-itunes-app') && appSrc.includes('app-id=6792906988'));
+  T('✕ dismisses the banner and snoozes it via sdStore', await page.evaluate('(function(){ document.getElementById("appbannerx").click(); return !document.getElementById("appbanner").classList.contains("on") && !!sdStore.get("sd-appbanner-snooze"); })()'));
+
   console.log('\n— Fail-loud + shell —');
   await page.evaluate('window.dispatchEvent(new ErrorEvent("error", { message: "test-explosion" }))');
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v24 (signed-code key ships fresh)', sw.includes("skydog-gps-v24") && !sw.includes("skydog-gps-v23") && !sw.includes("skydog-gps-v22"));
+  T('sw.js cache bumped to v26 (get-the-app banner ships fresh)', sw.includes("skydog-gps-v26") && !sw.includes("skydog-gps-v25") && !sw.includes("skydog-gps-v24"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
