@@ -599,8 +599,8 @@ async function main(){
   await page.evaluate('__BUDDY.BUDDY.end(true)');
 
   console.log('\n— 🎒 Packs system (one paywall) —');
-  T('packs config: fishing + drone + orv + All Access bundle', await page.evaluate(
-    '!!(__sdpacks.PACKS_CONFIG.packs.fishing && __sdpacks.PACKS_CONFIG.packs.drone && __sdpacks.PACKS_CONFIG.packs.orv && __sdpacks.PACKS_CONFIG.bundle)'));
+  T('packs config: fishing + drone + orv + terrain3d + All Access bundle', await page.evaluate(
+    '!!(__sdpacks.PACKS_CONFIG.packs.fishing && __sdpacks.PACKS_CONFIG.packs.drone && __sdpacks.PACKS_CONFIG.packs.orv && __sdpacks.PACKS_CONFIG.packs.terrain3d && __sdpacks.PACKS_CONFIG.bundle)'));
   T('All Access is the ONE sellable product ($2.99/mo sub)', await page.evaluate(`(function(){
     const C = __sdpacks.PACKS_CONFIG;
     const separately = Object.values(C.packs).some(p => p.sellable);
@@ -612,15 +612,15 @@ async function main(){
   await page.evaluate('__sdwheel.jumpTo("store")');
   await page.click('#packsfab');
   T('🎒 fab opens the store sheet', await page.$eval('#packsheet', (el) => el.classList.contains('open')));
-  T('store lists every pack (3 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 3);
+  T('store lists every pack (4 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 4);
   T('one subscribe button at the bundle price', (await page.$eval('#packsub', (el) => el.textContent)).includes('$2.99'));
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
-  T('all-access entitlement unlocks every pack (incl ORV)', await page.evaluate(`(function(){
+  T('all-access entitlement unlocks every pack (incl ORV + 3D)', await page.evaluate(`(function(){
     localStorage.setItem('sd-allaccess-iap', '1');
     const ok = __sdpacks.Entitlements.isUnlocked('drone') && __sdpacks.Entitlements.isUnlocked('fishing')
-      && __sdpacks.Entitlements.isUnlocked('orv');
+      && __sdpacks.Entitlements.isUnlocked('orv') && __sdpacks.Entitlements.isUnlocked('terrain3d');
     localStorage.setItem('sd-allaccess-iap', '0');
-    return ok && !__sdpacks.Entitlements.isUnlocked('orv');
+    return ok && !__sdpacks.Entitlements.isUnlocked('orv') && !__sdpacks.Entitlements.isUnlocked('terrain3d');
   })()`));
 
   console.log('\n— 🚁 Drone Pack: gating + unlock —');
@@ -720,13 +720,13 @@ async function main(){
   console.log('\n— 🎡 Mode Wheel (free core navigation) —');
   await page.evaluate('__sdwheel.jumpTo("fishing")');
   T('wheel holds every mode + tool in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
-    === JSON.stringify(['fishing', 'drone', 'orv', 'buddy', 'spots', 'store',
+    === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'buddy', 'spots', 'store',
                         'layer', 'locate', 'saved', 'key', 'what', 'clear']));
   T('every configured pack auto-appears on the wheel', await page.evaluate(
     'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
   T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
     && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
-  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(11)') === -1);
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(12)') === -1);
   T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
     __sdwheel.spinBy(1.4);
     const drifting = __sdwheel.pos;
@@ -802,7 +802,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.1');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.2');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -957,6 +957,87 @@ async function main(){
     return droneOwns && orvOwns;
   })()`));
 
+  console.log('\n— 🗻 3D Terrain Pack: gating + unlock —');
+  T('terrain3d pack config (bundle-only, TERRA codes)', await page.evaluate(`(function(){
+    const d = __sdpacks.PACKS_CONFIG.packs.terrain3d;
+    return !!d && d.sellable === false && d.product === null && d.web.codePrefix === 'TERRA'
+      && d.storeKey === 'sd-terrapack' && d.icon === '🗻';
+  })()`));
+  T('🗻 fab auto-appears on the wheel (zero extra wiring)', await page.evaluate(
+    '__sdwheel.order.includes("terrain3d")') && (await page.$eval('#terrain3dfab', (el) => el.textContent.trim())) === '🗻');
+  await page.evaluate('__sdwheel.jumpTo("terrain3d")');
+  await page.click('#terrain3dfab');
+  T('locked: 🗻 fab opens the paywall, not the mode', await page.evaluate('__sdt3d.mode') === false
+    && await page.$eval('#paysheet', (el) => el.classList.contains('open'))
+    && (await page.$eval('#paytitle', (el) => el.textContent)).includes('3D'));
+  T('TERRA checksum rejects bad codes', await page.evaluate(
+    '!__sdpacks.packCodeOK("TERRA", "TERRA-AAAA") && !__sdpacks.packCodeOK("TERRA", "junk")'));
+  await page.fill('#paycode', 'terra-aa2a'); /* lowercase on purpose — must normalize */
+  await page.click('#payunlock');
+  T('valid TERRA code unlocks + enters 3D', await page.evaluate('__sdt3d.mode') === true
+    && !(await page.$eval('#paysheet', (el) => el.classList.contains('open'))));
+  T('3D license persisted on device', await page.evaluate('localStorage.getItem("sd-terrapack")') === 'TERRA-AA2A');
+  T('3D view overlay shown with exit + controls', await page.$eval('#t3dwrap', (el) => el.classList.contains('on'))
+    && await page.$eval('#t3dexit', (el) => el.textContent.includes('2D'))
+    && await page.$eval('#t3dexag', (el) => el.min === '1' && el.max === '3'));
+  T('attribution credits the terrain sources in 3D', await page.$eval('#attrib', (el) => /Terrain/.test(el.textContent))
+    && await page.$eval('#t3dattrib', (el) => /Mapzen/.test(el.textContent) && /USGS/.test(el.textContent)));
+  T('WebGL state is fail-safe (gl OR a friendly no-3D message, never a crash)', await page.evaluate(
+    '__sdt3d.gl === true || (__sdt3d.glFailed === true && document.getElementById("t3dmsg").style.display === "block")'));
+
+  console.log('\n— 🗻 3D terrain math (pure, deterministic) —');
+  T('terrarium decode: sea level → 0 m', await page.evaluate('__sdt3d.decodeTerrarium(128, 0, 0)') === 0);
+  T('terrarium decode: 1625 m peak', await page.evaluate('__sdt3d.decodeTerrarium(134, 89, 0)') === 1625);
+  T('terrarium decode: black pixel → -32768 (clamped later)', await page.evaluate('__sdt3d.decodeTerrarium(0, 0, 0)') === -32768);
+  T('DEM tile url → free keyless AWS terrarium endpoint', await page.evaluate('__sdt3d.demTileUrl(11, 550, 740)')
+    === 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/11/550/740.png');
+  T('DEM zoom picker clamps to coverage (6..13) and scales with distance', await page.evaluate(`(function(){
+    const near = __sdt3d.pickDemZoom(300, 44.7), far = __sdt3d.pickDemZoom(240000, 44.7);
+    return near === 13 && far === 7 && __sdt3d.pickDemZoom(10000000, 44.7) === 6
+      && __sdt3d.pickDemZoom(9000, 44.7) > far && __sdt3d.pickDemZoom(9000, 44.7) < near;
+  })()`));
+  T('tile2lat: web-mercator rows land where they should', await page.evaluate(`(function(){
+    const eq = __sdt3d.tile2lat(Math.pow(2, 10) / 2, 10);     /* middle row = equator */
+    return Math.abs(eq) < 1e-6 && __sdt3d.tile2lat(0, 10) > 85;
+  })()`));
+  T('building heights: explicit metres beat levels beat the default', await page.evaluate(`(function(){
+    const B = __sdt3d.bldHeight;
+    return B({height: '25 m'}) === 25 && B({'building:levels': '4'}) === 4 * __sdt3d.T3D_CFG.bldFloorM
+      && B({}) === __sdt3d.T3D_CFG.bldDefaultM && B({height: '9999'}) === 350;
+  })()`));
+  T('ear-clip: square → 2 triangles, triangle → itself, degenerate → empty', await page.evaluate(`(function(){
+    const E = __sdt3d.earclip;
+    return E([[0,0],[1,0],[1,1],[0,1]]).length === 6 && E([[0,0],[1,0],[0,1]]).length === 3
+      && E([[0,0],[1,0]]).length === 0;
+  })()`));
+  T('ear-clip handles an L-shape (concave) fully', await page.evaluate(
+    '__sdt3d.earclip([[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]]).length') === 12);
+  T('exaggeration slider drives the renderer state', await page.evaluate(`(function(){
+    const s = document.getElementById('t3dexag');
+    s.value = '2.5'; s.dispatchEvent(new Event('input'));
+    const ok = __sdt3d.T3D.exag === 2.5;
+    s.value = '1.5'; s.dispatchEvent(new Event('input'));
+    return ok && __sdt3d.T3D.exag === 1.5;
+  })()`));
+  T('🏢 buildings toggle flips state + button', await page.evaluate(`(function(){
+    const b = document.getElementById('t3dbld');
+    const was = __sdt3d.T3D.bldOn;
+    b.click();
+    const flipped = __sdt3d.T3D.bldOn === !was && b.classList.contains('on') === !was;
+    b.click();
+    return flipped && __sdt3d.T3D.bldOn === was;
+  })()`));
+  T('CSP allowlists the terrain tile host (img-src)', (function(){
+    const m = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8'));
+    return !!m && /img-src[^;]*s3\.amazonaws\.com/.test(m[1]);
+  })());
+  await page.click('#t3dexit');
+  T('✕ 2D exits back to the flat map', await page.evaluate('__sdt3d.mode') === false
+    && !(await page.$eval('#t3dwrap', (el) => el.classList.contains('on'))));
+  await page.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+  await page.waitForFunction('window.__SKYDOG_READY === true', null, { timeout: 10000 });
+  T('3D unlock survives app restart', await page.evaluate('__sdpacks.Entitlements.isUnlocked("terrain3d")') === true);
+
   console.log('\n— 📍 My Spots (free for everyone) —');
   T('spots fab on the wheel', (await page.$eval('#spotsfab', (el) => el.textContent.trim())) === '➕');
   await page.evaluate('__sdwheel.jumpTo("spots")');
@@ -1073,7 +1154,7 @@ async function main(){
     'tiles.regrid.com', 'app.regrid.com', 'maps.dnr.illinois.gov', 'gisagocss.state.mi.us',
     'programs.iowadnr.gov', 'enterprise.gisdata.mn.gov', 'gis.charttools.noaa.gov', 'gisagodnr.state.mi.us',
     'overpass-api.de', 'nominatim.openstreetmap.org', 'api.open-meteo.com', 'services6.arcgis.com',
-    'www.gstatic.com', 'firebaseio.com', 'api.skydoggps.com',
+    'www.gstatic.com', 'firebaseio.com', 'api.skydoggps.com', 's3.amazonaws.com',
   ];
   T('CSP allowlists every origin the app talks to (' + CSP_ORIGINS.length + ')',
     CSP_ORIGINS.every((o) => csp.includes(o)), CSP_ORIGINS.filter((o) => !csp.includes(o)).join(', '));
@@ -1232,7 +1313,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v26 (get-the-app banner ships fresh)', sw.includes("skydog-gps-v26") && !sw.includes("skydog-gps-v25") && !sw.includes("skydog-gps-v24"));
+  T('sw.js cache bumped to v27 (3D Terrain pack ships fresh)', sw.includes("skydog-gps-v27") && !sw.includes("skydog-gps-v26") && !sw.includes("skydog-gps-v25"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

@@ -24,7 +24,7 @@
      api.skydoggps.com is pre-allowlisted for the Phase B Cloudflare
      Worker (Regrid proxy + signed unlock codes) so flipping it on
      never requires a CSP change. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
 <meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
@@ -297,6 +297,26 @@
   #aboutbrand b span{color:var(--accent)}
   #aboutbrand small{display:block;font-size:9px;color:var(--dim);letter-spacing:.8px;text-transform:uppercase}
   .spotmark{filter:drop-shadow(0 2px 4px rgba(0,0,0,.7));font-size:26px;line-height:1;text-align:center;user-select:none}
+
+  /* ---- 🗻 3D Terrain view (terrain3d pack) ---- */
+  #t3dwrap{display:none;position:absolute;inset:0;z-index:1600;background:#0b0f14}
+  #t3dwrap.on{display:block}
+  #t3dcanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+  #t3dtop{position:absolute;top:calc(10px + var(--safe-top));left:10px;right:10px;display:flex;align-items:center;gap:10px;pointer-events:none}
+  #t3dtitle{font-weight:800;font-size:14px;letter-spacing:.6px;color:#eaf2fa;text-shadow:0 1px 3px rgba(0,0,0,.55);
+    background:rgba(10,16,22,.55);padding:7px 11px;border-radius:11px;border:1px solid rgba(255,255,255,.14)}
+  #t3dexit{margin-left:auto;pointer-events:auto;border:1px solid var(--line);background:var(--panel2);color:var(--text);
+    font-weight:800;font-size:13px;border-radius:11px;padding:9px 13px;cursor:pointer}
+  #t3dctl{position:absolute;left:10px;bottom:calc(18px + var(--safe-bottom));display:flex;align-items:center;gap:9px;
+    background:rgba(10,16,22,.62);border:1px solid rgba(255,255,255,.14);border-radius:13px;padding:8px 11px}
+  #t3dctl button{border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:16px;border-radius:10px;
+    width:38px;height:38px;cursor:pointer}
+  #t3dctl button.on{border-color:var(--accent);background:rgba(53,224,138,.14)}
+  #t3dexrow{display:flex;align-items:center;gap:6px;color:#dfe9f2;font-size:14px}
+  #t3dexag{width:92px;accent-color:var(--accent)}
+  #t3dmsg{display:none;position:absolute;left:14px;right:14px;top:40%;background:var(--panel2);border:1px solid var(--line);
+    border-radius:14px;padding:16px;color:var(--text);font-size:13.5px;text-align:center}
+  #t3dattrib{position:absolute;right:6px;bottom:calc(4px + var(--safe-bottom));font-size:9px;color:#9db1c4;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 </style>
 </head>
 <body>
@@ -462,7 +482,7 @@
 <div class="sheet" id="packsheet">
   <div class="grabber"></div>
   <h3>🎒 SkyDog All Access</h3>
-  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery &amp; buddy trips are <b>free</b> — and we plan to keep them that way. One cheap subscription unlocks every pack included in All Access — today that’s Fishing, Drone &amp; ORV Trails, plus new packs we add to it.</div>
+  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery &amp; buddy trips are <b>free</b> — and we plan to keep them that way. One cheap subscription unlocks every pack included in All Access — today that’s Fishing, Drone, ORV Trails &amp; 3D Terrain, plus new packs we add to it.</div>
   <div id="packlist"></div>
   <button class="btn green" id="packsub" style="width:100%;margin-top:4px">🔓 Unlock everything</button>
   <button class="btn gray" id="packrestore" style="width:100%;margin-top:8px;display:none">↻ Restore Purchases</button>
@@ -566,6 +586,21 @@
   <a class="btn gray" id="aboutterms" href="terms.html" target="_blank" rel="noopener"
      style="display:block;text-align:center;text-decoration:none;margin:9px 0 0">📜 Terms of Use</a>
   <div class="lg-note">The map, GPS tracking &amp; discovery are free. 🐾</div>
+</div>
+
+<div id="t3dwrap" aria-hidden="true">
+  <canvas id="t3dcanvas" role="img" aria-label="3D terrain view. Drag to spin and tilt, pinch to fly closer."></canvas>
+  <div id="t3dtop">
+    <span id="t3dtitle">🗻 3D Terrain</span>
+    <button id="t3dexit" aria-label="Exit 3D back to the 2D map">✕ 2D</button>
+  </div>
+  <div id="t3dctl">
+    <button id="t3dcompass" title="Face north &amp; level out" aria-label="Face north and level out">🧭</button>
+    <label id="t3dexrow" title="Terrain exaggeration">⛰<input type="range" id="t3dexag" min="1" max="3" step="0.25" value="1.5" aria-label="Terrain exaggeration"></label>
+    <button id="t3dbld" class="on" title="3D buildings" aria-label="Toggle 3D buildings">🏢</button>
+  </div>
+  <div id="t3dmsg"></div>
+  <div id="t3dattrib">Terrain © Mapzen/AWS · SRTM · USGS 3DEP · basemap © its provider · buildings © OpenStreetMap</div>
 </div>
 
 <div id="introhint">🐾 Tap anywhere to fly to your location</div>
@@ -1108,6 +1143,7 @@ function updateAttrib(){
   map.overlays.forEach(k => { if(OVERLAYS[k]) parts.push(OVERLAYS[k].attrib); });
   if(window.__sddrone && __sddrone.mode){ parts.push('✈ FAA UAS data'); parts.push('☁ Open-Meteo'); }
   if(window.__sdorv && __sdorv.mode){ parts.push('🏔 Michigan DNR trails'); }
+  if(window.__sdt3d && __sdt3d.mode){ parts.push('🗻 Terrain: Mapzen · SRTM · USGS 3DEP'); }
   $('attrib').textContent = [...new Set(parts)].join(' · ');
 }
 function buildLayerSheet(){
@@ -1252,7 +1288,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.1';
+const SD_VERSION = '1.2';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -1880,6 +1916,21 @@ const PACKS_CONFIG = {
       storeKey:'sd-orvpack',
       web:{ codePrefix:'ORV' },
       unlockToast:'🏔 ORV Trails unlocked — ride safe!'
+    },
+    terrain3d: {
+      id:'terrain3d', icon:'🗻', name:'3D Terrain',
+      tagline:'Fly your map in real 3D — hills, valleys & buildings',
+      features:[
+        ['🗻','<b>True 3D terrain</b> — real elevation data turns the map into hills, ridges &amp; river valleys'],
+        ['🛰','<b>Any basemap, draped</b> — satellite, topo or streets wrapped over the landscape'],
+        ['🏢','<b>3D buildings</b> — towns rise up when you fly in close'],
+        ['🌀','<b>Spin, tilt &amp; fly</b> — one finger orbits, pinch to swoop in like a drone shot']
+      ],
+      sellable:false,                 /* included in All Access — not sold separately */
+      product:null,                   /* no separate store product while bundle-only */
+      storeKey:'sd-terrapack',
+      web:{ codePrefix:'TERRA' },
+      unlockToast:'🗻 3D Terrain unlocked — go fly the map!'
     }
   },
   /* THE one product on sale: cheap, unlocks everything, keeps the crowd */
@@ -3775,6 +3826,680 @@ window.__sdspots = { MYSPOTS, SPOT_ICONS, renderSpots, buildSpotList, spotPopup,
   get placing(){ return spotPlacing; }, set placing(v){ spotPlacing = !!v; },
   placeAt: spotPlaceAt, editUI: (id) => openSpotEdit(id),
   get show(){ return spotsShow; }, setShow(v){ spotsShow = !!v; renderSpots(); } };
+
+/* =====================================================================
+   🗻 3D TERRAIN VIEW — the terrain3d pack (included in All Access)
+   Real elevation in true 3D: free, keyless Terrarium DEM tiles (Mapzen
+   terrain tiles on AWS Open Data — SRTM/USGS/3DEP sources) become a
+   WebGL mesh, the CURRENT basemap (satellite, topo, streets…) is
+   draped over it, OSM buildings extrude when you fly in close, and
+   your live track + position ride the terrain. All inline WebGL —
+   no libraries, same single-file rules as everything else here.
+   Fail-safe: no WebGL → a friendly message; the 2D map is untouched.
+   ===================================================================== */
+const T3D_CFG = {
+  demHost: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/',  /* +z/x/y.png */
+  demZoomMin: 6, demZoomMax: 13,   /* Terrarium coverage is global to z15; 13 is plenty sharp */
+  grid: 3,                         /* 3×3 DEM tiles around the camera target */
+  meshN: 48,                       /* quads per tile side (49×49 vertices) */
+  texBoost: 2,                     /* basemap tiles at demZ+2 → 1024px drape per DEM tile */
+  exagDefault: 1.5,                /* Michigan-friendly: real hills, gently amplified */
+  minPitchDeg: 10, maxPitchDeg: 80,
+  minDistM: 260, maxDistM: 240000,
+  bldMaxDistM: 2600,               /* buildings only fetch when flown in this close */
+  bldFloorM: 3.2, bldDefaultM: 6.5, bldLimit: 600, bldMaxVerts: 60000,
+  fog: [0.66, 0.78, 0.92], skyTop: [0.30, 0.58, 0.94], skyBot: [0.79, 0.88, 0.97],
+  lightDir: [-0.45, 0.78, 0.43]    /* NW morning sun, normalized-ish */
+};
+
+/* ---- pure helpers (unit-tested) ---- */
+function t3dDecodeTerrarium(r, g, b){ return r * 256 + g + b / 256 - 32768; }   /* meters */
+function t3dDemTileUrl(z, x, y){ return T3D_CFG.demHost + z + '/' + x + '/' + y + '.png'; }
+function t3dPickDemZoom(distM, lat){
+  /* choose the DEM zoom whose 3-tile block covers ~2.2× the camera distance */
+  const span = Math.max(1200, distM * 2.2);
+  const perTile = span / T3D_CFG.grid;
+  const z = Math.floor(Math.log2(40075016.7 * Math.cos(lat * Math.PI / 180) / perTile));
+  return clamp(z, T3D_CFG.demZoomMin, T3D_CFG.demZoomMax);
+}
+function t3dTile2Lat(y, z){
+  const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+  return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+function t3dBldHeight(tags){
+  tags = tags || {};
+  const num = v => { const m = /^\s*(\d+(\.\d+)?)/.exec(String(v == null ? '' : v)); return m ? parseFloat(m[1]) : null; };
+  let h = num(tags.height);
+  if(h == null){ const lv = num(tags['building:levels']); if(lv != null) h = lv * T3D_CFG.bldFloorM; }
+  if(h == null) h = T3D_CFG.bldDefaultM;
+  return clamp(h, 3, 350);
+}
+/* ear-clipping triangulation for a simple polygon [[x,y],…] → index list */
+function t3dEarclip(pts){
+  const n = pts.length; if(n < 3) return [];
+  const idx = [];
+  for(let i = 0; i < n; i++) idx.push(i);
+  let area = 0;
+  for(let i = 0; i < n; i++){ const a = pts[i], b = pts[(i + 1) % n]; area += a[0] * b[1] - b[0] * a[1]; }
+  if(area < 0) idx.reverse();                       /* wind counter-clockwise */
+  const inTri = (p, a, b, c) => {
+    const s1 = (b[0]-a[0])*(p[1]-a[1]) - (b[1]-a[1])*(p[0]-a[0]);
+    const s2 = (c[0]-b[0])*(p[1]-b[1]) - (c[1]-b[1])*(p[0]-b[0]);
+    const s3 = (a[0]-c[0])*(p[1]-c[1]) - (a[1]-c[1])*(p[0]-c[0]);
+    return s1 >= -1e-9 && s2 >= -1e-9 && s3 >= -1e-9;
+  };
+  const tris = [];
+  let guard = 0;
+  while(idx.length > 3 && guard++ < 5000){
+    let clipped = false;
+    for(let i = 0; i < idx.length; i++){
+      const ia = idx[(i + idx.length - 1) % idx.length], ib = idx[i], ic = idx[(i + 1) % idx.length];
+      const a = pts[ia], b = pts[ib], c = pts[ic];
+      if((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]) <= 1e-9) continue;   /* reflex — not an ear */
+      let holds = false;
+      for(const j of idx){ if(j !== ia && j !== ib && j !== ic && inTri(pts[j], a, b, c)){ holds = true; break; } }
+      if(holds) continue;
+      tris.push(ia, ib, ic); idx.splice(i, 1); clipped = true; break;
+    }
+    if(!clipped) break;                             /* degenerate polygon — ship what we have */
+  }
+  if(idx.length === 3) tris.push(idx[0], idx[1], idx[2]);
+  return tris;
+}
+
+/* ---- tiny mat4 (column-major, WebGL style) ---- */
+const T3DM4 = {
+  mul(a, b){
+    const o = new Float32Array(16);
+    for(let c = 0; c < 4; c++) for(let r = 0; r < 4; r++){
+      let s = 0; for(let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+      o[c * 4 + r] = s;
+    }
+    return o;
+  },
+  persp(fovY, asp, near, far){
+    const f = 1 / Math.tan(fovY / 2), o = new Float32Array(16);
+    o[0] = f / asp; o[5] = f;
+    o[10] = (far + near) / (near - far); o[11] = -1;
+    o[14] = 2 * far * near / (near - far);
+    return o;
+  },
+  lookAt(e, t, up){
+    let zx = e[0]-t[0], zy = e[1]-t[1], zz = e[2]-t[2];
+    let zl = Math.hypot(zx, zy, zz) || 1; zx /= zl; zy /= zl; zz /= zl;
+    let xx = up[1]*zz - up[2]*zy, xy = up[2]*zx - up[0]*zz, xz = up[0]*zy - up[1]*zx;
+    let xl = Math.hypot(xx, xy, xz) || 1; xx /= xl; xy /= xl; xz /= xl;
+    const yx = zy*xz - zz*xy, yy = zz*xx - zx*xz, yz = zx*xy - zy*xx;
+    return new Float32Array([
+      xx, yx, zx, 0,  xy, yy, zy, 0,  xz, yz, zz, 0,
+      -(xx*e[0] + xy*e[1] + xz*e[2]), -(yx*e[0] + yy*e[1] + yz*e[2]), -(zx*e[0] + zy*e[1] + zz*e[2]), 1
+    ]);
+  }
+};
+
+const T3D = {
+  gl: null, glFailed: false,
+  center: { lat: 44.25, lng: -84.6 },
+  heading: 0, pitch: 55 * Math.PI / 180, dist: 9000,
+  exag: T3D_CFG.exagDefault, bldOn: true,
+  demZ: -1, anchorTx: null, anchorTy: null,
+  lat0: null, lng0: null, mPerLng: 1, mPerLat: 110540,
+  tiles: new Map(), active: [],
+  bld: null, bldKey: '', trk: null, me: null,
+  _raf: 0, _trackLen: -1, _texQueue: [],
+
+  /* ---- local tangent-plane meters: x east, z south, y up ---- */
+  _setAnchor(lat, lng){
+    this.lat0 = lat; this.lng0 = lng;
+    this.mPerLng = 111319.49 * Math.cos(lat * Math.PI / 180);
+    /* anchor moved → every cached mesh's coordinates are stale */
+    for(const rec of this.tiles.values()) this._freeTile(rec);
+    this.tiles.clear();
+  },
+  toLocal(lat, lng){ return [ (lng - this.lng0) * this.mPerLng, -(lat - this.lat0) * this.mPerLat ]; },
+
+  /* ---- GL bootstrap ---- */
+  _initGL(){
+    const c = $('t3dcanvas');
+    let gl = null;
+    try{ gl = c.getContext('webgl', { antialias: true }) || c.getContext('experimental-webgl'); }catch(e){}
+    if(!gl){ this.glFailed = true; return; }
+    const mk = (vs, fs) => {
+      const sh = (type, src) => {
+        const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+        if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader');
+        return s;
+      };
+      const p = gl.createProgram();
+      gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(p);
+      if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) || 'link');
+      return p;
+    };
+    try{
+      this.prog = mk(
+        'attribute vec2 aPos; attribute float aH; attribute float aUp; attribute float aShade; attribute vec2 aUV;' +
+        'uniform mat4 uMVP; uniform float uExag;' +
+        'varying vec2 vUV; varying float vShade; varying float vW;' +
+        'void main(){' +
+        '  vec4 p = vec4(aPos.x, aH * uExag + aUp, aPos.y, 1.0);' +
+        '  gl_Position = uMVP * p; vUV = aUV; vShade = aShade; vW = gl_Position.w; gl_PointSize = 15.0; }',
+        'precision mediump float;' +
+        'varying vec2 vUV; varying float vShade; varying float vW;' +
+        'uniform sampler2D uTex; uniform int uUseTex; uniform vec4 uColor; uniform float uFar; uniform vec3 uFog;' +
+        'void main(){' +
+        '  vec4 c = (uUseTex == 1) ? texture2D(uTex, vUV) : uColor;' +
+        '  c.rgb *= (0.62 + 0.38 * vShade);' +
+        '  float f = smoothstep(0.6, 1.0, vW / uFar);' +
+        '  gl_FragColor = vec4(mix(c.rgb, uFog, f), c.a); }');
+      this.sky = mk(
+        'attribute vec2 aPos; varying float vY; void main(){ vY = aPos.y; gl_Position = vec4(aPos, 0.9999, 1.0); }',
+        'precision mediump float; varying float vY; uniform vec3 uTop; uniform vec3 uBot;' +
+        'void main(){ gl_FragColor = vec4(mix(uBot, uTop, clamp(vY * 0.5 + 0.5, 0.0, 1.0)), 1.0); }');
+    }catch(e){ this.glFailed = true; return; }
+    this.gl = gl;
+    this.attr = {};
+    ['aPos','aH','aUp','aShade','aUV'].forEach(n => this.attr[n] = gl.getAttribLocation(this.prog, n));
+    this.uni = {};
+    ['uMVP','uExag','uTex','uUseTex','uColor','uFar','uFog'].forEach(n => this.uni[n] = gl.getUniformLocation(this.prog, n));
+    this.skyUni = { uTop: gl.getUniformLocation(this.sky, 'uTop'), uBot: gl.getUniformLocation(this.sky, 'uBot') };
+    this.skyPos = gl.getAttribLocation(this.sky, 'aPos');
+    this.skyBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    gl.enable(gl.DEPTH_TEST);
+  },
+
+  /* ---- enter / leave ---- */
+  enter(){
+    this.center = { lat: map.center.lat, lng: map.center.lng };
+    this.heading = 0; this.pitch = 55 * Math.PI / 180;
+    this.dist = clamp(map.metersPerPixel() * Math.min(map.h || 800, 900) * 1.35, T3D_CFG.minDistM, T3D_CFG.maxDistM);
+    this.exag = parseFloat($('t3dexag').value) || T3D_CFG.exagDefault;
+    if(!this.gl && !this.glFailed) this._initGL();
+    const msg = $('t3dmsg');
+    if(!this.gl){
+      msg.textContent = '😕 This device can’t draw 3D (WebGL unavailable) — the 2D map still does everything else. Tap ✕ 2D to go back.';
+      msg.style.display = 'block';
+      return;
+    }
+    msg.style.display = 'none';
+    this._trackLen = -1; this.bldKey = '';
+    this._refreshTiles(true);
+    this._loop();
+  },
+  leave(){
+    cancelAnimationFrame(this._raf); this._raf = 0;
+    if(this.center) map.setView(this.center.lat, this.center.lng);
+  },
+
+  /* ---- DEM tile management ---- */
+  _key(z, x, y){ return z + '/' + x + '/' + y; },
+  _freeTile(rec){
+    const gl = this.gl; if(!gl) return;
+    if(rec.vbo) gl.deleteBuffer(rec.vbo);
+    if(rec.ibo) gl.deleteBuffer(rec.ibo);
+    if(rec.tex) gl.deleteTexture(rec.tex);
+  },
+  _refreshTiles(force){
+    const z = t3dPickDemZoom(this.dist, this.center.lat);
+    const n = Math.pow(2, z);
+    const tx = Math.floor((this.center.lng + 180) / 360 * n);
+    const s = clamp(Math.sin(this.center.lat * Math.PI / 180), -0.9999, 0.9999);
+    const ty = clamp(Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n), 0, n - 1);
+    if(!force && z === this.demZ && tx === this.anchorTx && ty === this.anchorTy) return;
+    this.demZ = z; this.anchorTx = tx; this.anchorTy = ty;
+    if(this.lat0 == null
+       || Math.abs((this.center.lat - this.lat0) * 110540) > 30000
+       || Math.abs((this.center.lng - this.lng0) * this.mPerLng) > 30000){
+      this._setAnchor(this.center.lat, this.center.lng);
+    }
+    this.active = [];
+    const r = Math.floor((T3D_CFG.grid - 1) / 2);
+    for(let dy = -r; dy <= r; dy++) for(let dx = -r; dx <= r; dx++){
+      const yy = ty + dy;
+      if(yy < 0 || yy >= n) continue;
+      const xx = ((tx + dx) % n + n) % n;
+      const k = this._key(z, xx, yy);
+      this.active.push(k);
+      if(!this.tiles.has(k)) this._loadTile(z, xx, yy);
+      else { const rec = this.tiles.get(k); if(rec.heights && !rec.vbo) this._buildMesh(rec); }
+    }
+    /* LRU-ish eviction of tiles that fell out of view */
+    if(this.tiles.size > 30){
+      for(const k of this.tiles.keys()){
+        if(this.tiles.size <= 30) break;
+        if(this.active.indexOf(k) < 0){ this._freeTile(this.tiles.get(k)); this.tiles.delete(k); }
+      }
+    }
+    this._trackLen = -1;
+  },
+  _loadTile(z, x, y){
+    const k = this._key(z, x, y);
+    const rec = { z, x, y, heights: null, vbo: null, ibo: null, icount: 0, tex: null };
+    this.tiles.set(k, rec);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const done = flat => {
+      if(flat) rec.heights = new Float32Array(256 * 256);
+      this._buildMesh(rec);
+      this._texQueue.push(rec);
+      this._trackLen = -1;
+    };
+    img.onload = () => {
+      try{
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+        const cx = cv.getContext('2d');
+        cx.drawImage(img, 0, 0, 256, 256);
+        const d = cx.getImageData(0, 0, 256, 256).data;
+        const h = new Float32Array(256 * 256);
+        for(let i = 0; i < 65536; i++) h[i] = clamp(t3dDecodeTerrarium(d[i*4], d[i*4+1], d[i*4+2]), -500, 9000);
+        rec.heights = h; done(false);
+      }catch(e){ done(true); }     /* tainted/failed decode → flat tile, still draped */
+    };
+    img.onerror = () => done(true);
+    img.src = t3dDemTileUrl(z, x, y);
+  },
+  _hSample(heights, fx, fy){
+    const x = clamp(fx, 0, 1) * 255, y = clamp(fy, 0, 1) * 255;
+    const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(255, x0 + 1), y1 = Math.min(255, y0 + 1);
+    const ax = x - x0, ay = y - y0;
+    const h00 = heights[y0*256+x0], h10 = heights[y0*256+x1], h01 = heights[y1*256+x0], h11 = heights[y1*256+x1];
+    return h00*(1-ax)*(1-ay) + h10*ax*(1-ay) + h01*(1-ax)*ay + h11*ax*ay;
+  },
+  _buildMesh(rec){
+    const gl = this.gl; if(!gl || !rec.heights) return;
+    const N = T3D_CFG.meshN, V = N + 1, n2 = Math.pow(2, rec.z);
+    const verts = new Float32Array(V * V * 7);
+    const hgrid = new Float32Array(V * V);
+    for(let j = 0; j < V; j++){
+      const fy = j / N, lat = t3dTile2Lat(rec.y + fy, rec.z);
+      for(let i = 0; i < V; i++){
+        const fx = i / N, lng = (rec.x + fx) / n2 * 360 - 180;
+        const p = this.toLocal(lat, lng);
+        const h = this._hSample(rec.heights, fx, fy);
+        hgrid[j * V + i] = h;
+        const o = (j * V + i) * 7;
+        verts[o] = p[0]; verts[o+1] = p[1]; verts[o+2] = h; verts[o+3] = 0;
+        verts[o+5] = fx; verts[o+6] = fy;
+      }
+    }
+    /* per-vertex hillshade from grid normals */
+    const L = T3D_CFG.lightDir, cell = 40075016.7 * Math.cos(this.lat0 * Math.PI/180) / n2 / N;
+    for(let j = 0; j < V; j++) for(let i = 0; i < V; i++){
+      const hl = hgrid[j*V + Math.max(0, i-1)], hr = hgrid[j*V + Math.min(N, i+1)];
+      const hu = hgrid[Math.max(0, j-1)*V + i], hd = hgrid[Math.min(N, j+1)*V + i];
+      let nx = (hl - hr) / (2*cell), ny = 1, nz = (hu - hd) / (2*cell);
+      const nl = Math.hypot(nx, ny, nz);
+      const shade = clamp(0.5 + 0.6 * ((nx*L[0] + ny*L[1] + nz*L[2]) / nl), 0, 1);
+      verts[(j*V+i)*7 + 4] = shade;
+    }
+    const idx = new Uint16Array(N * N * 6);
+    let q = 0;
+    for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
+      const a = j*V+i, b = a+1, c = a+V, d = c+1;
+      idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d;
+    }
+    if(rec.vbo) gl.deleteBuffer(rec.vbo);
+    if(rec.ibo) gl.deleteBuffer(rec.ibo);
+    rec.vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, rec.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    rec.ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rec.ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    rec.icount = idx.length;
+  },
+
+  /* ---- basemap drape (queued: one composite in flight at a time) ---- */
+  _makeTexture(rec){
+    const gl = this.gl; if(!gl || rec.texBusy || rec.tex) return;
+    rec.texBusy = true;
+    const base = BASES[map.base] || BASES.sat;
+    const boost = clamp(Math.min(T3D_CFG.texBoost, (base.maxTile || 17) - rec.z), 0, 2);
+    const m = Math.pow(2, boost), size = 256 * m;
+    const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#20303c'; cx.fillRect(0, 0, size, size);
+    let waiting = m * m;
+    const finish = () => {
+      try{
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        rec.tex = tex;
+      }catch(e){ this._tintTexture(rec); }   /* CORS-tainted canvas → hypsometric fallback */
+      rec.texBusy = false;
+    };
+    for(let j = 0; j < m; j++) for(let i = 0; i < m; i++){
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      const draw = ok => { if(ok){ try{ cx.drawImage(img, i*256, j*256, 256, 256); }catch(e){} } if(--waiting === 0) finish(); };
+      img.onload = () => draw(true);
+      img.onerror = () => draw(false);
+      img.src = base.url(rec.z + boost, rec.x * m + i, rec.y * m + j);
+    }
+    if(m === 0 && waiting === 0) finish();
+  },
+  _tintTexture(rec){
+    /* offline / CORS fallback: color by elevation so 3D still reads */
+    const gl = this.gl; if(!gl || !rec.heights) return;
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+    const cx = cv.getContext('2d');
+    const im = cx.createImageData(256, 256);
+    for(let i = 0; i < 65536; i++){
+      const h = rec.heights[i];
+      let r, g, b;
+      if(h <= 0){ r = 42; g = 84; b = 128; }
+      else if(h < 250){ const t = h/250; r = 60+40*t; g = 122+20*t; b = 64; }
+      else if(h < 1200){ const t = (h-250)/950; r = 100+70*t; g = 142-40*t; b = 64+20*t; }
+      else { const t = clamp((h-1200)/1800, 0, 1); r = 170+70*t; g = 102+120*t; b = 84+140*t; }
+      im.data[i*4] = r; im.data[i*4+1] = g; im.data[i*4+2] = b; im.data[i*4+3] = 255;
+    }
+    cx.putImageData(im, 0, 0);
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    rec.tex = tex;
+  },
+
+  /* ---- terrain height lookup (for the camera, track & buildings) ---- */
+  heightAt(lat, lng){
+    const z = this.demZ; if(z < 0) return 0;
+    const n = Math.pow(2, z);
+    const fx = (lng + 180) / 360 * n;
+    const s = clamp(Math.sin(lat * Math.PI / 180), -0.9999, 0.9999);
+    const fy = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n;
+    const rec = this.tiles.get(this._key(z, Math.floor(fx), Math.floor(fy)));
+    if(!rec || !rec.heights) return 0;
+    return this._hSample(rec.heights, fx - Math.floor(fx), fy - Math.floor(fy));
+  },
+
+  /* ---- 🏢 OSM buildings (Overpass — already allowlisted & test-mocked) ---- */
+  _refreshBuildings(){
+    const gl = this.gl; if(!gl) return;
+    if(!this.bldOn || this.dist > T3D_CFG.bldMaxDistM){ if(this.bld){ this._freeBld(); } return; }
+    const key = this.demZ + '/' + Math.round(this.center.lat * 220) + '/' + Math.round(this.center.lng * 220);
+    if(key === this.bldKey) return;
+    this.bldKey = key;
+    const dLat = (this.dist * 1.6) / 110540;
+    const dLng = dLat * 110540 / this.mPerLng;
+    const q = '[out:json][timeout:25];way["building"]('
+      + (this.center.lat - dLat) + ',' + (this.center.lng - dLng) + ','
+      + (this.center.lat + dLat) + ',' + (this.center.lng + dLng) + ');out geom ' + T3D_CFG.bldLimit + ';';
+    fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q) })
+      .then(r => r.json())
+      .then(j => this._buildBuildings((j.elements || []).filter(el =>
+        el.type === 'way' && Array.isArray(el.geometry) && el.geometry.length > 3)))
+      .catch(e => {});    /* offline / rate-limited → terrain still shines */
+  },
+  _freeBld(){
+    const gl = this.gl;
+    if(this.bld){ gl.deleteBuffer(this.bld.vbo); gl.deleteBuffer(this.bld.ibo); this.bld = null; }
+  },
+  _buildBuildings(ways){
+    const gl = this.gl; if(!gl) return;
+    const verts = [], idx = [];
+    for(const w of ways){
+      if(verts.length / 7 > T3D_CFG.bldMaxVerts) break;
+      const ring = w.geometry.map(g => this.toLocal(g.lat, g.lon));
+      if(ring.length > 1 && Math.abs(ring[0][0] - ring[ring.length-1][0]) < 0.01
+         && Math.abs(ring[0][1] - ring[ring.length-1][1]) < 0.01) ring.pop();
+      if(ring.length < 3) continue;
+      let cx = 0, cy = 0, clat = 0, clng = 0;
+      for(const g of w.geometry){ clat += g.lat; clng += g.lon; }
+      clat /= w.geometry.length; clng /= w.geometry.length;
+      const baseH = this.heightAt(clat, clng);
+      const bh = t3dBldHeight(w.tags);
+      const v0 = verts.length / 7;
+      /* roof */
+      const tris = t3dEarclip(ring);
+      for(const p of ring) verts.push(p[0], p[1], baseH, bh, 1.0, 0, 0);
+      for(const t of tris) idx.push(v0 + t);
+      /* walls */
+      for(let i = 0; i < ring.length; i++){
+        const a = ring[i], b = ring[(i + 1) % ring.length];
+        let nx = b[1] - a[1], nz = -(b[0] - a[0]);
+        const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+        const shade = clamp(0.35 + 0.55 * Math.max(0, nx * T3D_CFG.lightDir[0] + nz * T3D_CFG.lightDir[2]) + 0.25, 0, 1);
+        const w0 = verts.length / 7;
+        verts.push(a[0], a[1], baseH, -2, shade, 0, 0,
+                   b[0], b[1], baseH, -2, shade, 0, 0,
+                   b[0], b[1], baseH, bh, shade, 0, 0,
+                   a[0], a[1], baseH, bh, shade, 0, 0);
+        idx.push(w0, w0+1, w0+2, w0, w0+2, w0+3);
+      }
+    }
+    this._freeBld();
+    if(!idx.length) return;
+    const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+    const ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+    this.bld = { vbo, ibo, count: idx.length };
+  },
+
+  /* ---- your live track + position, riding the terrain ---- */
+  _refreshTrack(){
+    const gl = this.gl; if(!gl) return;
+    const pts = map.track || [];
+    if(pts.length === this._trackLen && this.me !== null === !!meMarker) return;
+    this._trackLen = pts.length;
+    if(this.trk){ gl.deleteBuffer(this.trk.vbo); this.trk = null; }
+    if(pts.length > 1){
+      const v = new Float32Array(pts.length * 7);
+      for(let i = 0; i < pts.length; i++){
+        const p = this.toLocal(pts[i].lat, pts[i].lng);
+        const o = i * 7;
+        v[o] = p[0]; v[o+1] = p[1]; v[o+2] = this.heightAt(pts[i].lat, pts[i].lng); v[o+3] = 4; v[o+4] = 1;
+      }
+      const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, v, gl.STATIC_DRAW);
+      this.trk = { vbo, count: pts.length };
+    }
+    if(this.meBuf){ gl.deleteBuffer(this.meBuf); this.meBuf = null; }
+    this.me = null;
+    if(typeof meMarker !== 'undefined' && meMarker){
+      const p = this.toLocal(meMarker.lat, meMarker.lng);
+      const v = new Float32Array([p[0], p[1], this.heightAt(meMarker.lat, meMarker.lng), 5, 1, 0, 0]);
+      const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, v, gl.STATIC_DRAW);
+      this.meBuf = vbo; this.me = true;
+    }
+  },
+
+  /* ---- per-frame draw ---- */
+  _bindAttrs(){
+    const gl = this.gl, A = this.attr, S = 28;
+    gl.vertexAttribPointer(A.aPos, 2, gl.FLOAT, false, S, 0);
+    gl.vertexAttribPointer(A.aH, 1, gl.FLOAT, false, S, 8);
+    gl.vertexAttribPointer(A.aUp, 1, gl.FLOAT, false, S, 12);
+    gl.vertexAttribPointer(A.aShade, 1, gl.FLOAT, false, S, 16);
+    gl.vertexAttribPointer(A.aUV, 2, gl.FLOAT, false, S, 20);
+    for(const k in A) if(A[k] >= 0) gl.enableVertexAttribArray(A[k]);
+  },
+  _loop(){
+    if(!this.gl) return;
+    const gl = this.gl, c = $('t3dcanvas');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = Math.max(1, Math.round(c.clientWidth * dpr)), H = Math.max(1, Math.round(c.clientHeight * dpr));
+    if(c.width !== W || c.height !== H){ c.width = W; c.height = H; }
+    gl.viewport(0, 0, W, H);
+    this._refreshTiles(false);
+    if(this._texQueue.length){ this._makeTexture(this._texQueue.shift()); }
+    this._refreshBuildings();
+    this._refreshTrack();
+
+    /* camera */
+    const ct = this.toLocal(this.center.lat, this.center.lng);
+    const hC = this.heightAt(this.center.lat, this.center.lng) * this.exag;
+    const target = [ct[0], hC, ct[1]];
+    const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+    const eye = [ target[0] + this.dist * cp * Math.sin(this.heading),
+                  target[1] + this.dist * sp,
+                  target[2] + this.dist * cp * Math.cos(this.heading) ];
+    const far = Math.max(this.dist * 8, 30000);
+    const mvp = T3DM4.mul(
+      T3DM4.persp(55 * Math.PI / 180, W / H, Math.max(2, this.dist / 200), far),
+      T3DM4.lookAt(eye, target, [0, 1, 0]));
+
+    gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
+    /* sky */
+    gl.useProgram(this.sky);
+    gl.depthMask(false);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuf);
+    gl.vertexAttribPointer(this.skyPos, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.skyPos);
+    gl.uniform3fv(this.skyUni.uTop, T3D_CFG.skyTop);
+    gl.uniform3fv(this.skyUni.uBot, T3D_CFG.skyBot);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.depthMask(true);
+
+    /* terrain */
+    gl.useProgram(this.prog);
+    gl.uniformMatrix4fv(this.uni.uMVP, false, mvp);
+    gl.uniform1f(this.uni.uExag, this.exag);
+    gl.uniform1f(this.uni.uFar, far);
+    gl.uniform3fv(this.uni.uFog, T3D_CFG.fog);
+    gl.uniform1i(this.uni.uTex, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    for(const k of this.active){
+      const rec = this.tiles.get(k);
+      if(!rec || !rec.vbo) continue;
+      gl.bindBuffer(gl.ARRAY_BUFFER, rec.vbo);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rec.ibo);
+      this._bindAttrs();
+      if(rec.tex){ gl.uniform1i(this.uni.uUseTex, 1); gl.bindTexture(gl.TEXTURE_2D, rec.tex); }
+      else { gl.uniform1i(this.uni.uUseTex, 0); gl.uniform4f(this.uni.uColor, 0.36, 0.46, 0.38, 1); }
+      gl.drawElements(gl.TRIANGLES, rec.icount, gl.UNSIGNED_SHORT, 0);
+    }
+    /* buildings */
+    if(this.bld){
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bld.vbo);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bld.ibo);
+      this._bindAttrs();
+      gl.uniform1i(this.uni.uUseTex, 0);
+      gl.uniform4f(this.uni.uColor, 0.80, 0.82, 0.85, 1);
+      gl.drawElements(gl.TRIANGLES, this.bld.count, gl.UNSIGNED_SHORT, 0);
+    }
+    /* neon track + you */
+    if(this.trk){
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.trk.vbo);
+      this._bindAttrs();
+      gl.uniform1i(this.uni.uUseTex, 0);
+      gl.uniform4f(this.uni.uColor, 0.13, 1.0, 0.55, 1);
+      gl.drawArrays(gl.LINE_STRIP, 0, this.trk.count);
+    }
+    if(this.meBuf){
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.meBuf);
+      this._bindAttrs();
+      gl.uniform1i(this.uni.uUseTex, 0);
+      gl.uniform4f(this.uni.uColor, 1.0, 0.62, 0.1, 1);
+      gl.drawArrays(gl.POINTS, 0, 1);
+    }
+    this._raf = requestAnimationFrame(() => this._loop());
+  }
+};
+
+/* ---- mode toggle (the pattern every pack follows) ---- */
+let t3dMode = false;
+function setT3dMode(on){
+  t3dMode = on;
+  document.body.classList.toggle('t3d', on);
+  $('t3dwrap').classList.toggle('on', on);
+  $('t3dwrap').setAttribute('aria-hidden', on ? 'false' : 'true');
+  const fab = $('terrain3dfab');
+  if(fab) fab.classList.toggle('active', on);
+  if(on){
+    T3D.enter();
+    toast('🗻 3D Terrain ON — one finger spins & tilts, two fingers fly you around', 4200);
+  } else {
+    T3D.leave();
+    toast('Back to the 2D map');
+  }
+  updateAttrib();
+}
+PACK_ACTIVATE.terrain3d = () => setT3dMode(true);
+
+/* ---- 3D view controls ---- */
+$('t3dexit').addEventListener('click', () => setT3dMode(false));
+$('t3dcompass').addEventListener('click', () => { T3D.heading = 0; T3D.pitch = 55 * Math.PI / 180; });
+$('t3dexag').addEventListener('input', () => { T3D.exag = parseFloat($('t3dexag').value) || T3D_CFG.exagDefault; });
+$('t3dbld').addEventListener('click', () => {
+  T3D.bldOn = !T3D.bldOn;
+  $('t3dbld').classList.toggle('on', T3D.bldOn);
+  T3D.bldKey = '';
+  if(!T3D.bldOn && T3D.gl) T3D._freeBld();
+  toast(T3D.bldOn ? '🏢 3D buildings ON — fly in close to see them' : '🏢 3D buildings off');
+});
+(function(){
+  const c = $('t3dcanvas');
+  const ptrs = new Map();
+  let lastMid = null, lastSpread = 0;
+  const spread = () => {
+    const p = [...ptrs.values()];
+    return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  };
+  const mid = () => {
+    const p = [...ptrs.values()];
+    return { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
+  };
+  const pan = (dx, dy) => {
+    const k = T3D.dist * 1.7 / Math.max(1, c.clientHeight);
+    const fw = [-Math.sin(T3D.heading), -Math.cos(T3D.heading)];
+    const rt = [-fw[1], fw[0]];
+    const mx = -(dx * rt[0] + dy * fw[0]) * k;
+    const mz = -(dx * rt[1] + dy * fw[1]) * k;
+    T3D.center.lat = clamp(T3D.center.lat - mz / 110540, -85, 85);
+    T3D.center.lng = T3D.center.lng + mx / Math.max(1, T3D.mPerLng || 78000);
+    if(T3D.center.lng > 180) T3D.center.lng -= 360;
+    if(T3D.center.lng < -180) T3D.center.lng += 360;
+  };
+  c.addEventListener('pointerdown', e => {
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if(ptrs.size === 2){ lastSpread = spread(); lastMid = mid(); }
+    c.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  c.addEventListener('pointermove', e => {
+    if(!ptrs.has(e.pointerId)) return;
+    const prev = ptrs.get(e.pointerId);
+    const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if(ptrs.size === 1){
+      if(e.buttons === 2 || e.shiftKey){ pan(dx, dy); return; }   /* desktop: right/shift-drag pans */
+      T3D.heading -= dx * 0.006;
+      T3D.pitch = clamp(T3D.pitch + dy * 0.005,
+        T3D_CFG.minPitchDeg * Math.PI / 180, T3D_CFG.maxPitchDeg * Math.PI / 180);
+    } else if(ptrs.size === 2){
+      const sNow = spread(), mNow = mid();
+      if(lastSpread > 0 && sNow > 0) T3D.dist = clamp(T3D.dist * lastSpread / sNow, T3D_CFG.minDistM, T3D_CFG.maxDistM);
+      if(lastMid) pan(mNow.x - lastMid.x, mNow.y - lastMid.y);
+      lastSpread = sNow; lastMid = mNow;
+    }
+  });
+  const up = e => { ptrs.delete(e.pointerId); if(ptrs.size < 2){ lastMid = null; lastSpread = 0; } };
+  c.addEventListener('pointerup', up);
+  c.addEventListener('pointercancel', up);
+  c.addEventListener('wheel', e => {
+    e.preventDefault();
+    T3D.dist = clamp(T3D.dist * Math.exp(e.deltaY * 0.0012), T3D_CFG.minDistM, T3D_CFG.maxDistM);
+  }, { passive: false });
+  c.addEventListener('contextmenu', e => e.preventDefault());
+})();
+
+/* debug/test handle for the 3D pack */
+window.__sdt3d = { get mode(){ return t3dMode; }, setT3dMode, T3D, T3D_CFG,
+  decodeTerrarium: t3dDecodeTerrarium, demTileUrl: t3dDemTileUrl, pickDemZoom: t3dPickDemZoom,
+  tile2lat: t3dTile2Lat, bldHeight: t3dBldHeight, earclip: t3dEarclip,
+  get gl(){ return !!T3D.gl; }, get glFailed(){ return T3D.glFailed; } };
+
 
 /* =====================================================================
    🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility
