@@ -188,6 +188,20 @@
   .trip .btnrow .btn{padding:9px;font-size:12.5px}
   .empty{color:var(--dim);text-align:center;padding:24px 8px;font-size:13.5px}
 
+  /* ▶ Trip Replay bar (Run 6) — compact overlay, not a sheet */
+  #replaybar{position:fixed;left:10px;right:10px;bottom:96px;z-index:60;display:none;
+    background:rgba(13,19,28,.94);border:1px solid var(--line);border-radius:16px;
+    padding:10px 12px;box-shadow:var(--shadow);backdrop-filter:blur(8px)}
+  #replaybar .rptitle{font-weight:800;font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  #rpelev{width:100%;height:44px;display:block;border-radius:8px;background:var(--panel2);margin-bottom:8px}
+  #replaybar .rprow{display:flex;gap:8px;align-items:center}
+  #rpplay{border:0;border-radius:10px;background:var(--accent);color:#04140b;font-size:15px;font-weight:800;width:40px;height:34px;cursor:pointer;flex:0 0 auto}
+  #rpclose{border:0;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--text);width:34px;height:34px;cursor:pointer;flex:0 0 auto}
+  #rpscrub{flex:1;accent-color:var(--accent)}
+  #rpstat{color:var(--dim);font-size:12px;margin-top:6px}
+  #rphl{color:var(--text);font-size:12px;margin-top:4px;display:none}
+  .rpdot{font-size:20px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7))}
+
   #toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(110px + var(--safe-bottom));z-index:3000;
     background:#0d131c;border:1px solid var(--line);color:var(--text);padding:10px 16px;border-radius:12px;font-size:13.5px;
     box-shadow:var(--shadow);opacity:0;transition:opacity .25s;pointer-events:none;max-width:86vw;text-align:center}
@@ -591,7 +605,7 @@
   <div class="grabber"></div>
   <h3>📁 Saved Adventures</h3>
   <div id="triplist"></div>
-  <div style="color:var(--dim);font-size:11px;margin-top:6px;line-height:1.5">
+  <div id="savednote" style="color:var(--dim);font-size:11px;margin-top:6px;line-height:1.5">
     Heads up: saves live in this session — hit <b>GPX</b> to export a file you can keep forever
     (GPX opens in Google Earth, OnX, Gaia, AllTrails &amp; more).
   </div>
@@ -995,6 +1009,19 @@
 </div>
 
 <div id="introhint">🐾 Tap anywhere to fly to your location</div>
+
+<!-- ▶ Trip Replay bar (Run 6) — rides above the map while a saved trip plays back -->
+<div id="replaybar" role="region" aria-label="Trip replay controls">
+  <div class="rptitle"><span id="rpname"></span></div>
+  <canvas id="rpelev" height="44" aria-hidden="true"></canvas>
+  <div class="rprow">
+    <button id="rpplay" aria-label="Play or pause replay">▶</button>
+    <input id="rpscrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Replay position">
+    <button id="rpclose" aria-label="Close replay">✕</button>
+  </div>
+  <div id="rpstat"></div>
+  <div id="rphl"></div>
+</div>
 
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -1681,7 +1708,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.7';
+const SD_VERSION = '1.8';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2844,13 +2871,15 @@ $('savetripbtn').addEventListener('click', () => {
   if(!trk) return;
   /* 👣 Run 5: opted-in saves contribute anonymous cells (guarded — TDZ rule) */
   if(window.__sdprints) __sdprints.PRINTS.onTripSave(trk);
-  trips.unshift({
+  const tr = {
     id: Date.now()+'-'+trips.length,
     name: $('tripname').value.trim() || 'Untitled adventure',
     notes: $('tripnotes').value.trim(),
     mode: trk.mode, points: trk.points, distMi: trk.distMi, gainM: trk.gainM,
     maxMph: trk.maxMph, elapsed: trk.elapsed, startedAt: trk.startedAt
-  });
+  };
+  trips.unshift(tr);
+  TRIPLOG.put(tr);   /* 📁 Run 6: survives closing the app (no-op if IDB unavailable) */
   $('tripnotes').value = '';
   resetTracking();
   toast('💾 Saved! Open 📁 to view, export or share');
@@ -2924,20 +2953,247 @@ function renderTrips(){
       + (Math.round((tr.gainM||0)*3.28084) > 0 ? ' · ⛰ +'+Math.round(tr.gainM*3.28084)+' ft' : '')+' · '
       + new Date(tr.startedAt).toLocaleString()+(tr.notes ? ' · '+esc(tr.notes) : '')+'</div>'
       + '<div class="btnrow">'
-      + '<button class="btn blue" data-act="view">🗺 View</button>'
+      + '<button class="btn blue" data-act="replay">▶ Replay</button>'
+      + '<button class="btn gray" data-act="view">🗺 View</button>'
       + '<button class="btn green" data-act="share">📤 Share</button>'
       + '<button class="btn gray" data-act="gpx">⬇ GPX</button>'
       + '<button class="btn red" data-act="del" aria-label="Delete trip">✕</button></div>';
+    d.querySelector('[data-act=replay]').addEventListener('click', () => REPLAY.start(tr));
     d.querySelector('[data-act=view]').addEventListener('click', () => viewTrip(tr));
     d.querySelector('[data-act=share]').addEventListener('click', () => shareTrip(tr));
     d.querySelector('[data-act=gpx]').addEventListener('click', () => { download(safeName(tr.name)+'.gpx', tripGPX(tr)); toast('GPX exported'); });
     d.querySelector('[data-act=del]').addEventListener('click', () => {
-      const i = trips.indexOf(tr); if(i>-1) trips.splice(i,1); renderTrips();
+      const i = trips.indexOf(tr); if(i>-1) trips.splice(i,1);
+      TRIPLOG.del(tr.id);
+      renderTrips();
     });
     el.appendChild(d);
   });
 }
 $('savedfab').addEventListener('click', () => { renderTrips(); openSheet('savedsheet'); });
+
+/* ============================================================
+   📁▶ TRIP LOG + REPLAY — RUN 6 «MEMORIES THAT STICK»
+   Trips used to die with the tab (`const trips = []` was in-session
+   only — the #1 gap flagged in the V1.2 feature review). Now every
+   save also lands in IndexedDB (db 'skydog-trips') and loads back on
+   boot. Why IDB and not sdStore: real tracks blow past local-storage
+   size limits fast, and the 2-ref sdStore rule stays intact.
+   Honest fallback: no IndexedDB (rare / locked-down browsers) →
+   exactly the old in-session behavior, and the 📁 sheet copy keeps
+   saying "this session" instead of lying about persistence.
+   REPLAY v1 is pure client math: the dot rides the recorded
+   timestamps (time-compressed whole trip ≈ 8–30 s), so stops show as
+   stops. Highlights are honest math, not AI: fastest rolling minute,
+   biggest continuous climb, longest stop. Elevation profile draws
+   only when the track actually has altitude data.
+   ============================================================ */
+const TRIPLOG = {
+  db: null, ready: false, persistent: false,
+  open(){ return new Promise(res => {
+    let idb = null; try{ idb = window.indexedDB; }catch(e){}
+    if(!idb){ this.ready = true; return res(false); }
+    let rq; try{ rq = idb.open('skydog-trips', 1); }catch(e){ this.ready = true; return res(false); }
+    rq.onupgradeneeded = () => { rq.result.createObjectStore('trips', {keyPath:'id'}); };
+    rq.onsuccess = () => { this.db = rq.result; this.persistent = true; this.ready = true; res(true); };
+    rq.onerror = () => { this.ready = true; res(false); };
+    rq.onblocked = () => { this.ready = true; res(false); };
+  }); },
+  /* structured-clone-safe copy: plain mode subset, finite alts only */
+  plain(tr){ return { id: tr.id, name: tr.name, notes: tr.notes || '',
+    mode: {id: tr.mode.id, em: tr.mode.em, name: tr.mode.name},
+    points: (tr.points || []).map(p => ({lat: p.lat, lng: p.lng, t: p.t,
+      alt: (p.alt != null && isFinite(p.alt)) ? p.alt : null})),
+    distMi: tr.distMi, gainM: tr.gainM || 0, maxMph: tr.maxMph,
+    elapsed: tr.elapsed, startedAt: tr.startedAt }; },
+  put(tr){ if(!this.db) return;
+    try{ this.db.transaction('trips','readwrite').objectStore('trips').put(this.plain(tr)); }catch(e){} },
+  del(id){ if(!this.db) return;
+    try{ this.db.transaction('trips','readwrite').objectStore('trips').delete(id); }catch(e){} },
+  loadAll(){ return new Promise(res => {
+    if(!this.db) return res([]);
+    try{
+      const rq = this.db.transaction('trips').objectStore('trips').getAll();
+      rq.onsuccess = () => res(rq.result || []);
+      rq.onerror = () => res([]);
+    }catch(e){ res([]); }
+  }); },
+  async boot(){
+    await this.open();
+    const rows = await this.loadAll();
+    rows.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || '')));
+    rows.forEach(r => trips.push(r));
+    if(this.persistent){
+      $('savednote').innerHTML = 'Saves now live <b>on this device</b> — close the app, come back, '
+        + 'they\'re still here. <b>GPX</b> export still works anywhere '
+        + '(Google Earth, OnX, Gaia, AllTrails &amp; more).';
+    }
+    this.booted = true;
+  }
+};
+TRIPLOG.boot();
+
+const REPLAY = {
+  tr: null, frac: 0, playing: false, raf: 0, t0: 0, f0: 0, durMs: 0, marker: null,
+  /* whole trip compressed to 8–30 s of playback (trip time ÷ 60) */
+  durationFor(tr){
+    const pts = tr.points;
+    if(!pts || pts.length < 2) return 8000;
+    return clamp(Math.round((pts[pts.length-1].t - pts[0].t) / 60), 8000, 30000);
+  },
+  /* position at frac ∈ [0,1] of TRACK TIME (not distance) — stops replay as stops */
+  interp(pts, frac){
+    if(!pts || !pts.length) return null;
+    if(pts.length === 1 || frac <= 0) return {lat: pts[0].lat, lng: pts[0].lng, i: 0};
+    if(frac >= 1){ const l = pts[pts.length-1]; return {lat: l.lat, lng: l.lng, i: pts.length-1}; }
+    const t0 = pts[0].t, tt = t0 + (pts[pts.length-1].t - t0) * frac;
+    let i = 1;
+    while(i < pts.length-1 && pts[i].t < tt) i++;
+    const a = pts[i-1], b = pts[i], span = b.t - a.t;
+    const f = span > 0 ? clamp((tt - a.t) / span, 0, 1) : 0;
+    return {lat: a.lat + (b.lat - a.lat) * f, lng: a.lng + (b.lng - a.lng) * f, i};
+  },
+  speedAt(pts, i){
+    if(!pts || i < 1 || i >= pts.length) return 0;
+    const a = pts[i-1], b = pts[i], h = (b.t - a.t) / 3600000;
+    return h > 0 ? haversineMi(a, b) / h : 0;
+  },
+  /* honest highlights — plain math over what the GPS actually recorded */
+  stats(tr){
+    const pts = tr.points || [], out = {fastMph: 0, fastLabel: 'fastest minute', climbFt: 0, stopMin: 0};
+    if(pts.length < 2) return out;
+    const cum = [0];
+    for(let i = 1; i < pts.length; i++) cum[i] = cum[i-1] + haversineMi(pts[i-1], pts[i]);
+    const total = pts[pts.length-1].t - pts[0].t;
+    const WIN = Math.min(60000, total);
+    if(WIN < 60000) out.fastLabel = 'top stretch (short trip)';
+    let j = 0;
+    for(let i = 1; i < pts.length; i++){
+      while(pts[i].t - pts[j].t > WIN) j++;
+      const dt = pts[i].t - pts[j].t;
+      if(dt >= WIN * 0.5 && dt > 0){
+        const mph = (cum[i] - cum[j]) / (dt / 3600000);
+        if(mph < 130) out.fastMph = Math.max(out.fastMph, mph);
+      }
+    }
+    /* biggest continuous climb — 2 m noise gate, a real descent (>2 m) ends the climb */
+    let climb = 0, lastA = null;
+    pts.forEach(p => {
+      if(p.alt == null || !isFinite(p.alt)) return;
+      if(lastA == null){ lastA = p.alt; return; }
+      if(p.alt > lastA + 2){ climb += p.alt - lastA; lastA = p.alt; out.climbFt = Math.max(out.climbFt, climb); }
+      else if(p.alt < lastA - 2){ lastA = p.alt; climb = 0; }
+    });
+    out.climbFt = Math.round(out.climbFt * 3.28084);
+    /* longest stop — consecutive time under 0.6 mph */
+    let stop = 0, best = 0;
+    for(let i = 1; i < pts.length; i++){
+      if(this.speedAt(pts, i) < 0.6){ stop += pts[i].t - pts[i-1].t; best = Math.max(best, stop); }
+      else stop = 0;
+    }
+    out.stopMin = Math.round(best / 60000);
+    return out;
+  },
+  start(tr){
+    if(!tr.points || tr.points.length < 2){ toast('Not enough GPS points to replay this one'); return; }
+    this.close();
+    this.tr = tr; this.frac = 0;
+    closeSheets();
+    map.setTrack(tr.points);
+    map.fitBounds(tr.points);
+    this.durMs = this.durationFor(tr);
+    this.marker = map.addMarker({lat: tr.points[0].lat, lng: tr.points[0].lng, group: 'replay',
+      html: '<div class="rpdot">🐺</div>', anchor: [13, 13], z: 6});
+    $('rpname').textContent = tr.mode.em + ' ' + tr.name;
+    const s = this.stats(tr), hl = [];
+    if(s.fastMph >= 1) hl.push('⚡ ' + s.fastMph.toFixed(1) + ' mph ' + s.fastLabel);
+    if(s.climbFt >= 20) hl.push('⛰ +' + s.climbFt + ' ft biggest climb');
+    if(s.stopMin >= 2) hl.push('☕ ' + s.stopMin + ' min longest stop');
+    $('rphl').textContent = hl.join(' · ');
+    $('rphl').style.display = hl.length ? 'block' : 'none';
+    this.hasElev = this.drawElev(0);
+    $('replaybar').style.display = 'block';
+    this.seek(0);
+    this.toggle();   /* autoplay */
+  },
+  seek(frac){
+    if(!this.tr) return;
+    this.frac = clamp(frac, 0, 1);
+    const pts = this.tr.points;
+    const pos = this.interp(pts, this.frac);
+    if(pos && this.marker) map.moveMarker(this.marker, pos.lat, pos.lng);
+    const span = (pts[pts.length-1].t - pts[0].t) / 1000;
+    const mph = this.speedAt(pts, Math.max(1, pos ? pos.i : 1));
+    $('rpscrub').value = String(Math.round(this.frac * 1000));
+    $('rpstat').textContent = fmtTime(span * this.frac) + ' of ' + fmtTime(span) + ' · ' + mph.toFixed(1) + ' mph here';
+    if(this.hasElev) this.drawElev(this.frac);
+  },
+  toggle(){
+    if(!this.tr) return;
+    this.playing = !this.playing;
+    $('rpplay').textContent = this.playing ? '⏸' : '▶';
+    if(this.playing){
+      if(this.frac >= 1) this.frac = 0;
+      this.t0 = performance.now(); this.f0 = this.frac;
+      const step = now => {
+        if(!this.playing) return;
+        const f = this.f0 + (now - this.t0) / this.durMs;
+        this.seek(f);
+        if(f >= 1){ this.playing = false; $('rpplay').textContent = '▶'; return; }
+        this.raf = requestAnimationFrame(step);
+      };
+      this.raf = requestAnimationFrame(step);
+    } else if(this.raf) cancelAnimationFrame(this.raf);
+  },
+  close(){
+    this.playing = false;
+    if(this.raf) cancelAnimationFrame(this.raf);
+    this.tr = null; this.marker = null;
+    map.clearGroup('replay');
+    $('replaybar').style.display = 'none';
+  },
+  /* elevation profile — draws only when the track has real altitude data.
+     Returns true if drawn (canvas shown), false if hidden (honest: no fake hills). */
+  drawElev(cursorFrac){
+    const cv = $('rpelev'), pts = this.tr ? this.tr.points : [];
+    const alts = pts.map(p => (p.alt != null && isFinite(p.alt)) ? p.alt : null);
+    const have = alts.filter(a => a != null);
+    if(have.length < 2){ cv.style.display = 'none'; return false; }
+    cv.style.display = 'block';
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth || 300, h = 44;
+    if(cv.width !== Math.round(w * dpr)){ cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    const mn = Math.min(...have), mx = Math.max(...have), rng = Math.max(mx - mn, 1);
+    const t0 = pts[0].t, span = Math.max(pts[pts.length-1].t - t0, 1);
+    g.beginPath();
+    let started = false;
+    pts.forEach((p, i) => {
+      if(alts[i] == null) return;
+      const x = ((p.t - t0) / span) * w;
+      const y = h - 5 - ((alts[i] - mn) / rng) * (h - 12);
+      if(!started){ g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+    });
+    g.strokeStyle = '#35e08a'; g.lineWidth = 1.6; g.stroke();
+    if(cursorFrac != null){
+      const x = clamp(cursorFrac, 0, 1) * w;
+      g.strokeStyle = '#4aa3ff'; g.lineWidth = 1.2;
+      g.beginPath(); g.moveTo(x, 2); g.lineTo(x, h - 2); g.stroke();
+    }
+    return true;
+  }
+};
+$('rpplay').addEventListener('click', () => REPLAY.toggle());
+$('rpclose').addEventListener('click', () => REPLAY.close());
+$('rpscrub').addEventListener('input', e => {
+  if(REPLAY.playing) REPLAY.toggle();          /* scrubbing pauses playback */
+  REPLAY.seek(Number(e.target.value) / 1000);
+});
+
+window.__sdtriplog = { TRIPLOG, trips, renderTrips };
+window.__sdreplay = { REPLAY };
 
 /* ============================================================
    👥 BUDDY TRIP — live crew sharing via Firebase RTDB.

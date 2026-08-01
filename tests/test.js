@@ -969,7 +969,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.7');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.8');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -2603,12 +2603,120 @@ async function main(){
   T('Safari Smart App Banner meta present (app-id pinned)', appSrc.includes('apple-itunes-app') && appSrc.includes('app-id=6792906988'));
   T('✕ dismisses the banner and snoozes it via sdStore', await page.evaluate('(function(){ document.getElementById("appbannerx").click(); return !document.getElementById("appbanner").classList.contains("on") && !!sdStore.get("sd-appbanner-snooze"); })()'));
 
+  console.log('\n— 📁▶ Trip Log + Replay: persistence + honest math (Run 6) —');
+  await page.waitForFunction('window.__sdtriplog && __sdtriplog.TRIPLOG.booted === true', null, { timeout: 8000 });
+  T('TRIPLOG booted with IndexedDB alive (persistent, not in-session)',
+    await page.evaluate('__sdtriplog.TRIPLOG.persistent === true'));
+  T('📁 sheet copy upgraded to "on this device" — honest only when IDB exists',
+    await page.evaluate('document.getElementById("savednote").textContent.includes("on this device")'));
+  T('plain(): mode slimmed to {id,em,name}, junk altitude nulled', await page.evaluate(`(function(){
+    const p = __sdtriplog.TRIPLOG.plain({ id:'x', name:'n', mode:{id:'hike',em:'🥾',name:'Hike',extra:function(){}},
+      points:[{lat:1,lng:2,t:3,alt:NaN},{lat:1,lng:2,t:4,alt:12.5}], distMi:1, gainM:0, maxMph:1, elapsed:1, startedAt:'s' });
+    return p.mode.extra === undefined && p.points[0].alt === null && p.points[1].alt === 12.5;
+  })()`));
+  /* seed one real trip through the log (three fixes, 10 min, climbs 30 m) */
+  await page.evaluate(`(function(){
+    const tr = { id:'rt-1', name:'Ridge Loop', notes:'test ride', mode:{id:'4wheeler',em:'🛞',name:'4-Wheeler'},
+      points:[ {lat:44.70,lng:-85.60,t:0,alt:200}, {lat:44.75,lng:-85.60,t:300000,alt:210}, {lat:44.80,lng:-85.60,t:600000,alt:230} ],
+      distMi:6.91, gainM:30, maxMph:45.2, elapsed:600000, startedAt:'2026-08-01T20:00:00.000Z' };
+    __sdtriplog.trips.unshift(tr); __sdtriplog.TRIPLOG.put(tr); __sdtriplog.renderTrips();
+  })()`);
+  T('trip row renders all five actions (Replay first)', await page.evaluate(`(function(){
+    const row = document.querySelector('#triplist .trip');
+    return !!row && ['replay','view','share','gpx','del'].every(a => !!row.querySelector('[data-act='+a+']'))
+      && row.querySelector('.btnrow .btn').dataset.act === 'replay';
+  })()`));
+  /* let the IDB transaction commit before tearing the page down */
+  await page.waitForFunction('__sdtriplog.TRIPLOG.loadAll().then(r => r.some(x => x.id === "rt-1"))', null, { timeout: 8000 });
+  await page.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+  await page.waitForFunction('window.__sdtriplog && __sdtriplog.TRIPLOG.booted === true', null, { timeout: 8000 });
+  T('saved trip SURVIVES an app restart (the point of Run 6)', await page.evaluate(`(function(){
+    const t = __sdtriplog.trips.find(x => x.id === 'rt-1');
+    return !!t && t.points.length === 3 && t.name === 'Ridge Loop' && t.distMi === 6.91;
+  })()`));
+  await page.evaluate('__sdtriplog.renderTrips()');
+  await page.evaluate('document.querySelector("#triplist [data-act=replay]").click()');
+  T('▶ Replay opens the bar, drops the dot, autoplays', await page.evaluate(`(function(){
+    return document.getElementById('replaybar').style.display === 'block'
+      && __sdmap.countGroup('replay') === 1 && !!__sdreplay.REPLAY.tr && __sdreplay.REPLAY.playing === true;
+  })()`));
+  await page.evaluate('(function(){ if(__sdreplay.REPLAY.playing) __sdreplay.REPLAY.toggle(); })()');
+  T('scrub to halfway — dot rides TRACK TIME to the middle fix', await page.evaluate(`(function(){
+    __sdreplay.REPLAY.seek(0.5);
+    const m = __sdmap.markers.find(x => x.group === 'replay');
+    return !!m && Math.abs(m.lat - 44.75) < 0.0005 && document.getElementById('rpstat').textContent.includes('mph here');
+  })()`));
+  T('interp honors timestamps, not point count (pure math)', await page.evaluate(`(function(){
+    const pts = [ {lat:0,lng:0,t:0}, {lat:1,lng:0,t:900000}, {lat:2,lng:0,t:1000000} ];
+    const mid = __sdreplay.REPLAY.interp(pts, 0.5);
+    const ends = __sdreplay.REPLAY.interp(pts, 0).lat === 0 && __sdreplay.REPLAY.interp(pts, 1).lat === 2;
+    return ends && mid.i === 1 && Math.abs(mid.lat - (500000/900000)) < 0.001;
+  })()`));
+  T('replay duration compresses to the 8–30 s window', await page.evaluate(`(function(){
+    const D = t => __sdreplay.REPLAY.durationFor({points:[{t:0},{t:t}]});
+    return D(60000) === 8000 && D(1200000) === 20000 && D(36000000) === 30000;
+  })()`));
+  T('stats: fastest rolling minute from real cumulative distance', await page.evaluate(`(function(){
+    const pts = []; /* 10-s fixes: first minute ≈6 mph, second minute ≈3 mph */
+    for(let i = 0; i <= 12; i++){
+      const fast = Math.min(i, 6), slow = Math.max(0, i - 6);
+      pts.push({ lat: (fast * 0.0002415) + (slow * 0.00012075), lng: -85.6, t: i * 10000 });
+    }
+    const s = __sdreplay.REPLAY.stats({points: pts});
+    return s.fastMph > 5.5 && s.fastMph < 6.5;
+  })()`));
+  T('stats: biggest continuous climb — real descent resets it', await page.evaluate(`(function(){
+    const alts = [100,110,120,130,90,95];
+    const pts = alts.map((a, i) => ({lat: 44.7 + i*0.001, lng: -85.6, t: i*60000, alt: a}));
+    return __sdreplay.REPLAY.stats({points: pts}).climbFt === Math.round(30 * 3.28084);
+  })()`));
+  T('stats: longest stop counts consecutive parked time', await page.evaluate(`(function(){
+    const pts = [ {lat:44.70,lng:-85.6,t:0}, {lat:44.71,lng:-85.6,t:60000} ];
+    for(let i = 1; i <= 5; i++) pts.push({lat:44.71, lng:-85.6, t:60000 + i*60000});   /* parked 5 min */
+    pts.push({lat:44.72, lng:-85.6, t:60000 + 6*60000});
+    return __sdreplay.REPLAY.stats({points: pts}).stopMin === 5;
+  })()`));
+  T('elevation profile drawn for this trip (has altitude) + cursor tracks scrub',
+    await page.evaluate('__sdreplay.REPLAY.hasElev === true && document.getElementById("rpelev").style.display === "block"'));
+  T('no-altitude track → profile honestly hidden, no fake hills', await page.evaluate(`(function(){
+    const R = __sdreplay.REPLAY, keep = R.tr;
+    R.tr = { points:[ {lat:1,lng:1,t:0}, {lat:1.01,lng:1,t:60000} ] };
+    const drawn = R.drawElev(0);
+    R.tr = keep; R.drawElev(0);
+    return drawn === false;
+  })()`));
+  T('✕ closes replay: dot gone, bar hidden', await page.evaluate(`(function(){
+    document.getElementById('rpclose').click();
+    return __sdmap.countGroup('replay') === 0 && document.getElementById('replaybar').style.display === 'none'
+      && __sdreplay.REPLAY.tr === null;
+  })()`));
+  T('replay refuses a 1-point trip honestly (toast, no bar)', await page.evaluate(`(function(){
+    __sdreplay.REPLAY.start({ id:'tiny', name:'t', mode:{em:'🥾',name:'Hike'}, points:[{lat:1,lng:1,t:0}] });
+    return document.getElementById('toast').textContent.includes('Not enough GPS')
+      && document.getElementById('replaybar').style.display === 'none';
+  })()`));
+  await page.evaluate('document.querySelector("#triplist [data-act=del]").click()');
+  await page.waitForFunction('__sdtriplog.TRIPLOG.loadAll().then(r => r.length === 0)', null, { timeout: 8000 });
+  await page.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+  await page.waitForFunction('window.__sdtriplog && __sdtriplog.TRIPLOG.booted === true', null, { timeout: 8000 });
+  T('deleted trip stays deleted after restart (IDB delete is real)', await page.evaluate(`(async function(){
+    const rows = await __sdtriplog.TRIPLOG.loadAll();
+    return __sdtriplog.trips.length === 0 && rows.length === 0;
+  })()`));
+  T('file contract: Run 6 banner, skydog-trips db, honest fallback + honest math stated in-code', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('TRIP LOG + REPLAY — RUN 6'));
+    return seg.length > 1000 && seg.includes("indexedDB.open") === false /* module guards access */
+      && src.includes("idb.open('skydog-trips', 1)") && seg.includes('Honest fallback')
+      && seg.includes('honest math, not AI');
+  })());
+
   console.log('\n— Fail-loud + shell —');
   await page.evaluate('window.dispatchEvent(new ErrorEvent("error", { message: "test-explosion" }))');
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v32 (Party + Footprints ship fresh)', sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31") && !sw.includes("skydog-gps-v30"));
+  T('sw.js cache bumped to v33 (Trip Log + Replay ships fresh)', sw.includes("skydog-gps-v33") && !sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
