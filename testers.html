@@ -1,202 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SkyDog GPS — Be a Tester</title>
-<meta name="description" content="Help launch SkyDog GPS on Google Play. Install it, leave it on your phone for 14 days. That's the whole job.">
-<meta property="og:title" content="Help launch SkyDog GPS 🛰️">
-<meta property="og:description" content="Google needs 12 people to test the app for 14 days before it can go public. Takes you two minutes.">
-<meta property="og:url" content="https://skydoggps.com/testers.html">
-<link rel="icon" href="favicon.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Help get SkyDog GPS onto Google Play. Android phone, two weeks, nothing else.">
+<meta name="theme-color" content="#0d0f0d">
+<meta property="og:title" content="SkyDog GPS — Be a Tester">
+<meta property="og:description" content="I need 12 people with Android phones. Takes two minutes. Costs nothing.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://skydoggps.com/testers">
 <style>
-  :root{color-scheme:dark;
-    --bg:#0b0f14; --panel:#111823; --line:#1f2c3d; --ink:#e8f0f8;
-    --dim:#8fa3b8; --green:#35e08a; --blue:#4aa3ff; --amber:#ffc65c;}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.65;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    -webkit-text-size-adjust:100%}
-  .wrap{max-width:600px;margin:0 auto;padding:44px 22px 70px}
-  h1{font-size:2rem;margin:0 0 4px;letter-spacing:2px;font-weight:800;color:var(--green);text-align:center}
-  .tag{color:var(--dim);font-size:.78rem;letter-spacing:3px;text-align:center;margin-bottom:34px}
-  .hero{font-size:1.42rem;line-height:1.4;font-weight:700;margin:0 0 12px;letter-spacing:-.01em}
-  .lede{color:var(--dim);font-size:1.02rem;margin:0 0 26px}
-  .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:22px 0}
-  .box h2{font-size:1.05rem;color:var(--blue);margin:0 0 12px}
-  h2.section{font-size:1.05rem;color:var(--blue);margin:34px 0 8px}
-  p{margin:12px 0}
-  .cta{display:block;background:var(--green);color:#04140c;text-decoration:none;
-    text-align:center;font-weight:800;font-size:1.1rem;padding:17px 20px;border-radius:12px;
-    margin:8px 0 10px;letter-spacing:.2px}
-  .cta:active{transform:translateY(1px)}
-  .cta.alt{background:transparent;color:var(--green);border:1px solid #2a4a3c;font-size:1rem;font-weight:700}
-  .sub{text-align:center;color:var(--dim);font-size:.85rem;margin:0 0 4px}
-  ol{margin:14px 0;padding-left:0;list-style:none;counter-reset:s}
-  ol li{counter-increment:s;position:relative;padding-left:42px;margin:16px 0}
-  ol li::before{content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;
-    border-radius:50%;background:#16283a;color:var(--blue);font-weight:800;font-size:.9rem;
-    display:flex;align-items:center;justify-content:center}
-  .minihd{color:var(--dim);font-size:.82rem;text-transform:uppercase;letter-spacing:.09em;
-    font-weight:700;margin:18px 0 2px}
-  .minihd:first-of-type{margin-top:4px}
-  ul.check{list-style:none;padding:0;margin:14px 0}
-  ul.check li{position:relative;padding-left:30px;margin:11px 0}
-  ul.check li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:800}
-  ul.no{list-style:none;padding:0;margin:14px 0}
-  ul.no li{position:relative;padding-left:30px;margin:11px 0;color:var(--dim)}
-  ul.no li::before{content:'✕';position:absolute;left:3px;color:#ff7b6b;font-weight:800}
-  .req{display:flex;gap:12px;align-items:flex-start;background:#0e1620;border:1px solid var(--line);
-    border-radius:12px;padding:14px 16px;margin:12px 0;font-size:.95rem}
-  .req b{color:var(--ink)}
-  .warn{border-left:3px solid var(--amber);background:rgba(255,198,92,.07);
-    padding:13px 16px;border-radius:0 10px 10px 0;margin:20px 0;font-size:.95rem}
-  #ios{display:none;border-left:3px solid #ff7b6b;background:rgba(255,123,107,.08);
-    padding:15px 17px;border-radius:0 10px 10px 0;margin:0 0 24px;font-size:.97rem}
-  a{color:var(--green)}
-  .quiet{color:var(--dim);font-size:.9rem}
-  footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--line);
-    color:var(--dim);font-size:.8rem;text-align:center}
-  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+  :root{
+    --bg:#0d0f0d; --card:#161a16; --line:#2a312a;
+    --txt:#f2f5f2; --dim:#a8b3a8;
+    --go:#5ce07a; --go-dk:#0d1f12;
+    --warn:#ffb04d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font:400 19px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:28px 20px 64px;
+  }
+  .wrap{max-width:620px;margin:0 auto}
+
+  header{text-align:center;margin-bottom:34px}
+  .logo{font-size:31px;font-weight:800;letter-spacing:.5px;color:var(--go);margin:0}
+  .kicker{font-size:13px;letter-spacing:3px;color:var(--dim);margin-top:8px;font-weight:600}
+
+  h1{font-size:32px;line-height:1.2;font-weight:800;margin:0 0 18px}
+  .lede{font-size:21px;line-height:1.5;color:var(--txt);margin:0 0 30px}
+  .lede b{color:var(--go)}
+
+  .btn{
+    display:block;width:100%;box-sizing:border-box;
+    background:var(--go);color:var(--go-dk);
+    font-size:24px;font-weight:800;text-align:center;text-decoration:none;
+    padding:24px 18px;border-radius:16px;border:0;
+    margin:0 0 12px;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn-note{text-align:center;color:var(--dim);font-size:16px;margin:0 0 36px}
+
+  .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin:0 0 22px}
+  .box h2{font-size:14px;letter-spacing:2px;color:var(--go);margin:0 0 18px;font-weight:700;text-transform:uppercase}
+
+  ol.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+  ol.steps li{
+    counter-increment:s;position:relative;
+    padding:0 0 22px 54px;font-size:20px;line-height:1.45;
+  }
+  ol.steps li:last-child{padding-bottom:0}
+  ol.steps li::before{
+    content:counter(s);position:absolute;left:0;top:-2px;
+    width:36px;height:36px;border-radius:50%;
+    background:var(--go);color:var(--go-dk);
+    font-weight:800;font-size:19px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  ol.steps small{display:block;color:var(--dim);font-size:16px;margin-top:4px}
+
+  ul.plain{margin:0;padding:0;list-style:none}
+  ul.plain li{padding:9px 0 9px 32px;position:relative;font-size:19px;line-height:1.45}
+  ul.plain li::before{position:absolute;left:0;top:8px;font-size:19px;font-weight:800}
+  ul.yes li::before{content:"\2713";color:var(--go)}
+  ul.no li::before{content:"\2715";color:#ff6b6b}
+
+  .flag{
+    background:#2a2113;border:1px solid #5a4520;border-radius:14px;
+    padding:20px 22px;margin:0 0 22px;
+  }
+  .flag b{color:var(--warn);display:block;font-size:19px;margin-bottom:6px}
+  .flag p{margin:0;font-size:18px;line-height:1.5;color:#e8ddc8}
+
+  .q{font-weight:700;font-size:19px;margin:20px 0 5px}
+  .q:first-of-type{margin-top:0}
+  .a{margin:0;color:var(--dim);font-size:18px;line-height:1.5}
+
+  footer{text-align:center;color:#6e786e;font-size:15px;margin-top:40px;line-height:2}
+  footer a{color:#8a958a;text-decoration:none;margin:0 9px}
+
+  @media (max-width:400px){
+    body{font-size:18px;padding:22px 16px 56px}
+    h1{font-size:28px}
+    .lede{font-size:20px}
+    .btn{font-size:22px;padding:22px 14px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <h1>🛰️ SKYDOG GPS</h1>
-  <div class="tag">BE A TESTER</div>
+  <header>
+    <p class="logo">SKYDOG GPS</p>
+    <p class="kicker">BE A TESTER</p>
+  </header>
 
-  <div id="ios">
-    <b>Looks like you're on an iPhone.</b> This particular test needs an Android phone — but
-    SkyDog GPS is already live on the App Store, and if you know someone with an Android,
-    forwarding them this link genuinely helps.
-  </div>
+  <!-- ============ SIGN-UP MODE (default) ============ -->
+  <section id="signup">
+    <h1>I need 12 people with an Android phone.</h1>
 
-  <p class="hero">Help get SkyDog GPS onto Google Play.</p>
-  <p class="lede">Google won't let a new app go public until <b>12 people have tested it for 14 days
-  straight</b>. That's the only thing standing between this app and the Play Store. If you've got an
-  Android phone, you can be one of the twelve — and it costs you about two minutes.</p>
+    <p class="lede">
+      Google won't let a new app onto the Play Store until <b>12 people install it and
+      keep it for 14 days straight</b>. That's the only thing standing between this app
+      and the store. It costs you about two minutes.
+    </p>
 
-  <div id="signup">
-    <a class="cta" id="joinBtn" href="#">I'm in — send me the link</a>
-    <p class="sub">Opens an email with your spot claimed. Just hit send.</p>
-    <a class="cta alt" id="textBtn" href="#">Or text instead</a>
-  </div>
+    <a class="btn" id="joinBtn" href="#">I'm in — sign me up</a>
+    <p class="btn-note">Two boxes: your name and your Gmail. That's it.</p>
 
-  <div id="live" style="display:none">
-    <a class="cta" id="optInBtn" href="#" target="_blank" rel="noopener">Open the tester link →</a>
-    <p class="sub">Open this on your Android phone, signed in with your Gmail.</p>
-  </div>
+    <div class="flag">
+      <b>Android only — sorry</b>
+      <p>If you're on an iPhone, Google won't count you. Nothing personal, it's their rule.
+      You can still help by sending this to somebody who has an Android.</p>
+    </div>
+
+    <div class="box">
+      <h2>What happens next</h2>
+      <ol class="steps">
+        <li>You put your name and Gmail in the form.
+          <small>Use the Gmail that's signed in on your Android phone.</small></li>
+        <li>In a few days I text you one link.
+          <small>Tap it, tap "Become a tester," install the app. Two taps.</small></li>
+        <li>Leave it on your phone for 14 days.
+          <small>You don't have to open it. You don't have to do anything.</small></li>
+        <li>I text you when we're done.
+          <small>Keep it or delete it. Totally up to you.</small></li>
+      </ol>
+    </div>
+
+    <div class="box">
+      <h2>What you'll never be asked for</h2>
+      <ul class="plain no">
+        <li>Money — no card, no payment, nothing</li>
+        <li>Reviews, ratings, surveys or reports</li>
+        <li>Actually using it (though I hope you do)</li>
+        <li>Keeping it after the 14 days</li>
+      </ul>
+    </div>
+
+    <div class="box">
+      <h2>All you need</h2>
+      <ul class="plain yes">
+        <li>An Android phone</li>
+        <li>A Gmail address on it</li>
+        <li>To not delete the app for two weeks</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ INSTALL MODE (auto-shows once OPT_IN_URL is set) ============ -->
+  <section id="install" style="display:none">
+    <h1>You're on the list. Here's the app.</h1>
+    <p class="lede">Do this on your <b>Android phone</b>, signed in with the Gmail you gave me.</p>
+
+    <a class="btn" id="optInBtn" href="#">Open the tester link</a>
+    <p class="btn-note">Then tap "Become a tester," then install from Google Play.</p>
+
+    <div class="box">
+      <h2>If it doesn't work</h2>
+      <ul class="plain yes">
+        <li>Make sure you're on the Android phone, not a computer</li>
+        <li>Make sure Google Play is signed in with the Gmail you gave me</li>
+        <li>Still stuck? Text me and I'll sort it out</li>
+      </ul>
+    </div>
+
+    <div class="flag">
+      <b>Don't uninstall it for 14 days</b>
+      <p>Google counts 14 unbroken days. If one person drops off, the clock restarts for
+      everybody. I'll text you the day we're clear.</p>
+    </div>
+  </section>
 
   <div class="box">
-    <h2>What you're actually signing up for</h2>
-    <p class="minihd">All you do:</p>
-    <ul class="check">
-      <li>Tap a link, hit "Become a tester," install the app</li>
-      <li>Leave it on your phone for 14 days</li>
-      <li>That's it. That's the whole job.</li>
-    </ul>
-    <p class="minihd">What you'll never be asked for:</p>
-    <ul class="no">
-      <li>Any money — no payment info, no card, nothing</li>
-      <li>Reviews, forms, surveys or reports</li>
-      <li>Actually using it (though we hope you do)</li>
-      <li>Keeping it — delete it the day the test ends</li>
-    </ul>
+    <h2>Straight answers</h2>
+    <p class="q">Is this going to cost me anything?</p>
+    <p class="a">No. Not now, not later. The app is free.</p>
+    <p class="q">Will it track me or sell my info?</p>
+    <p class="a">It uses your location to show you on the map, same as any GPS app. It's not
+    tied to an account because there are no accounts. Full details in the privacy policy below.</p>
+    <p class="q">Do I have to write a review?</p>
+    <p class="a">No. Google actually forbids me from asking testers for reviews.</p>
+    <p class="q">What even is SkyDog GPS?</p>
+    <p class="a">Topo and satellite maps for hunting land, trails, beaches and sled runs.
+    Mark your spots, track your trip, export the GPX. Already on iPhone — this is to get
+    it onto Android.</p>
+    <p class="q">Can I quit partway through?</p>
+    <p class="a">You can, but please don't. Dropping below 12 people restarts the whole
+    14 days for everyone. If you're not sure, better to say no now than bail on day 9.</p>
   </div>
-
-  <h2 class="section">You'll need</h2>
-  <div class="req"><div>📱</div><div><b>An Android phone.</b> Any one made in roughly the last five
-    years. iPhones can't join this test — Google's rules, not ours.</div></div>
-  <div class="req"><div>✉️</div><div><b>A Gmail address.</b> Specifically the one you're already
-    signed into on that phone — that's how Google knows to let you in.</div></div>
-
-  <h2 class="section">How it works, start to finish</h2>
-  <ol>
-    <li><b>Send us your Gmail.</b> Hit the button up top — it writes the email for you.</li>
-    <li><b>Wait for the link.</b> We add you to the tester list and send it over. This may take a
-      few days if the test hasn't opened yet.</li>
-    <li><b>Open the link on your Android phone</b> and tap "Become a tester."</li>
-    <li><b>Install SkyDog GPS</b> from the Google Play link on that same page.</li>
-    <li><b>Leave it installed for 14 days.</b> We'll message you the day you're free and clear.</li>
-  </ol>
-
-  <div class="warn">
-    <b>The one thing that actually matters:</b> please don't uninstall it early. Google counts
-    14 <i>unbroken</i> days — if one person drops out on day 12, the clock resets to zero for
-    everybody. One text from us on day 7, one on day 14, and you're done.
-  </div>
-
-  <hr>
-
-  <h2 class="section">So what is SkyDog GPS?</h2>
-  <p>A GPS and mapping app for people who spend time outside — trails, beaches, hunting land,
-  boats, sleds and four-wheelers. Three map styles including topo and satellite, one-tap discovery
-  for trails and boat launches and waterfalls near you, live trip tracking with speed and distance,
-  and GPX export that opens in Google Earth, OnX, Gaia or AllTrails.</p>
-  <p>It's free, there's no account and no sign-up, and it's already live on the iPhone App Store.
-  Google Play is the last step.</p>
-
-  <h2 class="section">Fair warning about location</h2>
-  <p class="quiet">It's a GPS app, so it asks for your location — that's how it puts you on the map.
-  Your location stays on your phone. The one exception is Buddy Trips: if <i>you</i> start or join
-  one, your live position is shared with the people on that trip until you end it. Nothing is shared
-  otherwise, and there's no account tied to any of it. The full
-  <a href="privacy-policy.html">privacy policy</a> is right here.</p>
 
   <footer>
-    <a href="https://skydoggps.com">skydoggps.com</a> ·
-    <a href="support.html">Support</a> ·
-    <a href="privacy-policy.html">Privacy</a><br><br>
-    &copy; 2026 SkyDog · SkyDog GPS
+    <a href="privacy-policy.html">Privacy</a>·<a href="support.html">Support</a>·<a href="https://skydoggps.com">skydoggps.com</a>
+    <br>SkyDog GPS
   </footer>
 
 </div>
 
 <script>
 (function(){
-  /* ─────────────────────────────────────────────────────────────
-     TO FLIP THIS PAGE INTO "TEST IS LIVE" MODE:
-     paste the Play Console closed-test opt-in URL between the quotes.
-     Leave it empty and the page stays in sign-up mode.
-     ───────────────────────────────────────────────────────────── */
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     ONE SETTING.
+     Leave OPT_IN_URL empty  -> page shows the sign-up form button.
+     Paste the Play Console closed-test opt-in URL between the quotes
+     -> page automatically flips to install instructions.
+     ------------------------------------------------------------------ */
   var OPT_IN_URL = "";
 
-  var CONTACT_EMAIL = "skydog8426@gmail.com";
-  var CONTACT_PHONE = "";   /* optional: put a number here to enable the text button */
+  /* Where sign-ups go. Google Form: name + Gmail. */
+  var SIGNUP_URL = "https://docs.google.com/forms/d/e/1FAIpQLScx_uRqNA2LVuLYv077gn4MxjMyEjZiKNQQvXqJh9wMBexlhA/viewform";
 
-  /* email button — pre-writes the whole thing so they just hit send */
-  var subject = "I'm in — SkyDog GPS tester";
-  var body = "I'd like to be one of the SkyDog GPS testers.\n\n"
-           + "My Gmail address (the one on my Android phone):\n\n"
-           + "________________________\n\n"
-           + "Send me the link whenever it's ready.\n";
-  document.getElementById('joinBtn').href =
-    "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent(subject)
-    + "&body=" + encodeURIComponent(body);
+  var signup  = document.getElementById("signup");
+  var install = document.getElementById("install");
+  var joinBtn = document.getElementById("joinBtn");
+  var optBtn  = document.getElementById("optInBtn");
 
-  /* text button — only if a phone number is configured */
-  var textBtn = document.getElementById('textBtn');
-  if (CONTACT_PHONE) {
-    var sep = /iPhone|iPad|Macintosh/i.test(navigator.userAgent) ? "&" : "?";
-    textBtn.href = "sms:" + CONTACT_PHONE + sep + "body="
-      + encodeURIComponent("I'm in for the SkyDog GPS test. My Gmail is: ");
-  } else {
-    textBtn.style.display = 'none';
-  }
-
-  /* live mode */
   if (OPT_IN_URL) {
-    document.getElementById('signup').style.display = 'none';
-    document.getElementById('live').style.display = 'block';
-    document.getElementById('optInBtn').href = OPT_IN_URL;
-  }
-
-  /* friendly heads-up for iPhone visitors */
-  var ua = navigator.userAgent || "";
-  if (/iPhone|iPad|iPod/i.test(ua)) {
-    document.getElementById('ios').style.display = 'block';
+    signup.style.display  = "none";
+    install.style.display = "";
+    optBtn.setAttribute("href", OPT_IN_URL);
+    optBtn.setAttribute("rel", "noopener");
+  } else {
+    joinBtn.setAttribute("href", SIGNUP_URL);
+    joinBtn.setAttribute("rel", "noopener");
   }
 })();
 </script>
