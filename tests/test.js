@@ -53,7 +53,21 @@ const FIX_UASFM = { features: [
 const FIX_FIXEDSITES = { features: [
   { attributes: { OBJECTID: 10, SITE_NAME: 'TC Flyers Field', CITY: 'Traverse City', STATE: 'MI', CEILING: 400, LATITUDE: 44.77, LONGITUDE: -85.60 } },
 ] };
-const FIX_WEATHER = { current: { temperature_2m: 72.4, wind_speed_10m: 8.3, wind_direction_10m: 270, wind_gusts_10m: 12.1 } };
+const FIX_WEATHER = { current: { temperature_2m: 72.4, wind_speed_10m: 8.3, wind_direction_10m: 270, wind_gusts_10m: 12.1 },
+  /* hourly pressure falls hard (−1.2 hPa/hr) so the solunar weather blend exercises its +12 path */
+  hourly: { surface_pressure: Array.from({ length: 24 }, (_, i) => 1018 - i * 1.2),
+            wind_speed_10m: Array.from({ length: 24 }, () => 6) } };
+
+/* 🌌 NOAA SWPC planetary-K forecast — one strong predicted row inside the next 36 h */
+const FIX_SWPC = () => {
+  const fmt = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  return [['time_tag', 'kp', 'observed', 'noaa_scale'],
+    [fmt(Date.now() - 7200000), '3.33', 'observed', null],
+    [fmt(Date.now() + 3600000), '7.00', 'predicted', 'G3'],
+    [fmt(Date.now() + 7200000), '5.67', 'predicted', 'G1']];
+};
+/* 🆘 what3words convert-to-3wa */
+const FIX_W3W = { words: 'dog.happy.trail' };
 
 /* 🏡 Regrid parcel point-lookup fixture — one 40-acre parcel near Traverse City */
 const FIX_REGRID = { parcels: { type: 'FeatureCollection', features: [
@@ -195,6 +209,14 @@ async function main(){
       const body = regridMode === 'empty' ? { parcels: { type: 'FeatureCollection', features: [] } } : FIX_REGRID;
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     }
+    /* 🌌 NOAA SWPC aurora forecast (keyless, public domain) */
+    if (url.includes('services.swpc.noaa.gov')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_SWPC()) });
+    }
+    /* 🆘 what3words (only ever called when a key is configured) */
+    if (url.includes('api.what3words.com')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIX_W3W) });
+    }
     /* Firebase SDK stub — records writes/listeners so buddy tests are deterministic & offline */
     if (url.includes('gstatic.com/firebasejs')) {
       return route.fulfill({ status: 200, contentType: 'text/javascript', body: FB_STUB });
@@ -246,7 +268,7 @@ async function main(){
   T('chips carry gentle glow animation', await page.$eval('#chips .chip', (el) => getComputedStyle(el).animationName) === 'chipGlow');
   T('utility tools ride the wheel with the subtler .util look', await page.evaluate(`(function(){
     const utils = document.querySelectorAll('#modewheel .wfab.util');
-    return utils.length === 7 && getComputedStyle(document.getElementById('layerfab')).width === '46px'
+    return utils.length === 9 && getComputedStyle(document.getElementById('layerfab')).width === '46px'
       && getComputedStyle(document.getElementById('fishfab')).width === '52px';
   })()`));
   T('active chip glow suppressed', await page.evaluate(`(function(){
@@ -721,12 +743,12 @@ async function main(){
   await page.evaluate('__sdwheel.jumpTo("fishing")');
   T('wheel holds every mode + tool in cyclic order', JSON.stringify(await page.evaluate('__sdwheel.order'))
     === JSON.stringify(['fishing', 'drone', 'orv', 'terrain3d', 'buddy', 'spots', 'store',
-                        'layer', 'locate', 'saved', 'key', 'what', 'clear']));
+                        'sos', 'night', 'layer', 'locate', 'saved', 'key', 'what', 'clear']));
   T('every configured pack auto-appears on the wheel', await page.evaluate(
     'Object.keys(__sdpacks.PACKS_CONFIG.packs).every((id) => __sdwheel.order.includes(id))'));
   T('front slot enlarged + marked', await page.evaluate('__sdwheel.front') === 'fishing'
     && await page.$eval('#fishfab', (el) => el.classList.contains('front') && /scale\(1\.4/.test(el.style.transform)));
-  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(12)') === -1);
+  T('cyclic wrap: last item is one flick behind the front', await page.evaluate('__sdwheel.delta(14)') === -1);
   T('flick snaps to a firm detent (never free-floats)', await page.evaluate(`(function(){
     __sdwheel.spinBy(1.4);
     const drifting = __sdwheel.pos;
@@ -802,7 +824,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.2');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.3');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -1142,6 +1164,270 @@ async function main(){
   T('regrid attribution when active', await page.evaluate('(function(){ updateAttrib(); return document.getElementById("attrib").textContent; })()').then(t => t.includes('Regrid')));
   await page.evaluate('__sdmap.overlays.delete("parcels"); __sdparcels.REGRID.token = ""; updateAttrib(); __sdmap.clearGroup("parcel");');
 
+
+  console.log('\n— 🆘 Run 1: USNG/MGRS + astronomy (pure, deterministic) —');
+  /* ground truth generated from the mgrs + (high-accuracy) suncalc reference
+     libraries; hardcoded so the suite stays self-contained + offline */
+  const FIX_MGRS = [{"lng":-85.6206,"lat":44.7631,"mgrs":"16TFQ0916457559"},{"lng":-83.0458,"lat":42.3314,"mgrs":"17TLG3145088599"},{"lng":-77.0365,"lat":38.8977,"mgrs":"18SUJ2339407395"},{"lng":-149.9003,"lat":61.2181,"mgrs":"6VUN4424790536"},{"lng":-80.1918,"lat":25.7617,"mgrs":"17RNJ8104649542"},{"lng":151.2093,"lat":-33.8688,"mgrs":"56HLH3436850948"}];
+  const FIX_SUN = [{"lat":44.7631,"lng":-85.6206,"date":"2026-08-01T17:00:00Z","sunrise":"2026-08-01T10:28:40Z","sunset":"2026-08-02T01:08:17Z","civilDawn":"2026-08-01T09:55:07Z","civilDusk":"2026-08-02T01:41:41Z","nauticalDawn":"2026-08-01T09:12:50Z","nauticalDusk":"2026-08-02T02:23:43Z","astroDawn":"2026-08-01T08:24:05Z","astroDusk":"2026-08-02T03:12:01Z"},{"lat":42.3314,"lng":-83.0458,"date":"2026-08-01T17:00:00Z","sunrise":"2026-08-01T10:24:55Z","sunset":"2026-08-02T00:51:30Z","civilDawn":"2026-08-01T09:53:09Z","civilDusk":"2026-08-02T01:23:09Z","nauticalDawn":"2026-08-01T09:13:39Z","nauticalDusk":"2026-08-02T02:02:27Z","astroDawn":"2026-08-01T08:29:21Z","astroDusk":"2026-08-02T02:46:25Z"},{"lat":25.7617,"lng":-80.1918,"date":"2026-08-01T17:00:00Z","sunrise":"2026-08-01T10:47:13Z","sunset":"2026-08-02T00:06:43Z","civilDawn":"2026-08-01T10:22:29Z","civilDusk":"2026-08-02T00:31:24Z","nauticalDawn":"2026-08-01T09:53:03Z","nauticalDusk":"2026-08-02T01:00:45Z","astroDawn":"2026-08-01T09:22:35Z","astroDusk":"2026-08-02T01:31:09Z"},{"lat":44.7631,"lng":-85.6206,"date":"2026-01-15T17:00:00Z","sunrise":"2026-01-15T13:16:17Z","sunset":"2026-01-15T22:28:01Z","civilDawn":"2026-01-15T12:43:43Z","civilDusk":"2026-01-15T23:00:35Z","nauticalDawn":"2026-01-15T12:07:33Z","nauticalDusk":"2026-01-15T23:36:47Z","astroDawn":"2026-01-15T11:32:33Z","astroDusk":"2026-01-16T00:11:47Z"},{"lat":42.3314,"lng":-83.0458,"date":"2026-01-15T17:00:00Z","sunrise":"2026-01-15T12:58:37Z","sunset":"2026-01-15T22:25:04Z","civilDawn":"2026-01-15T12:27:35Z","civilDusk":"2026-01-15T22:56:06Z","nauticalDawn":"2026-01-15T11:52:57Z","nauticalDusk":"2026-01-15T23:30:44Z","astroDawn":"2026-01-15T11:19:20Z","astroDusk":"2026-01-16T00:04:22Z"},{"lat":25.7617,"lng":-80.1918,"date":"2026-01-15T17:00:00Z","sunrise":"2026-01-15T12:09:00Z","sunset":"2026-01-15T22:51:42Z","civilDawn":"2026-01-15T11:44:17Z","civilDusk":"2026-01-15T23:16:25Z","nauticalDawn":"2026-01-15T11:16:05Z","nauticalDusk":"2026-01-15T23:44:37Z","astroDawn":"2026-01-15T10:48:17Z","astroDusk":"2026-01-16T00:12:25Z"},{"lat":44.7631,"lng":-85.6206,"date":"2026-11-15T17:00:00Z","sunrise":"2026-11-15T12:39:40Z","sunset":"2026-11-15T22:14:06Z","civilDawn":"2026-11-15T12:08:00Z","civilDusk":"2026-11-15T22:45:45Z","nauticalDawn":"2026-11-15T11:32:33Z","nauticalDusk":"2026-11-15T23:21:10Z","astroDawn":"2026-11-15T10:58:02Z","astroDusk":"2026-11-15T23:55:41Z"},{"lat":42.3314,"lng":-83.0458,"date":"2026-11-15T17:00:00Z","sunrise":"2026-11-15T12:23:02Z","sunset":"2026-11-15T22:10:09Z","civilDawn":"2026-11-15T11:52:49Z","civilDusk":"2026-11-15T22:40:22Z","nauticalDawn":"2026-11-15T11:18:50Z","nauticalDusk":"2026-11-15T23:14:20Z","astroDawn":"2026-11-15T10:45:39Z","astroDusk":"2026-11-15T23:47:30Z"},{"lat":25.7617,"lng":-80.1918,"date":"2026-11-15T17:00:00Z","sunrise":"2026-11-15T11:38:41Z","sunset":"2026-11-15T22:31:51Z","civilDawn":"2026-11-15T11:14:24Z","civilDusk":"2026-11-15T22:56:08Z","nauticalDawn":"2026-11-15T10:46:37Z","nauticalDusk":"2026-11-15T23:23:56Z","astroDawn":"2026-11-15T10:19:11Z","astroDusk":"2026-11-15T23:51:22Z"}];
+  const FIX_MOON = [{"lat":44.7631,"lng":-85.6206,"date":"2026-08-01T17:00:00Z","rise":"2026-08-01T02:12:07Z","set":"2026-08-01T13:36:22Z","fraction":0.9064},{"lat":42.3314,"lng":-83.0458,"date":"2026-08-01T17:00:00Z","rise":"2026-08-01T01:58:55Z","set":"2026-08-01T13:27:27Z","fraction":0.9064},{"lat":25.7617,"lng":-80.1918,"date":"2026-08-01T17:00:00Z","rise":"2026-08-01T01:32:33Z","set":"2026-08-01T13:25:27Z","fraction":0.9064},{"lat":44.7631,"lng":-85.6206,"date":"2026-01-15T17:00:00Z","rise":"2026-01-15T11:14:40Z","set":"2026-01-15T19:14:49Z","fraction":0.0924},{"lat":42.3314,"lng":-83.0458,"date":"2026-01-15T17:00:00Z","rise":"2026-01-15T10:52:05Z","set":"2026-01-15T19:16:09Z","fraction":0.0924},{"lat":25.7617,"lng":-80.1918,"date":"2026-01-15T17:00:00Z","rise":"2026-01-15T09:41:48Z","set":"2026-01-15T20:03:25Z","fraction":0.0924},{"lat":44.7631,"lng":-85.6206,"date":"2026-11-15T17:00:00Z","rise":"2026-11-15T18:01:04Z","set":"2026-11-15T02:20:35Z","fraction":0.3336},{"lat":42.3314,"lng":-83.0458,"date":"2026-11-15T17:00:00Z","rise":"2026-11-15T17:42:47Z","set":"2026-11-15T02:18:58Z","fraction":0.3336},{"lat":25.7617,"lng":-80.1918,"date":"2026-11-15T17:00:00Z","rise":"2026-11-15T16:50:48Z","set":"2026-11-15T02:53:10Z","fraction":0.3336}];
+  T('MGRS matches ' + FIX_MGRS.length + ' reference vectors (±1 m)', await page.evaluate(`(function(){
+    const fx = ${JSON.stringify(FIX_MGRS)};
+    return fx.every(v => {
+      const got = __sdsafety.toMGRS(v.lat, v.lng);
+      if (got === v.mgrs) return true;
+      return !!got && got.slice(0, -10) === v.mgrs.slice(0, -10)
+        && Math.abs(+got.slice(-10, -5) - +v.mgrs.slice(-10, -5)) <= 1
+        && Math.abs(+got.slice(-5) - +v.mgrs.slice(-5)) <= 1;
+    });
+  })()`));
+  T('MGRS pretty-print + polar refusal + deg-min format', await page.evaluate(`(function(){
+    return __sdsafety.mgrsPretty('16TFQ0916457559') === '16T FQ 09164 57559'
+      && __sdsafety.toMGRS(87, 10) === null
+      && __sdsafety.degMin(44.7631, true) === "44°45.786'N"
+      && __sdsafety.degMin(-85.6206, false) === "85°37.236'W";
+  })()`));
+  T('sun times within ±4 min of reference (' + FIX_SUN.length + ' location/dates × 8 events)', await page.evaluate(`(function(){
+    const fx = ${JSON.stringify(FIX_SUN)};
+    const keys = ['sunrise','sunset','civilDawn','civilDusk','nauticalDawn','nauticalDusk','astroDawn','astroDusk'];
+    return fx.every(s => {
+      const t = __sdnight.AST.sunTimes(new Date(s.date), s.lat, s.lng);
+      return keys.every(k => t[k] && Math.abs(+t[k] - Date.parse(s[k])) <= 240000);
+    });
+  })()`));
+  T('moon rise/set within ±10 min + illumination ±0.02 of reference', await page.evaluate(`(function(){
+    const fx = ${JSON.stringify([{"lat":44.7631,"lng":-85.6206,"date":"2026-08-01T17:00:00Z","rise":"2026-08-01T02:12:07Z","set":"2026-08-01T13:36:22Z","fraction":0.9064},{"lat":42.3314,"lng":-83.0458,"date":"2026-08-01T17:00:00Z","rise":"2026-08-01T01:58:55Z","set":"2026-08-01T13:27:27Z","fraction":0.9064},{"lat":25.7617,"lng":-80.1918,"date":"2026-08-01T17:00:00Z","rise":"2026-08-01T01:32:33Z","set":"2026-08-01T13:25:27Z","fraction":0.9064},{"lat":44.7631,"lng":-85.6206,"date":"2026-01-15T17:00:00Z","rise":"2026-01-15T11:14:40Z","set":"2026-01-15T19:14:49Z","fraction":0.0924},{"lat":42.3314,"lng":-83.0458,"date":"2026-01-15T17:00:00Z","rise":"2026-01-15T10:52:05Z","set":"2026-01-15T19:16:09Z","fraction":0.0924},{"lat":25.7617,"lng":-80.1918,"date":"2026-01-15T17:00:00Z","rise":"2026-01-15T09:41:48Z","set":"2026-01-15T20:03:25Z","fraction":0.0924},{"lat":44.7631,"lng":-85.6206,"date":"2026-11-15T17:00:00Z","rise":"2026-11-15T18:01:04Z","set":"2026-11-15T02:20:35Z","fraction":0.3336},{"lat":42.3314,"lng":-83.0458,"date":"2026-11-15T17:00:00Z","rise":"2026-11-15T17:42:47Z","set":"2026-11-15T02:18:58Z","fraction":0.3336},{"lat":25.7617,"lng":-80.1918,"date":"2026-11-15T17:00:00Z","rise":"2026-11-15T16:50:48Z","set":"2026-11-15T02:53:10Z","fraction":0.3336}])};
+    return fx.every(m => {
+      const t = __sdnight.AST.moonTimes(new Date(m.date), m.lat, m.lng);
+      const i = __sdnight.AST.moonIllumination(new Date(m.date));
+      const okR = m.rise ? (t.rise && Math.abs(+t.rise - Date.parse(m.rise)) <= 600000) : !t.rise;
+      const okS = m.set ? (t.set && Math.abs(+t.set - Date.parse(m.set)) <= 600000) : !t.set;
+      return okR && okS && Math.abs(i.fraction - m.fraction) < 0.02;
+    });
+  })()`));
+  T('moon transit is the day\'s highest altitude (±30 min shoulder check)', await page.evaluate(`(function(){
+    const d = new Date('2026-08-01T17:00:00Z'), lat = 44.7631, lng = -85.6206;
+    const tr = __sdnight.AST.moonTransits(d, lat, lng);
+    const h = (t) => __sdnight.AST.moonAltitude(new Date(t), lat, lng);
+    return h(+tr.transit) >= h(+tr.transit - 1800000) && h(+tr.transit) >= h(+tr.transit + 1800000)
+      && h(+tr.underfoot) <= h(+tr.underfoot - 1800000) && h(+tr.underfoot) <= h(+tr.underfoot + 1800000);
+  })()`));
+
+  console.log('\n— 🐟 Solunar Activity (free with the free map) —');
+  T('a day yields 2 majors + 1–2 minors, all inside the day', await page.evaluate(`(function(){
+    const p = __sdsolunar.solunarPeriods(new Date('2026-08-01T17:00:00Z'), 44.7631, -85.6206);
+    const day0 = Date.parse('2026-08-01T00:00:00Z') - 6*3600000, day1 = day0 + 36*3600000;
+    return p.majors.length === 2 && p.minors.length >= 1 && p.minors.length <= 2
+      && p.majors.concat(p.minors).every(t => t > day0 && t < day1);
+  })()`));
+  T('score peaks inside a major window and clamps to 0..100', await page.evaluate(`(function(){
+    const ctx = { majors: [1000000], minors: [], sunEdges: [], phase: 0.5, nudge: 0 };
+    const inMajor = __sdsolunar.solunarScoreAt(1000000, ctx);
+    const outside = __sdsolunar.solunarScoreAt(1000000 + 4*3600000, ctx);
+    const maxed = __sdsolunar.solunarScoreAt(1000000, { majors:[1000000], minors:[1000000], sunEdges:[1000000], phase:0.5, nudge:50 });
+    return inMajor > outside && maxed === 100
+      && __sdsolunar.solunarScoreAt(0, { majors:[], minors:[], sunEdges:[], phase:0.25, nudge:-99 }) === 0;
+  })()`));
+  T('phase weight: full/new moon beats the quarters', await page.evaluate(
+    '__sdsolunar.solunarPhaseWeight(0.5) === 1 && __sdsolunar.solunarPhaseWeight(0) === 1 && __sdsolunar.solunarPhaseWeight(0.25) < 1'));
+  T('weather nudge: falling glass +12, gale −10, sharp rise −6, offline 0', await page.evaluate(
+    '__sdsolunar.solunarWxNudge(-3, 5) === 12 && __sdsolunar.solunarWxNudge(0, 25) === -10 && __sdsolunar.solunarWxNudge(3, 0) === -6 && __sdsolunar.solunarWxNudge(null, null) === 0'));
+  T('solunar badge lives on the map + opens the day strip (48 half-hours)', await page.evaluate(`(function(){
+    document.getElementById('sunbadge').click();
+    return document.getElementById('solunarsheet').classList.contains('open')
+      && document.querySelectorAll('#sunstrip div').length === 48
+      && /\\d+ \\/ 100/.test(document.getElementById('sundialbig').textContent);
+  })()`));
+  T('species chips relabel the same math (🦌 deer)', await page.evaluate(`(function(){
+    const before = document.getElementById('sundialbig').textContent.replace(/\\D/g, '');
+    document.querySelector('.sunspecies [data-sp="deer"]').click();
+    const after = document.getElementById('sundialbig').textContent;
+    return after.includes('🦌') && after.replace(/\\D/g, '') === before
+      && document.getElementById('sunrows').textContent.includes('movement windows');
+  })()`));
+  T('honest copy: almanac + weather, never a promise', await page.evaluate(`(function(){
+    const t = document.getElementById('solunarsheet').textContent;
+    return t.includes('a nudge, not a promise') && !/AI predicts/i.test(document.body.innerHTML);
+  })()`));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+
+  console.log('\n— 🆘 Emergency screen (offline, ≤2 taps) —');
+  T('🆘 rides the wheel and one tap opens the screen', await page.evaluate(`(function(){
+    if(!__sdwheel.order.includes('sos')) return false;
+    document.getElementById('sosfab').click();
+    return getComputedStyle(document.getElementById('soswrap')).display === 'flex';
+  })()`));
+  await page.evaluate(`__sdsafety.SOS.setFix({ lat: 44.7631, lng: -85.6206, accM: 9.1, altM: 190, heading: 271, at: Date.now() })`);
+  T('every format rescuers ask for: decimal, deg-min, MGRS, elev, accuracy, heading', await page.evaluate(`(function(){
+    const g = id => document.getElementById(id).textContent;
+    return g('soslatlon') === '44.76310, -85.62060'
+      && g('sosdegmin').includes("44°45.786'N") && g('sosdegmin').includes("85°37.236'W")
+      && g('sosmgrs').includes('16T FQ')
+      && g('soselev').includes('623 ft') && g('sosacc').includes('±30 ft') && g('soshead').includes('271°');
+  })()`));
+  T('📞 CALL 911 + 📱 pre-filled SOS text with position in every format', await page.evaluate(`(function(){
+    const call = document.getElementById('soscall').getAttribute('href') === 'tel:911';
+    const href = document.getElementById('sostext').getAttribute('href');
+    const body = decodeURIComponent(href.split('body=')[1] || '');
+    return call && href.startsWith('sms:') && body.includes('SOS! Need help.')
+      && body.includes('44.76310,-85.62060') && body.includes('MGRS 16TFQ') && body.includes('maps.google.com');
+  })()`));
+  T('core SOS text stays under 160 chars (satellite-messaging safe)', await page.evaluate(`(function(){
+    const b = __sdsafety.sosSmsBody({ lat: 44.7631, lng: -85.6206, accM: 8 }, { batt: 52, party: 3 });
+    return b.split(' https://')[0].length < 160 && b.includes('Party of 3') && b.includes('Bat 52%');
+  })()`));
+  T('battery-saver toggle dims the screen for the long wait', await page.evaluate(`(function(){
+    document.getElementById('sossaver').click();
+    const on = document.getElementById('soswrap').classList.contains('saver');
+    document.getElementById('sossaver').click();
+    return on && !document.getElementById('soswrap').classList.contains('saver');
+  })()`));
+  T('rescuer link: buddy plumbing, rescue/<code> writes, browser URL', await page.evaluate(`(async function(){
+    window.__fbWrites = [];
+    await __sdsafety.SOS.startRescue();
+    const r = __sdsafety.SOS.rescue;
+    if(!r || !/\\?rescue=[A-Z2-9]{8}$/.test(r.url)) return 'bad url: ' + (r && r.url);
+    const paths = (window.__fbWrites || []).map(w => w.path);
+    const okLast = paths.some(p => p === 'rescue/' + r.code + '/last');
+    const okTrack = paths.some(p => p.startsWith('rescue/' + r.code + '/track/t'));
+    return okLast && okTrack ? true : 'writes: ' + paths.join('|');
+  })()`) === true);
+  T('SOS text now carries the live-track link', await page.evaluate(`(function(){
+    const body = decodeURIComponent(document.getElementById('sostext').getAttribute('href').split('body=')[1] || '');
+    return body.includes('Track: https://skydoggps.com/?rescue=');
+  })()`));
+  T('ending the link stops sharing', await page.evaluate(`(function(){
+    __sdsafety.SOS.endRescue();
+    return !__sdsafety.SOS.rescue && document.getElementById('sosrescue').textContent.includes('START');
+  })()`));
+  T('24 h retention promise is a tested constant', await page.evaluate('__sdsafety.SAFETY_CFG.rescueMaxAgeMs') === 86400000);
+  T('what3words: hidden with no key, live with one (cached, online-only)', await page.evaluate(`(async function(){
+    const hidden = getComputedStyle(document.getElementById('sosw3w')).display === 'none';
+    __sdsafety.SAFETY_CFG.w3wKey = 'TESTKEY';
+    __sdsafety.SOS.setFix({ lat: 44.7, lng: -85.6, accM: 5, altM: null, heading: null, at: Date.now() });
+    await __sdsafety.SOS.w3wMaybe();
+    const shown = document.getElementById('sosw3w').textContent === '///dog.happy.trail';
+    __sdsafety.SAFETY_CFG.w3wKey = '';
+    document.getElementById('sosw3w').style.display = 'none';
+    return hidden && shown;
+  })()`) === true);
+  T('disclaimer on the screen: helps you share — NOT a rescue service', await page.evaluate(`(function(){
+    const t = document.getElementById('sosdisc').textContent;
+    return t.includes('not') && t.includes('rescue') && t.includes('911');
+  })()`));
+  T('kill switch: SAFETY_CFG.enabled=false refuses to open', await page.evaluate(`(function(){
+    __sdsafety.SOS.close();
+    __sdsafety.SAFETY_CFG.enabled = false;
+    __sdsafety.SOS.open();
+    const stayed = getComputedStyle(document.getElementById('soswrap')).display === 'none';
+    __sdsafety.SAFETY_CFG.enabled = true;
+    return stayed;
+  })()`));
+  T('rescue rules deployed: rescue/$code read + validated writes, root stays locked', (function(){
+    const r = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'database.rules.json'), 'utf8'));
+    const resc = r.rules.rescue.$code;
+    return r.rules['.read'] === false && r.rules['.write'] === false
+      && resc['.read'] === true && resc.last.lat['.validate'].includes('newData.isNumber()')
+      && resc.track.$pt['$other']['.validate'] === false;
+  })());
+
+  console.log('\n— ⏳ Overdue timer (contacts never leave the phone) —');
+  T('SOS screen hands off to the plan sheet', await page.evaluate(`(function(){
+    __sdsafety.SOS.open();
+    document.getElementById('sosoverdue').click();
+    return document.getElementById('overduesheet').classList.contains('open')
+      && getComputedStyle(document.getElementById('soswrap')).display === 'none';
+  })()`));
+  T('start: needs a time + at least one contact', await page.evaluate(`(function(){
+    document.getElementById('odtime').value = '';
+    document.getElementById('odstart').click();
+    return !__sdsafety.OVERDUE.state;
+  })()`));
+  await page.evaluate(`(function(){
+    document.getElementById('odq2').click();
+    document.getElementById('odplan').value = 'bow hunt, Sand Lakes, silver F-150';
+    document.getElementById('odname1').value = 'Mel';
+    document.getElementById('odphone1').value = '(231) 555-0100';
+    document.getElementById('odstart').click();
+  })()`);
+  T('timer armed: countdown pill + plan persisted via sdStore only', await page.evaluate(`(function(){
+    const pill = document.getElementById('odpill');
+    const st = JSON.parse(localStorage.getItem('sd-overdue'));
+    const cs = JSON.parse(localStorage.getItem('sd-safety-contacts'));
+    return getComputedStyle(pill).display !== 'none' && pill.textContent.includes('back by')
+      && st.contacts.length === 1 && st.contacts[0].phone === '2315550100'
+      && cs.length === 1 && st.plan.includes('bow hunt');
+  })()`));
+  T('overdue fires: full-screen alarm + pre-filled group text to contacts', await page.evaluate(`(function(){
+    __sdsafety.OVERDUE.state.backBy = Date.now() - 1000;
+    __sdsafety.OVERDUE.check();
+    const alarmed = getComputedStyle(document.getElementById('odalarm')).display === 'flex';
+    const href = document.getElementById('odtext').getAttribute('href');
+    const body = decodeURIComponent((href.split('body=')[1] || ''));
+    return alarmed && href.startsWith('sms:2315550100') && body.includes('safety alert')
+      && body.includes('bow hunt') && document.getElementById('odpill').classList.contains('late');
+  })()`));
+  T('＋1 HOUR snoozes the alarm honestly', await page.evaluate(`(function(){
+    document.getElementById('odplus').click();
+    return getComputedStyle(document.getElementById('odalarm')).display === 'none'
+      && !__sdsafety.OVERDUE.state.fired && __sdsafety.OVERDUE.state.backBy > Date.now();
+  })()`));
+  T('"I\'m back safe" clears the timer and the alarm', await page.evaluate(`(function(){
+    __sdsafety.OVERDUE.state.backBy = Date.now() - 1000;
+    __sdsafety.OVERDUE.check();
+    document.getElementById('odsafe').click();
+    return !__sdsafety.OVERDUE.state && localStorage.getItem('sd-overdue') === ''
+      && getComputedStyle(document.getElementById('odalarm')).display === 'none'
+      && getComputedStyle(document.getElementById('odpill')).display === 'none';
+  })()`));
+  T('sheet copy: contacts stay on this phone', await page.evaluate(
+    'document.getElementById("overduesheet").textContent.includes("stay on this phone")'));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+
+  console.log('\n— 🌙 Night Ops (red-light mode — a category first) —');
+  T('🌙 rides the wheel; red mode veils the whole app in dim red', await page.evaluate(`(function(){
+    if(!__sdwheel.order.includes('night')) return false;
+    document.getElementById('nightfab').click();
+    const open = document.getElementById('nightsheet').classList.contains('open');
+    document.getElementById('redmodebtn').click();
+    const veil = document.getElementById('nightveil');
+    const on = document.documentElement.classList.contains('nightred')
+      && getComputedStyle(veil).display === 'block'
+      && getComputedStyle(veil).mixBlendMode === 'multiply'
+      && getComputedStyle(veil).zIndex === '5000';
+    document.getElementById('redmodebtn').click();
+    return open && on && !document.documentElement.classList.contains('nightred');
+  })()`));
+  T('kill switch: NIGHT_CFG.enabled=false → toggle refuses', await page.evaluate(`(function(){
+    __sdnight.NIGHT_CFG.enabled = false;
+    const refused = __sdnight.NIGHT.toggleRed() === false && !document.documentElement.classList.contains('nightred');
+    __sdnight.NIGHT_CFG.enabled = true;
+    return refused;
+  })()`));
+  T('darkness timeline: sunset, twilights, moon + best dark hours', await page.evaluate(`(function(){
+    const t = document.getElementById('nightrows').textContent;
+    return document.querySelectorAll('#nightrows .nightrow').length >= 6
+      && t.includes('Sunset') && t.includes('Moonrise') && t.includes('astro') && t.includes('% lit');
+  })()`));
+  T('honesty: screen-color night mode, explicitly NOT thermal', await page.evaluate(
+    'document.getElementById("nightsheet").textContent.includes("not thermal imaging")'));
+  T('aurora eval: Kp gates by latitude, never by vibes', await page.evaluate(`(function(){
+    const ev = (kp, lat) => __sdnight.NIGHT.auroraEval(kp, lat);
+    return ev(7, 44.76) === 7 && ev(5, 44.76) === null && ev(5, 53) === 5
+      && ev(9, 36.5) === 9 && ev(4, 60) === null && ev(null, 60) === null;
+  })()`));
+  await page.waitForFunction('getComputedStyle(document.getElementById("aurorabanner")).display === "block"', null, { timeout: 5000 });
+  T('aurora banner lights up on the mocked NOAA Kp-7 forecast', await page.evaluate(`(function(){
+    const b = document.getElementById('aurorabanner');
+    return b.textContent.includes('Aurora possible') && b.textContent.includes('Kp 7');
+  })()`));
+  await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
+  T('safety features are FREE — no Entitlements gate anywhere in Run 1 code', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('RUN 1 — SAFETY + NIGHT OPS'), src.indexOf('🎡 MODE WHEEL'));
+    return seg.length > 1000 && !seg.includes('Entitlements.isUnlocked') && !seg.includes('openPaywall');
+  })());
+
   console.log('\n— 🛡 Fort SkyDog Phase A: CSP + tamper containment —');
   const appSrc = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
   const cspMatch = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(appSrc);
@@ -1155,6 +1441,7 @@ async function main(){
     'programs.iowadnr.gov', 'enterprise.gisdata.mn.gov', 'gis.charttools.noaa.gov', 'gisagodnr.state.mi.us',
     'overpass-api.de', 'nominatim.openstreetmap.org', 'api.open-meteo.com', 'services6.arcgis.com',
     'www.gstatic.com', 'firebaseio.com', 'api.skydoggps.com', 's3.amazonaws.com',
+    'services.swpc.noaa.gov', 'api.what3words.com',
   ];
   T('CSP allowlists every origin the app talks to (' + CSP_ORIGINS.length + ')',
     CSP_ORIGINS.every((o) => csp.includes(o)), CSP_ORIGINS.filter((o) => !csp.includes(o)).join(', '));
@@ -1313,7 +1600,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v27 (3D Terrain pack ships fresh)', sw.includes("skydog-gps-v27") && !sw.includes("skydog-gps-v26") && !sw.includes("skydog-gps-v25"));
+  T('sw.js cache bumped to v28 (Safety + Night Ops ships fresh)', sw.includes("skydog-gps-v28") && !sw.includes("skydog-gps-v27") && !sw.includes("skydog-gps-v26"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

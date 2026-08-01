@@ -37,6 +37,40 @@
           ".validate": false
         }
       }
+    },
+    "rescue": {
+      "$code": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$code.matches(/^[A-Z2-9]{8}$/)",
+        "meta": {
+          "started": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+        "last": {
+          ".validate": "newData.hasChildren(['lat','lng','ts'])",
+          "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+          "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "accM": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "ts": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+          "batt": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 100" },
+          "$other": { ".validate": false }
+        },
+        "track": {
+          "$pt": {
+            ".validate": "newData.hasChildren(['lat','lng','ts'])",
+            "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+            "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+            "accM": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "ts": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+            "batt": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 100" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

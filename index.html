@@ -24,7 +24,7 @@
      api.skydoggps.com is pre-allowlisted for the Phase B Cloudflare
      Worker (Regrid proxy + signed unlock codes) so flipping it on
      never requires a CSP change. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://s3.amazonaws.com https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://basemap.nationalmap.gov https://server.arcgisonline.com https://services.arcgisonline.com https://tile.waymarkedtrails.org https://tiles.regrid.com https://maps.dnr.illinois.gov https://gisagocss.state.mi.us https://programs.iowadnr.gov https://enterprise.gisdata.mn.gov https://gis.charttools.noaa.gov https://gisagodnr.state.mi.us https://api.skydoggps.com; connect-src 'self' https://overpass-api.de https://nominatim.openstreetmap.org https://api.open-meteo.com https://services6.arcgis.com https://gisagodnr.state.mi.us https://app.regrid.com https://www.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://api.skydoggps.com https://services.swpc.noaa.gov https://api.what3words.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://buy.stripe.com">
 <title>SkyDog GPS — Powered by SkyDog AI</title>
 <link rel="canonical" href="https://skydoggps.com/">
 <meta name="description" content="Your adventure tracker for trails, beaches, waves & wheels. Topo maps, live GPS tracking & one-tap discovery — free, no account, no sign-up. Optional All Access subscription adds fishing, drone & trail packs.">
@@ -317,6 +317,74 @@
   #t3dmsg{display:none;position:absolute;left:14px;right:14px;top:40%;background:var(--panel2);border:1px solid var(--line);
     border-radius:14px;padding:16px;color:var(--text);font-size:13.5px;text-align:center}
   #t3dattrib{position:absolute;right:6px;bottom:calc(4px + var(--safe-bottom));font-size:9px;color:#9db1c4;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  /* ===== 🆘🌙 Run 1 — Safety + Night Ops ===== */
+  #sunbadge{position:absolute;right:4px;bottom:calc(52px + var(--safe-bottom));z-index:600;
+    background:rgba(11,15,20,.72);border:1px solid var(--line);color:var(--text);font-size:11px;
+    padding:3px 9px;border-radius:999px;cursor:pointer;font-family:inherit}
+  /* red-light veil: multiply-blends the whole app to deep red + dims it.
+     One composited layer — cheap even on old phones; pointer-events pass through. */
+  #nightveil{display:none;position:fixed;inset:0;z-index:5000;pointer-events:none;
+    background:#c31400;mix-blend-mode:multiply}
+  html.nightred #map{filter:brightness(.82)}   /* extra dim on the bright tiles */
+  #soswrap{display:none;position:fixed;inset:0;z-index:2500;background:#000;color:#fff;
+    flex-direction:column;gap:10px;padding:calc(10px + var(--safe-top)) 14px calc(14px + var(--safe-bottom));
+    overflow-y:auto;font-family:inherit}
+  #soswrap.saver{opacity:.45}
+  .sosband{display:flex;align-items:center;justify-content:space-between;font-size:22px;font-weight:800;
+    color:#ff5a5a;letter-spacing:1px}
+  .sosband button{background:#1c2431;border:1px solid var(--line);color:#fff;font-size:20px;border-radius:12px;
+    padding:10px 18px;cursor:pointer;font-family:inherit}
+  .sosrow{font-size:19px;font-weight:700;line-height:1.35;word-break:break-all}
+  .sosrow.big{font-size:30px;font-weight:800;color:#fff}
+  .sosrow.dim{color:#9fb2c8;font-weight:600}
+  .sosmeta{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:15px;color:#cdd9e6;font-weight:700}
+  .sosbtn{display:block;text-align:center;text-decoration:none;font-family:inherit;font-size:19px;font-weight:800;
+    border-radius:16px;padding:17px 12px;border:0;cursor:pointer;color:#fff}
+  .sosbtn.call{background:#c81e1e}
+  .sosbtn.text{background:#1d4ed8}
+  .sosbtn.link{background:#0f766e}
+  .sosrow2{display:flex;gap:10px}
+  .sosrow2 button{flex:1;background:#1c2431;border:1px solid var(--line);color:#fff;font-size:14px;font-weight:700;
+    border-radius:12px;padding:12px 8px;cursor:pointer;font-family:inherit}
+  .sosrow2 button.on{border-color:#35e08a;color:#35e08a}
+  .sosdisc{font-size:11px;line-height:1.5;color:#8fa3b8}
+  #sosrescueinfo{font-size:14px;line-height:1.5;background:#0f1a17;border:1px solid #1d4a3c;border-radius:12px;padding:10px;
+    word-break:break-all}
+  #odpill{position:absolute;left:10px;top:calc(112px + var(--safe-top));z-index:650;
+    background:rgba(19,26,36,.9);border:1px solid var(--line);color:var(--text);font-size:12px;font-weight:700;
+    padding:6px 12px;border-radius:999px;cursor:pointer;font-family:inherit}
+  #odpill.late{background:#7a1420;border-color:#ff5a5a}
+  #odalarm{display:none;position:fixed;inset:0;z-index:2600;background:#40060d;color:#fff;
+    flex-direction:column;gap:14px;justify-content:center;padding:22px calc(16px + env(safe-area-inset-right,0px));
+    text-align:center;animation:odpulse 1.2s ease-in-out infinite}
+  @keyframes odpulse{0%,100%{background:#40060d}50%{background:#6b0a16}}
+  #odalarm h2{font-size:30px;margin:0}
+  #odalarm .sosbtn{width:100%}
+  .odfield{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);
+    padding:11px;font-size:14px;font-family:inherit;margin:0 0 8px}
+  .odgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .odchips{display:flex;gap:8px;margin:0 0 10px}
+  .odchips button{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:999px;color:var(--text);
+    padding:9px 4px;font-size:13px;cursor:pointer;font-family:inherit}
+  .nightrow{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:7px 0;
+    border-bottom:1px solid rgba(31,44,61,.6)}
+  .nightrow b{font-weight:700}
+  #aurorabanner{display:none;background:#101c2e;border:1px solid #274468;border-radius:12px;padding:10px;
+    font-size:13px;line-height:1.5;margin:10px 0 0}
+  #redmodebtn{width:100%;font-size:17px;font-weight:800;border-radius:14px;padding:15px;border:1px solid var(--line);
+    background:#2a0a06;color:#ff6a4a;cursor:pointer;font-family:inherit}
+  #redmodebtn.on{background:#5c1408;border-color:#ff6a4a}
+  #sunstrip{display:flex;gap:1px;height:44px;border-radius:8px;overflow:hidden;margin:10px 0 4px}
+  #sunstrip div{flex:1}
+  .sunlegend{display:flex;justify-content:space-between;font-size:10px;color:var(--dim)}
+  .sunspecies{display:flex;gap:8px;margin:10px 0}
+  .sunspecies button{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:999px;color:var(--text);
+    padding:8px 4px;font-size:13px;cursor:pointer;font-family:inherit}
+  .sunspecies button.on{border-color:var(--accent);color:var(--accent)}
+  #sundialbig{font-size:34px;font-weight:800;text-align:center;margin:4px 0 0}
+  #rescuewrap{display:none;position:fixed;inset:0;z-index:2400;background:rgba(5,8,12,.96);color:#fff;
+    flex-direction:column;gap:12px;justify-content:center;padding:22px;text-align:center}
+  #rescuewrap .big{font-size:26px;font-weight:800;word-break:break-all}
 </style>
 </head>
 <body>
@@ -371,6 +439,8 @@
   <button class="wfab util" id="whatfab" aria-label="What’s this? Identify a map spot" title="What's this? Tap the map to identify anything">❓</button>
   <button class="wfab util" id="clearfab" aria-label="Clear pins" title="Clear pins">🧹</button>
   <button class="wfab util" id="installfab" aria-label="Add SkyDog GPS to your phone" title="Add SkyDog's GPS to your phone" style="display:none">📲</button>
+  <button class="wfab util" id="sosfab" aria-label="Emergency — SOS screen" title="Emergency — coordinates, 911 &amp; rescuer link">🆘</button>
+  <button class="wfab util" id="nightfab" aria-label="Night Ops — red-light mode and dark hours" title="Night Ops — red-light mode, moon &amp; dark hours">🌙</button>
 </div>
 
 <div id="zoomctl">
@@ -388,6 +458,7 @@
   <button id="dh-check">🛫 Flight check — can I fly here?</button>
 </div>
 <button id="tempbadge" style="display:none" aria-label="Temperature — open wind and flight conditions" title="Current temperature at map center">🌡 —</button>
+<button id="sunbadge" style="display:none" aria-label="Solunar activity — best fish and game movement times" title="Solunar activity right now (tap for today's chart)">🐟 —</button>
 
 <div id="dock">
   <div id="hud">
@@ -601,6 +672,109 @@
   </div>
   <div id="t3dmsg"></div>
   <div id="t3dattrib">Terrain © Mapzen/AWS · SRTM · USGS 3DEP · basemap © its provider · buildings © OpenStreetMap</div>
+</div>
+
+<!-- ============ 🆘 EMERGENCY SCREEN — works fully offline ============ -->
+<div id="soswrap" role="dialog" aria-label="Emergency screen">
+  <div class="sosband"><span>🆘 EMERGENCY</span><button id="sosclose" aria-label="Close emergency screen">✕</button></div>
+  <div class="sosrow big" id="soslatlon">Getting GPS fix…</div>
+  <div class="sosrow" id="sosdegmin">—</div>
+  <div class="sosrow" id="sosmgrs">MGRS —</div>
+  <div class="sosrow dim" id="sosw3w" style="display:none">///—</div>
+  <div class="sosmeta">
+    <span id="soselev">⛰ Elev —</span><span id="sosacc">🎯 ±—</span>
+    <span id="soshead">🧭 —</span><span id="sosbatt">🔋 —</span><span id="sostime">🕐 —</span>
+  </div>
+  <a class="sosbtn call" id="soscall" href="tel:911">📞 CALL 911</a>
+  <a class="sosbtn text" id="sostext" href="sms:911">📱 TEXT SOS — message is pre-filled</a>
+  <button class="sosbtn link" id="sosrescue">🔗 START RESCUER LINK</button>
+  <div id="sosrescueinfo"></div>
+  <div class="sosrow2">
+    <button id="sossaver">🔋 Battery saver</button>
+    <button id="sosoverdue">⏳ Overdue timer</button>
+  </div>
+  <div class="sosdisc" id="sosdisc">SkyDog helps you share your location in an emergency. It is <b>not</b> a rescue
+    service and it is no substitute for calling 911, a personal locator beacon, or your phone's satellite SOS.
+    The rescuer link needs cell signal to update; your last position stays visible for 24 hours, then it's gone.
+    Texting 911 works in many US counties — call if you can, text if you can't.</div>
+</div>
+
+<!-- ⏳ overdue timer: plan sheet + pill + full-screen alarm -->
+<button id="odpill" style="display:none">⏳ back by —</button>
+<div id="odalarm" role="alertdialog" aria-label="Overdue check-in alarm">
+  <h2>⏳ ARE YOU BACK SAFE?</h2>
+  <div id="odalarmsub" style="font-size:15px;line-height:1.5">Your back-by time has passed.</div>
+  <button class="sosbtn" id="odsafe" style="background:#15803d">✅ I'M BACK SAFE</button>
+  <button class="sosbtn" id="odplus" style="background:#374151">＋1 HOUR — still out, all good</button>
+  <a class="sosbtn text" id="odtext" href="sms:">📱 TEXT MY CONTACTS NOW</a>
+  <div style="font-size:12px;color:#f3c1c1;line-height:1.5">SkyDog can't text anyone by itself — tap the button and
+    your phone sends the pre-filled message to your emergency contacts.</div>
+</div>
+
+<div class="sheet" id="overduesheet">
+  <div class="grabber"></div>
+  <h3>⏳ Back-by Timer</h3>
+  <div class="lg-note" style="margin:0 0 10px">Tell SkyDog when you'll be back. If you don't check in, your phone
+    alarms and preps a text to your people — <b>your contacts stay on this phone</b> and are never sent anywhere
+    unless you tap send.</div>
+  <label style="font-size:13px;color:var(--dim)">I'll be back by</label>
+  <input class="odfield" id="odtime" type="time" aria-label="Back by time">
+  <div class="odchips">
+    <button id="odq2">+2 hrs</button><button id="odq4">+4 hrs</button><button id="odqsunset">🌅 Sunset +1</button>
+  </div>
+  <input class="odfield" id="odplan" placeholder="Plan — e.g. bow hunt, Sand Lakes, silver F-150" aria-label="Trip plan">
+  <div class="odgrid">
+    <input class="odfield" id="odname1" placeholder="Contact 1 name">
+    <input class="odfield" id="odphone1" placeholder="Phone" inputmode="tel">
+    <input class="odfield" id="odname2" placeholder="Contact 2 name">
+    <input class="odfield" id="odphone2" placeholder="Phone" inputmode="tel">
+    <input class="odfield" id="odname3" placeholder="Contact 3 name">
+    <input class="odfield" id="odphone3" placeholder="Phone" inputmode="tel">
+  </div>
+  <button class="btn green" id="odstart" style="width:100%;margin-top:6px">⏳ Start the timer</button>
+  <button class="btn gray" id="odcancel" style="width:100%;margin-top:8px;display:none">Stop the timer</button>
+</div>
+
+<!-- 🌙 Night Ops -->
+<div id="nightveil" aria-hidden="true"></div>
+<div class="sheet" id="nightsheet">
+  <div class="grabber"></div>
+  <h3>🌙 Night Ops</h3>
+  <button id="redmodebtn">🔴 Red-Light Mode — protect your night vision</button>
+  <div class="lg-note" style="margin:8px 0 2px">Screen goes deep red and dim so your dark adaptation survives a map
+    check. This is screen color only — <b>not thermal imaging</b> and it doesn't help your phone see in the dark.</div>
+  <div id="nightrows"></div>
+  <div id="aurorabanner"></div>
+</div>
+
+<!-- 🐟 Solunar -->
+<div class="sheet" id="solunarsheet">
+  <div class="grabber"></div>
+  <h3>🐟 Solunar Activity</h3>
+  <div id="sundialbig">—</div>
+  <div style="text-align:center;font-size:12px;color:var(--dim)" id="sundialsub">right now at map center</div>
+  <div class="sunspecies">
+    <button data-sp="fish" class="on">🐟 Fish</button><button data-sp="deer">🦌 Deer</button><button data-sp="duck">🦆 Waterfowl</button>
+  </div>
+  <div id="sunstrip"></div>
+  <div class="sunlegend"><span>midnight</span><span>6am</span><span>noon</span><span>6pm</span><span>midnight</span></div>
+  <div id="sunrows" style="margin-top:10px"></div>
+  <div class="lg-note" style="margin-top:10px">Classic solunar tables (moon overhead/underfoot = major feed windows,
+    moonrise/set = minors) blended with live pressure &amp; wind from Open-Meteo. It's an old hunter's almanac with
+    fresh weather on top — a nudge, not a promise. Animals didn't sign anything.</div>
+</div>
+
+<!-- 🔗 rescuer-link viewer (?rescue=CODE — opens in any browser, no app, no login) -->
+<div id="rescuewrap">
+  <div style="font-size:20px;font-weight:800">🐾 SkyDog GPS — Rescuer Link</div>
+  <div id="rescuestatus">Connecting…</div>
+  <div class="big" id="rescuecoords">—</div>
+  <div id="rescuemeta" style="font-size:14px;color:#cdd9e6;line-height:1.6">—</div>
+  <a class="sosbtn call" href="tel:911" style="width:100%">📞 CALL 911</a>
+  <a class="sosbtn text" id="rescuemaps" href="#" target="_blank" rel="noopener" style="width:100%">🗺 OPEN IN GOOGLE MAPS</a>
+  <div style="font-size:11px;color:#8fa3b8;line-height:1.5">Positions update while the phone in trouble has signal and
+    disappear after 24 hours. If this page looks stale, the phone may be out of coverage — trust the last position and
+    the time stamp.</div>
 </div>
 
 <div id="introhint">🐾 Tap anywhere to fly to your location</div>
@@ -1288,7 +1462,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.2';
+const SD_VERSION = '1.3';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2303,7 +2477,7 @@ async function identify(lat, lng){
 }
 
 /* ---------- sheets ---------- */
-const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet'];
+const sheets = ['modesheet','savesheet','savedsheet','legendsheet','layersheet','fishsheet','paysheet','packsheet','dronesheet','buddysheet','buddyconsent','spotsheet','spoteditsheet','aboutsheet','overduesheet','nightsheet','solunarsheet'];
 function openSheet(id){
   sheets.forEach(s => $(s).classList.toggle('open', s===id));
   $('backdrop').classList.add('show');
@@ -4502,6 +4676,707 @@ window.__sdt3d = { get mode(){ return t3dMode; }, setT3dMode, T3D, T3D_CFG,
 
 
 /* =====================================================================
+   🆘🌙🐟 RUN 1 — SAFETY + NIGHT OPS (2026-08-01)
+   Emergency screen · overdue timer · red-light mode · darkness timeline
+   · aurora heads-up · solunar activity. Everything below is FREE for
+   every user — safety features never sit behind a paywall.
+   Kill switches: SAFETY_CFG.enabled / NIGHT_CFG.enabled /
+   NIGHT_CFG.auroraEnabled / SOLUNAR_CFG.enabled (PACKS_CONFIG-style:
+   flip to false + push = feature off, no rebuild).
+   ===================================================================== */
+
+/* ---- 🌙 SKY MATH — sun, moon & solunar. Pure inline math, fully
+   offline. Public-domain formulas from Astronomy Answers (Jean Meeus
+   family, same family SunCalc uses); unit-tested against reference
+   values with honest tolerances (sun ±4 min, moon rise/set ±10 min). */
+const AST = (function(){
+  const rad = Math.PI/180, dayMs = 86400000, J1970 = 2440588, J2000 = 2451545;
+  const e = rad * 23.4397;                                  /* obliquity of Earth */
+  const toJulian = d => d.valueOf()/dayMs - 0.5 + J1970;
+  const fromJulian = j => new Date((j + 0.5 - J1970) * dayMs);
+  const toDays = d => toJulian(d) - J2000;
+  const rightAscension = (l,b) => Math.atan2(Math.sin(l)*Math.cos(e) - Math.tan(b)*Math.sin(e), Math.cos(l));
+  const declination = (l,b) => Math.asin(Math.sin(b)*Math.cos(e) + Math.cos(b)*Math.sin(e)*Math.sin(l));
+  const altitudeOf = (H,phi,dec) => Math.asin(Math.sin(phi)*Math.sin(dec) + Math.cos(phi)*Math.cos(dec)*Math.cos(H));
+  const siderealTime = (d,lw) => rad*(280.16 + 360.9856235*d) - lw;
+  const solarMeanAnomaly = d => rad*(357.5291 + 0.98560028*d);
+  function eclipticLongitude(M){
+    const C = rad*(1.9148*Math.sin(M) + 0.02*Math.sin(2*M) + 0.0003*Math.sin(3*M));
+    return M + C + rad*102.9372 + Math.PI;
+  }
+  function sunCoords(d){ const M = solarMeanAnomaly(d), L = eclipticLongitude(M); return { dec: declination(L,0), ra: rightAscension(L,0) }; }
+  const J0 = 0.0009;
+  const julianCycle = (d,lw) => Math.round(d - J0 - lw/(2*Math.PI));
+  const approxTransit = (Ht,lw,n) => J0 + (Ht + lw)/(2*Math.PI) + n;
+  const solarTransitJ = (ds,M,L) => J2000 + ds + 0.0053*Math.sin(M) - 0.0069*Math.sin(2*L);
+  const hourAngle = (h,phi,d) => Math.acos((Math.sin(h) - Math.sin(phi)*Math.sin(d)) / (Math.cos(phi)*Math.cos(d)));
+  /* sun event angles (deg): rise/set −0.833 · civil −6 · nautical −12 · astro −18 */
+  function sunTimes(date, lat, lng){
+    const lw = rad * -lng, phi = rad * lat;
+    const d = toDays(date), n = julianCycle(d, lw), ds = approxTransit(0, lw, n);
+    const M = solarMeanAnomaly(ds), L = eclipticLongitude(M), dec = declination(L, 0);
+    const Jnoon = solarTransitJ(ds, M, L);
+    const pair = (angleDeg) => {
+      const w = hourAngle(rad*angleDeg, phi, dec);
+      if (isNaN(w)) return [null, null];                    /* sun never crosses this angle today (high latitudes) */
+      const Jset = solarTransitJ(approxTransit(w, lw, n), M, L);
+      return [fromJulian(Jnoon - (Jset - Jnoon)), fromJulian(Jset)];
+    };
+    const [sunrise, sunset] = pair(-0.833);
+    const [civilDawn, civilDusk] = pair(-6);
+    const [nauticalDawn, nauticalDusk] = pair(-12);
+    const [astroDawn, astroDusk] = pair(-18);
+    return { solarNoon: fromJulian(Jnoon), sunrise, sunset, civilDawn, civilDusk, nauticalDawn, nauticalDusk, astroDawn, astroDusk };
+  }
+  function moonCoords(d){
+    const L = rad*(218.316 + 13.176396*d), M = rad*(134.963 + 13.064993*d), F = rad*(93.272 + 13.229350*d);
+    const l = L + rad*6.289*Math.sin(M), b = rad*5.128*Math.sin(F), dt = 385001 - 20905*Math.cos(M);
+    return { ra: rightAscension(l,b), dec: declination(l,b), dist: dt };
+  }
+  function moonAltitude(date, lat, lng){
+    const lw = rad*-lng, phi = rad*lat, d = toDays(date);
+    const c = moonCoords(d), H = siderealTime(d, lw) - c.ra;
+    let h = altitudeOf(H, phi, c.dec);
+    h += rad*0.017 / Math.tan(h + rad*10.26/(h + rad*5.10));   /* refraction */
+    return h;
+  }
+  function moonIllumination(date){
+    const d = toDays(date), s = sunCoords(d), m = moonCoords(d), sdist = 149598000;
+    const phi = Math.acos(Math.sin(s.dec)*Math.sin(m.dec) + Math.cos(s.dec)*Math.cos(m.dec)*Math.cos(s.ra - m.ra));
+    const inc = Math.atan2(sdist*Math.sin(phi), m.dist - sdist*Math.cos(phi));
+    const angle = Math.atan2(Math.cos(s.dec)*Math.sin(s.ra - m.ra),
+      Math.sin(s.dec)*Math.cos(m.dec) - Math.cos(s.dec)*Math.sin(m.dec)*Math.cos(s.ra - m.ra));
+    return { fraction: (1 + Math.cos(inc)) / 2, phase: 0.5 + 0.5*inc*(angle < 0 ? -1 : 1)/Math.PI };
+  }
+  /* rise/set via 2-hour scan + quadratic interpolation (robust at any latitude) */
+  function moonTimes(date, lat, lng){
+    const t = new Date(date); t.setUTCHours(0, 0, 0, 0);
+    const hc = 0.133 * rad;
+    let h0 = moonAltitude(t, lat, lng) - hc, rise = 0, set = 0;
+    for (let i = 1; i <= 24; i += 2){
+      const h1 = moonAltitude(new Date(+t + i*3600000), lat, lng) - hc;
+      const h2 = moonAltitude(new Date(+t + (i+1)*3600000), lat, lng) - hc;
+      const a = (h0 + h2)/2 - h1, b = (h2 - h0)/2, xe = -b/(2*a);
+      const ye = (a*xe + b)*xe + h1, dsc = b*b - 4*a*h1;
+      let roots = 0, x1 = 0, x2 = 0;
+      if (dsc >= 0){
+        const dx = Math.sqrt(dsc)/(Math.abs(a)*2);
+        x1 = xe - dx; x2 = xe + dx;
+        if (Math.abs(x1) <= 1) roots++;
+        if (Math.abs(x2) <= 1) roots++;
+        if (x1 < -1) x1 = x2;
+      }
+      if (roots === 1){ if (h0 < 0) rise = i + x1; else set = i + x1; }
+      else if (roots === 2){ rise = i + (ye < 0 ? x2 : x1); set = i + (ye < 0 ? x1 : x2); }
+      if (rise && set) break;
+      h0 = h2;
+    }
+    return { rise: rise ? new Date(+t + rise*3600000) : null, set: set ? new Date(+t + set*3600000) : null };
+  }
+  /* moon transit (highest) + underfoot (lowest) — 10-min scan; the
+     backbone of solunar "major" periods */
+  function moonTransits(date, lat, lng){
+    const t = new Date(date); t.setUTCHours(0, 0, 0, 0);
+    let hiT = null, hiV = -9, loT = null, loV = 9;
+    for (let m = 0; m <= 1440; m += 10){
+      const when = new Date(+t + m*60000);
+      const h = moonAltitude(when, lat, lng);
+      if (h > hiV){ hiV = h; hiT = when; }
+      if (h < loV){ loV = h; loT = when; }
+    }
+    return { transit: hiT, underfoot: loT };
+  }
+  return { sunTimes, moonTimes, moonIllumination, moonTransits, moonAltitude };
+})();
+
+/* ---- 🧭 USNG / MGRS — the grid US search-and-rescue navigates by.
+   WGS84 → UTM → MGRS at 1 m. Ported from the public MGRS spec (same
+   math as proj4/mgrs); verified against reference vectors in tests. */
+function toMGRS(lat, lng){
+  if (!(lat >= -80 && lat <= 84) || !isFinite(lng)) return null;   /* polar zones not needed */
+  const D2R = Math.PI/180, a = 6378137, ecc = 0.00669438, k0 = 0.9996, latR = lat*D2R;
+  let zone = Math.floor((lng + 180)/6) + 1;
+  if (lat >= 56 && lat < 64 && lng >= 3 && lng < 12) zone = 32;          /* Norway exception */
+  if (lat >= 72 && lat < 84){                                            /* Svalbard exceptions */
+    if (lng >= 0 && lng < 9) zone = 31; else if (lng >= 9 && lng < 21) zone = 33;
+    else if (lng >= 21 && lng < 33) zone = 35; else if (lng >= 33 && lng < 42) zone = 37;
+  }
+  const lonOrigin = (zone - 1)*6 - 180 + 3, lonR = (lng - lonOrigin)*D2R;
+  const ep2 = ecc/(1 - ecc);
+  const N = a/Math.sqrt(1 - ecc*Math.sin(latR)*Math.sin(latR));
+  const T = Math.tan(latR)*Math.tan(latR), C = ep2*Math.cos(latR)*Math.cos(latR);
+  const A = Math.cos(latR)*lonR;
+  const M = a*((1 - ecc/4 - 3*ecc*ecc/64 - 5*ecc*ecc*ecc/256)*latR
+    - (3*ecc/8 + 3*ecc*ecc/32 + 45*ecc*ecc*ecc/1024)*Math.sin(2*latR)
+    + (15*ecc*ecc/256 + 45*ecc*ecc*ecc/1024)*Math.sin(4*latR)
+    - (35*ecc*ecc*ecc/3072)*Math.sin(6*latR));
+  const easting = k0*N*(A + (1 - T + C)*A*A*A/6 + (5 - 18*T + T*T + 72*C - 58*ep2)*A*A*A*A*A/120) + 500000;
+  let northing = k0*(M + N*Math.tan(latR)*(A*A/2 + (5 - T + 9*C + 4*C*C)*A*A*A*A/24
+    + (61 - 58*T + T*T + 600*C - 330*ep2)*A*A*A*A*A*A/720));
+  if (lat < 0) northing += 10000000;
+  const band = 'CDEFGHJKLMNPQRSTUVWX'.charAt(Math.floor((lat + 80)/8));
+  const setParm = ((zone - 1) % 6) + 1;
+  const colOrigin = ((setParm - 1) % 3)*8 + 1;
+  const rowOrigin = (setParm % 2) ? 0 : 5;                  /* odd sets start rows at A, even at F */
+  const colIdx = (colOrigin - 1 + Math.floor(easting/100000) - 1) % 24;
+  const rowIdx = (rowOrigin + Math.floor((northing % 2000000)/100000)) % 20;
+  const skip = (idx) => { let ch = idx; if (ch >= 8) ch++; if (ch >= 14) ch++; return ch; };   /* letters I & O don't exist */
+  const colChar = String.fromCharCode(65 + skip(colIdx));
+  const rowChar = String.fromCharCode(65 + skip(rowIdx));
+  const e5 = String(Math.floor(easting % 100000)).padStart(5, '0');
+  const n5 = String(Math.floor(northing % 100000)).padStart(5, '0');
+  return zone + band + colChar + rowChar + e5 + n5;
+}
+function mgrsPretty(m){ return m ? m.replace(/^(\d{1,2}[A-Z])([A-Z]{2})(\d{5})(\d{5})$/, '$1 $2 $3 $4') : '—'; }
+/* degrees + decimal minutes — the other format 911 dispatch reads back */
+function degMin(v, isLat){
+  const hemi = isLat ? (v >= 0 ? 'N' : 'S') : (v >= 0 ? 'E' : 'W');
+  const abs = Math.abs(v), d = Math.floor(abs), m = (abs - d)*60;
+  return d + '°' + m.toFixed(3) + "'" + hemi;
+}
+const tfmt = d => d ? new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—';
+
+/* ---- config + kill switches ---- */
+const SAFETY_CFG = {
+  enabled: true,                 /* kill switch: 🆘 screen + ⏳ overdue timer */
+  rescuePushMs: 20000,           /* how often an active rescuer link updates */
+  rescueMaxAgeMs: 24*60*60*1000, /* same 24 h honesty promise as buddy trips */
+  w3wKey: ''                     /* what3words API key — '' hides the row until the owner's free key lands */
+};
+const NIGHT_CFG = {
+  enabled: true,                 /* kill switch: red-light mode + night sheet */
+  auroraEnabled: true,           /* kill switch: NOAA SWPC fetch (keyless, public domain) */
+  auroraUrl: 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json',
+  auroraCacheMins: 30,
+  /* rough "aurora possible low on the horizon" geographic-latitude floor per Kp —
+     a US-continent estimate, always worded as possible, never promised */
+  kpLat: [[9, 36], [8, 40], [7, 44], [6, 48], [5, 52]]
+};
+const SOLUNAR_CFG = {
+  enabled: true,                 /* kill switch: badge + sheet */
+  majorMins: 120, minorMins: 60  /* full window lengths, centered on the event */
+};
+
+/* ---- pure SMS composers (unit-tested) ---- */
+function smsHref(numbers, body){
+  return 'sms:' + (numbers || []).filter(Boolean).join(',') + '?&body=' + encodeURIComponent(body);
+}
+/* core message stays under 160 chars so iPhone 14+ satellite messaging takes it;
+   links ride behind the core (spec: core <160 + link) */
+function sosSmsBody(fix, opts){
+  opts = opts || {};
+  const lat = fix.lat.toFixed(5), lng = fix.lng.toFixed(5);
+  const m = toMGRS(fix.lat, fix.lng);
+  let core = 'SOS! Need help. ' + lat + ',' + lng
+    + (fix.accM ? ' ±' + Math.round(fix.accM*3.28084) + 'ft' : '')
+    + (m ? ' MGRS ' + m : '')
+    + (opts.party ? ' Party of ' + opts.party + '.' : '')
+    + (opts.batt != null ? ' Bat ' + opts.batt + '%.' : '');
+  if (core.length > 160) core = 'SOS! Need help. ' + lat + ',' + lng + (m ? ' MGRS ' + m : '');
+  return core + ' https://maps.google.com/?q=' + lat + ',' + lng
+    + (opts.rescueUrl ? ' Track: ' + opts.rescueUrl : '');
+}
+function overdueSmsBody(state, fix, rescueUrl){
+  const who = sdStore.get('sd-buddy-name') || 'I';
+  let s = 'SkyDog GPS safety alert: ' + who + ' planned "' + (state.plan || 'a trip') + '", due back '
+    + tfmt(state.backBy) + ', and has not checked in.';
+  if (fix) s += ' Last position: ' + fix.lat.toFixed(5) + ',' + fix.lng.toFixed(5)
+    + ' https://maps.google.com/?q=' + fix.lat.toFixed(5) + ',' + fix.lng.toFixed(5);
+  if (rescueUrl) s += ' Live track: ' + rescueUrl;
+  return s;
+}
+
+/* ============ 🆘 EMERGENCY SCREEN — ≤2 taps, fully offline ============ */
+const SOS = {
+  active: false, watchId: null, fix: null, batt: null, saver: false,
+  rescue: null, _rescueT: null, _rescueRef: null, _w3w: { at: 0, words: null, for: '' },
+  open(){
+    if (!SAFETY_CFG.enabled){ toast('Emergency screen is switched off in this build'); return; }
+    this.active = true;
+    closeSheets();
+    $('soswrap').style.display = 'flex';
+    /* seed from the live track or the map's last known me-position so the
+       screen is never blank while the fresh fix comes in */
+    if (!this.fix && trk && trk.points && trk.points.length){
+      const p = trk.points[trk.points.length - 1];
+      this.setFix({ lat: p.lat, lng: p.lng, accM: null, altM: p.alt, heading: null, at: p.t });
+    }
+    this.render(); this.startWatch(); this.readBattery();
+  },
+  close(){
+    this.active = false;
+    $('soswrap').style.display = 'none';
+    this.stopWatch();                       /* an active rescuer link keeps updating in the background */
+    if (this.rescue) toast('🔗 Rescuer link stays live until you end it (reopen 🆘 to stop)');
+  },
+  startWatch(){
+    if (this.watchId != null || !navigator.geolocation) return;
+    this.watchId = navigator.geolocation.watchPosition(
+      p => this.onFix(p), () => {},
+      { enableHighAccuracy: !this.saver, maximumAge: this.saver ? 30000 : 2000, timeout: 15000 });
+  },
+  stopWatch(){
+    if (this.watchId != null){ try{ navigator.geolocation.clearWatch(this.watchId); }catch(e){} this.watchId = null; }
+    if (this.rescue && !this._rescueT) this._rescueT = setInterval(() => this.pushRescue(true), SAFETY_CFG.rescuePushMs);
+  },
+  onFix(p){
+    this.fix = { lat: p.coords.latitude, lng: p.coords.longitude, accM: p.coords.accuracy || null,
+      altM: p.coords.altitude, heading: p.coords.heading, at: Date.now() };
+    this.render(); this.w3wMaybe(); this.pushRescue();
+  },
+  setFix(f){ this.fix = f; this.render(); },                /* seed + test hook */
+  readBattery(){
+    try{ navigator.getBattery && navigator.getBattery().then(b => { this.batt = Math.round(b.level*100); this.render(); }); }catch(e){}
+  },
+  render(){
+    if (!this.active && $('soswrap').style.display === 'none') return;
+    const f = this.fix;
+    if (!f){ $('soslatlon').textContent = 'Getting GPS fix…'; return; }
+    $('soslatlon').textContent = f.lat.toFixed(5) + ', ' + f.lng.toFixed(5);
+    $('sosdegmin').textContent = degMin(f.lat, true) + '  ' + degMin(f.lng, false);
+    $('sosmgrs').textContent = 'MGRS ' + mgrsPretty(toMGRS(f.lat, f.lng));
+    $('soselev').textContent = '⛰ ' + (f.altM != null ? Math.round(f.altM*3.28084) + ' ft' : 'Elev —');
+    $('sosacc').textContent = '🎯 ' + (f.accM != null ? '±' + Math.round(f.accM*3.28084) + ' ft' : '±—');
+    $('soshead').textContent = '🧭 ' + (f.heading != null && !isNaN(f.heading) ? Math.round(f.heading) + '°' : '—');
+    $('sosbatt').textContent = '🔋 ' + (this.batt != null ? this.batt + '%' : '—');
+    $('sostime').textContent = '🕐 ' + tfmt(Date.now());
+    const party = (window.__BUDDY && __BUDDY.BUDDY.active()) ? Object.keys(__BUDDY.BUDDY.members || {}).length + 1 : null;
+    $('sostext').href = smsHref([], sosSmsBody(f, { batt: this.batt, party, rescueUrl: this.rescue && this.rescue.url }));
+    if (this.rescue){
+      $('sosrescue').textContent = '⏹ END RESCUER LINK';
+      $('sosrescueinfo').style.display = 'block';
+      $('sosrescueinfo').innerHTML = '🔗 <b>Live for rescuers:</b> ' + esc(this.rescue.url)
+        + '<br>Anyone with this link sees your last position in a plain browser — no app, no login. Tap TEXT SOS to send it.';
+    } else {
+      $('sosrescue').textContent = '🔗 START RESCUER LINK';
+      $('sosrescueinfo').style.display = 'none';
+    }
+  },
+  async w3wMaybe(){
+    if (!SAFETY_CFG.w3wKey || !this.fix) { $('sosw3w').style.display = 'none'; return; }
+    const key = this.fix.lat.toFixed(4) + ',' + this.fix.lng.toFixed(4);
+    $('sosw3w').style.display = 'block';
+    if (this._w3w.for === key && Date.now() - this._w3w.at < 60000){ return; }
+    try{
+      const r = await fetch('https://api.what3words.com/v3/convert-to-3wa?coordinates='
+        + this.fix.lat + '%2C' + this.fix.lng + '&key=' + SAFETY_CFG.w3wKey);
+      const j = await r.json();
+      if (j && j.words){
+        this._w3w = { at: Date.now(), words: j.words, for: key };
+        $('sosw3w').textContent = '///' + j.words;
+      }
+    }catch(e){
+      $('sosw3w').textContent = this._w3w.words
+        ? '///' + this._w3w.words + ' · last known' : '/// 3-word address needs signal';
+    }
+  },
+  toggleSaver(){
+    this.saver = !this.saver;
+    $('soswrap').classList.toggle('saver', this.saver);
+    $('sossaver').classList.toggle('on', this.saver);
+    this.stopWatch(); if (this.active) this.startWatch();
+    toast(this.saver ? '🔋 Battery saver: dimmed + slower GPS. Hang in there.' : 'Full brightness + fast GPS back on');
+  },
+  async startRescue(){
+    if (this.rescue){ this.endRescue(); return; }
+    let fb;
+    try{ fb = await BUDDY.loadFirebase(); }
+    catch(e){ toast('⚠️ No signal — the rescuer link needs a connection to start. Your coordinates above still work.', 6000); return; }
+    const code = buddyCode();
+    this._rescueRef = fb.database().ref('rescue/' + code);
+    this.rescue = { code, url: BUDDY_URL_BASE + '?rescue=' + code, started: Date.now() };
+    this._rescueRef.child('meta').set({ started: Date.now() }).catch(() => {});
+    this.pushRescue(true);
+    this.render();
+    const msg = '🆘 I need help. Live location: ' + this.rescue.url;
+    try{ await navigator.clipboard.writeText(msg); toast('🔗 Rescuer link copied — paste it into any text', 5000); }
+    catch(e){ toast('🔗 Link ready: ' + this.rescue.url, 7000); }
+  },
+  pushRescue(force){
+    if (!this.rescue || !this._rescueRef || !this.fix) return;
+    if (!force && this._lastPush && Date.now() - this._lastPush < SAFETY_CFG.rescuePushMs) return;
+    this._lastPush = Date.now();
+    const pt = { lat: this.fix.lat, lng: this.fix.lng, accM: this.fix.accM || 0,
+      ts: Date.now(), batt: this.batt != null ? this.batt : -1 };
+    this._rescueRef.child('last').set(pt).catch(() => {});
+    this._rescueRef.child('track/t' + Date.now()).set(pt).catch(() => {});
+  },
+  endRescue(){
+    if (this._rescueT){ clearInterval(this._rescueT); this._rescueT = null; }
+    this.rescue = null; this._rescueRef = null;
+    this.render();
+    toast('⏹ Rescuer link ended — the last position disappears within 24 hours');
+  }
+};
+$('sosfab').addEventListener('click', () => SOS.open());
+$('sosclose').addEventListener('click', () => SOS.close());
+$('sossaver').addEventListener('click', () => SOS.toggleSaver());
+$('sosrescue').addEventListener('click', () => SOS.startRescue());
+$('sosoverdue').addEventListener('click', () => { SOS.close(); OVERDUE.openPlan(); });
+/* second entry: long-press the bottom dock (glove-friendly, works mid-track) */
+(function(){
+  let t = 0;
+  const dock = $('dock');
+  dock.addEventListener('pointerdown', () => { t = setTimeout(() => SOS.open(), 700); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => dock.addEventListener(ev, () => clearTimeout(t)));
+})();
+if (!SAFETY_CFG.enabled) $('sosfab').style.display = 'none';
+
+/* ============ ⏳ OVERDUE TIMER — the "tell someone" net ============
+   Plan + contacts live ONLY in sdStore on this phone. Nothing uploads,
+   ever — when the timer fires, the PHONE OWNER taps one button and
+   their own SMS app sends the pre-filled message. (Automatic worker
+   email when the phone is dead = Run 2, once api.skydoggps.com is up.) */
+const OVERDUE = {
+  KEY: 'sd-overdue', CKEY: 'sd-safety-contacts',
+  state: null, _t: null,
+  load(){ try{ return JSON.parse(sdStore.get(this.KEY) || 'null'); }catch(e){ return null; } },
+  persist(){ sdStore.set(this.KEY, this.state ? JSON.stringify(this.state) : ''); },
+  contacts(){ try{ return JSON.parse(sdStore.get(this.CKEY) || '[]'); }catch(e){ return []; } },
+  openPlan(){
+    if (!SAFETY_CFG.enabled) return;
+    const cs = (this.state && this.state.contacts) || this.contacts();
+    for (let i = 0; i < 3; i++){
+      $('odname' + (i+1)).value = (cs[i] && cs[i].name) || '';
+      $('odphone' + (i+1)).value = (cs[i] && cs[i].phone) || '';
+    }
+    if (this.state){
+      $('odplan').value = this.state.plan || '';
+      $('odtime').value = new Date(this.state.backBy).toTimeString().slice(0, 5);
+      $('odcancel').style.display = '';
+    } else $('odcancel').style.display = 'none';
+    openSheet('overduesheet');
+  },
+  readForm(){
+    const contacts = [];
+    for (let i = 1; i <= 3; i++){
+      const name = $('odname' + i).value.trim(), phone = $('odphone' + i).value.replace(/[^\d+]/g, '');
+      if (phone) contacts.push({ name: name || ('Contact ' + i), phone });
+    }
+    const tv = $('odtime').value;
+    if (!tv) return null;
+    const [h, m] = tv.split(':').map(Number);
+    const back = new Date(); back.setHours(h, m, 0, 0);
+    if (+back <= Date.now()) back.setDate(back.getDate() + 1);   /* "back by 6am" set at 8pm = tomorrow 6am */
+    return { backBy: +back, contacts, plan: $('odplan').value.trim(), fired: false, set: Date.now() };
+  },
+  start(){
+    const s = this.readForm();
+    if (!s){ toast('⏰ Pick a back-by time first'); return; }
+    if (!s.contacts.length){ toast('📱 Add at least one contact — that\'s the whole net'); return; }
+    this.state = s; this.persist();
+    sdStore.set(this.CKEY, JSON.stringify(s.contacts));
+    closeSheets(); this.arm(); this.renderPill();
+    toast('⏳ Timer set — big "I\'m back safe" button lives on this pill', 5000);
+  },
+  cancel(){ this.state = null; this.persist(); this.unarm(); this.renderPill(); closeSheets(); toast('Timer stopped'); },
+  arm(){ if (!this._t) this._t = setInterval(() => this.check(), 20000); },
+  unarm(){ if (this._t){ clearInterval(this._t); this._t = null; } $('odalarm').style.display = 'none'; },
+  check(now){
+    now = now || Date.now();
+    if (!this.state) return false;
+    this.renderPill(now);
+    if (!this.state.fired && now > this.state.backBy){ this.fire(); return true; }
+    return false;
+  },
+  fire(){
+    this.state.fired = true; this.persist();
+    const fix = SOS.fix || (trk && trk.points && trk.points.length ? trk.points[trk.points.length-1] : null);
+    $('odalarmsub').innerHTML = 'Planned: <b>' + esc(this.state.plan || 'trip') + '</b> · due back <b>'
+      + esc(tfmt(this.state.backBy)) + '</b><br>Tap green if you\'re fine — or send the text so your people know.';
+    $('odtext').href = smsHref(this.state.contacts.map(c => c.phone),
+      overdueSmsBody(this.state, fix, SOS.rescue && SOS.rescue.url));
+    $('odalarm').style.display = 'flex';
+    try{ navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 800]); }catch(e){}
+    this.renderPill();
+  },
+  back(){ this.state = null; this.persist(); this.unarm(); this.renderPill(); toast('👍 Glad you\'re back safe. Timer cleared.'); },
+  plusHour(){
+    this.state.backBy += 3600000; this.state.fired = false; this.persist();
+    $('odalarm').style.display = 'none'; this.renderPill();
+    toast('⏳ One more hour — new back-by ' + tfmt(this.state.backBy));
+  },
+  renderPill(now){
+    now = now || Date.now();
+    const p = $('odpill');
+    if (!this.state){ p.style.display = 'none'; return; }
+    p.style.display = '';
+    const ms = this.state.backBy - now;
+    if (ms > 0){
+      const mins = Math.round(ms/60000), h = Math.floor(mins/60), m = mins % 60;
+      p.textContent = '⏳ back by ' + tfmt(this.state.backBy) + ' (' + (h ? h + 'h ' : '') + m + 'm)';
+      p.classList.remove('late');
+    } else {
+      p.textContent = '🚨 OVERDUE — tap';
+      p.classList.add('late');
+    }
+  }
+};
+$('odstart').addEventListener('click', () => OVERDUE.start());
+$('odcancel').addEventListener('click', () => OVERDUE.cancel());
+$('odsafe').addEventListener('click', () => OVERDUE.back());
+$('odplus').addEventListener('click', () => OVERDUE.plusHour());
+$('odpill').addEventListener('click', () => { if (OVERDUE.state && OVERDUE.state.fired) $('odalarm').style.display = 'flex'; else OVERDUE.openPlan(); });
+$('odq2').addEventListener('click', () => { const d = new Date(Date.now() + 2*3600000); $('odtime').value = d.toTimeString().slice(0, 5); });
+$('odq4').addEventListener('click', () => { const d = new Date(Date.now() + 4*3600000); $('odtime').value = d.toTimeString().slice(0, 5); });
+$('odqsunset').addEventListener('click', () => {
+  const st = AST.sunTimes(new Date(), map.center.lat, map.center.lng);
+  if (st.sunset){ const d = new Date(+st.sunset + 3600000); $('odtime').value = d.toTimeString().slice(0, 5); }
+});
+/* survive a page reload mid-trip: pick the timer back up */
+OVERDUE.state = OVERDUE.load();
+if (OVERDUE.state){ OVERDUE.arm(); OVERDUE.renderPill(); if (OVERDUE.state.fired) OVERDUE.check(); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') OVERDUE.check(); });
+
+/* ============ 🌙 NIGHT OPS — red-light mode + darkness intel ============ */
+const NIGHT = {
+  red: false, _suggested: false, _aurora: { at: 0, maxKp: null },
+  toggleRed(force){
+    if (!NIGHT_CFG.enabled) return false;
+    this.red = force != null ? !!force : !this.red;
+    document.documentElement.classList.toggle('nightred', this.red);
+    $('nightveil').style.display = this.red ? 'block' : 'none';
+    const b = $('redmodebtn');
+    b.classList.toggle('on', this.red);
+    b.textContent = this.red ? '🔴 Red-Light Mode is ON — tap to go back to normal'
+                             : '🔴 Red-Light Mode — protect your night vision';
+    return this.red;
+  },
+  openSheet(){
+    if (!NIGHT_CFG.enabled){ toast('Night Ops is switched off in this build'); return; }
+    this.buildRows(); openSheet('nightsheet'); this.fetchAurora();
+  },
+  buildRows(){
+    const c = map.center, now = new Date();
+    const st = AST.sunTimes(now, c.lat, c.lng);
+    const tomorrow = new Date(+now + 86400000);
+    const st2 = AST.sunTimes(tomorrow, c.lat, c.lng);
+    const mt = AST.moonTimes(now, c.lat, c.lng);
+    const mi = AST.moonIllumination(now);
+    const phases = ['🌑 New', '🌒 Waxing crescent', '🌓 First quarter', '🌔 Waxing gibbous', '🌕 Full',
+      '🌖 Waning gibbous', '🌗 Last quarter', '🌘 Waning crescent'];
+    const phName = phases[Math.round(mi.phase*8) % 8];
+    const row = (k, v) => '<div class="nightrow"><span>' + k + '</span><b>' + v + '</b></div>';
+    let html = row('🌅 Sunset tonight', tfmt(st.sunset)) + row('🌄 Sunrise tomorrow', tfmt(st2.sunrise))
+      + row('🌆 Civil dusk → dawn', tfmt(st.civilDusk) + ' → ' + tfmt(st2.civilDawn))
+      + row('🌌 Full dark (astro)', st.astroDusk ? tfmt(st.astroDusk) + ' → ' + tfmt(st2.astroDawn) : 'no full dark tonight')
+      + row('🌙 Moonrise / set', tfmt(mt.rise) + ' / ' + tfmt(mt.set))
+      + row('Moon', phName + ' · ' + Math.round(mi.fraction*100) + '% lit');
+    /* darkest window tonight: sample dusk→dawn every 15 min for sun fully down + moon below horizon */
+    if (st.astroDusk && st2.astroDawn){
+      let start = null, best = null;
+      for (let t = +st.astroDusk; t <= +st2.astroDawn; t += 900000){
+        const dark = AST.moonAltitude(new Date(t), c.lat, c.lng) < 0;
+        if (dark && start == null) start = t;
+        if ((!dark || t + 900000 > +st2.astroDawn) && start != null){
+          const end = dark ? t : t - 900000;
+          if (!best || end - start > best[1] - best[0]) best = [start, end];
+          start = null;
+        }
+      }
+      html += row('👁 Best dark hours', best && best[1] > best[0]
+        ? tfmt(best[0]) + ' – ' + tfmt(best[1]) : 'moon is up all night');
+    }
+    $('nightrows').innerHTML = html;
+  },
+  auroraEval(kp, lat){
+    if (kp == null || !isFinite(kp)) return null;
+    for (const pair of NIGHT_CFG.kpLat){ if (kp >= pair[0] && Math.abs(lat) >= pair[1]) return pair[0]; }
+    return null;
+  },
+  async fetchAurora(){
+    if (!NIGHT_CFG.auroraEnabled) return;
+    const box = $('aurorabanner');
+    let maxKp = this._aurora.maxKp;
+    if (Date.now() - this._aurora.at > NIGHT_CFG.auroraCacheMins*60000){
+      try{
+        const rows = await (await fetch(NIGHT_CFG.auroraUrl)).json();
+        maxKp = null;
+        for (let i = 1; i < rows.length; i++){
+          const t = Date.parse(String(rows[i][0]).replace(' ', 'T') + 'Z');
+          if (isFinite(t) && t > Date.now() - 3600000 && t < Date.now() + 36*3600000){
+            const kp = parseFloat(rows[i][1]);
+            if (isFinite(kp) && (maxKp == null || kp > maxKp)) maxKp = kp;
+          }
+        }
+        this._aurora = { at: Date.now(), maxKp };
+      }catch(e){ /* offline — banner just stays hidden, night math above still works */ }
+    }
+    const hit = this.auroraEval(maxKp, map.center.lat);
+    if (hit){
+      box.style.display = 'block';
+      box.innerHTML = '🌌 <b>Aurora possible tonight</b> at your latitude — NOAA space-weather forecast peaks near Kp '
+        + Math.round(maxKp) + '. Dark northern horizon, fingers crossed.';
+    } else box.style.display = 'none';
+  },
+  /* one gentle nudge per session when it's already dusk-to-dawn out */
+  maybeSuggest(){
+    if (!NIGHT_CFG.enabled || this._suggested || this.red) return;
+    try{
+      const c = map.center, now = Date.now();
+      const st = AST.sunTimes(new Date(), c.lat, c.lng);
+      const dark = (st.civilDusk && now > +st.civilDusk) || (st.civilDawn && now < +st.civilDawn);
+      if (dark){ this._suggested = true; toast('🌙 Going dark? Red-light mode lives under 🌙 on the wheel', 5200); }
+    }catch(e){}
+  }
+};
+$('nightfab').addEventListener('click', () => NIGHT.openSheet());
+$('redmodebtn').addEventListener('click', () => NIGHT.toggleRed());
+if (!NIGHT_CFG.enabled) $('nightfab').style.display = 'none';
+setTimeout(() => NIGHT.maybeSuggest(), 7000);
+
+/* ============ 🐟 SOLUNAR ACTIVITY — free with the free map ============
+   Copy rule: this is "solunar tables + live weather", never a promise —
+   and never marketed as anything smarter than the almanac it is. */
+function solunarPeriods(date, lat, lng){
+  const tr = AST.moonTransits(date, lat, lng), mt = AST.moonTimes(date, lat, lng);
+  return {
+    majors: [tr.transit, tr.underfoot].filter(Boolean).map(Number),
+    minors: [mt.rise, mt.set].filter(Boolean).map(Number)
+  };
+}
+function solunarPhaseWeight(phase){
+  const d = Math.min(Math.abs(phase), Math.abs(phase - 0.5), Math.abs(phase - 1));   /* distance to new/full */
+  return d < 0.06 ? 1 : d < 0.15 ? 0.85 : 0.7;
+}
+function solunarWxNudge(pressureTrend3h, windMph){
+  let n = 0;
+  if (pressureTrend3h != null && isFinite(pressureTrend3h)){
+    if (pressureTrend3h <= -2) n += 12;          /* falling glass = feeding flurry */
+    else if (pressureTrend3h >= 2) n -= 6;       /* sharp rise = post-front lull */
+  }
+  if (windMph != null && windMph >= 20) n -= 10; /* howling wind shuts things down */
+  return n;
+}
+function solunarScoreAt(ms, ctx){
+  let s = 15;
+  for (const p of ctx.majors){ if (Math.abs(ms - p) <= SOLUNAR_CFG.majorMins*30000){ s += 45; break; } }
+  for (const p of ctx.minors){ if (Math.abs(ms - p) <= SOLUNAR_CFG.minorMins*30000){ s += 30; break; } }
+  if ((ctx.sunEdges || []).some(t => t && Math.abs(ms - t) <= 45*60000)) s += 10;
+  s = s * solunarPhaseWeight(ctx.phase) + (ctx.nudge || 0);
+  return Math.max(0, Math.min(100, Math.round(s)));
+}
+const SOLUNAR = {
+  species: 'fish', _ctx: null, _ctxKey: '', _wx: { at: 0, nudge: 0 },
+  labels: { fish: ['🐟', 'bite windows'], deer: ['🦌', 'movement windows'], duck: ['🦆', 'flight windows'] },
+  ctx(){
+    const c = map.center;
+    const key = new Date().toDateString() + '|' + c.lat.toFixed(2) + ',' + c.lng.toFixed(2);
+    if (this._ctxKey !== key){
+      const per = solunarPeriods(new Date(), c.lat, c.lng);
+      const st = AST.sunTimes(new Date(), c.lat, c.lng);
+      this._ctx = { majors: per.majors, minors: per.minors,
+        sunEdges: [st.sunrise && +st.sunrise, st.sunset && +st.sunset],
+        phase: AST.moonIllumination(new Date()).phase, nudge: this._wx.nudge };
+      this._ctxKey = key;
+    }
+    this._ctx.nudge = this._wx.nudge;
+    return this._ctx;
+  },
+  scoreNow(){ return solunarScoreAt(Date.now(), this.ctx()); },
+  async refreshWx(){
+    if (Date.now() - this._wx.at < 30*60000) return;
+    try{
+      const c = map.center;
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat.toFixed(3)
+        + '&longitude=' + c.lng.toFixed(3)
+        + '&hourly=surface_pressure,wind_speed_10m&wind_speed_unit=mph&forecast_days=1';
+      const j = await (await fetch(url)).json();
+      const h = (j && j.hourly) || {};
+      let trend = null, wind = null;
+      if (h.surface_pressure && h.surface_pressure.length > 3){
+        const i = Math.min(new Date().getHours(), h.surface_pressure.length - 1);
+        const i0 = Math.max(0, i - 3);
+        trend = h.surface_pressure[i] - h.surface_pressure[i0];
+        wind = h.wind_speed_10m ? h.wind_speed_10m[i] : null;
+      }
+      this._wx = { at: Date.now(), nudge: solunarWxNudge(trend, wind) };
+    }catch(e){ this._wx.at = Date.now(); }   /* offline: pure almanac, nudge 0 */
+  },
+  updateBadge(){
+    if (!SOLUNAR_CFG.enabled) return;
+    const b = $('sunbadge');
+    b.style.display = '';
+    b.textContent = this.labels[this.species][0] + ' ' + this.scoreNow();
+  },
+  openSheet(){
+    if (!SOLUNAR_CFG.enabled) return;
+    this.build(); openSheet('solunarsheet');
+    this.refreshWx().then(() => this.build());
+  },
+  build(){
+    const ctx = this.ctx(), lab = this.labels[this.species];
+    const now = this.scoreNow();
+    $('sundialbig').textContent = lab[0] + ' ' + now + ' / 100';
+    $('sundialsub').textContent = (now >= 70 ? 'hot — go now' : now >= 45 ? 'decent' : 'slow') + ' · ' + lab[1] + ' at map center';
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    let cells = '';
+    for (let i = 0; i < 48; i++){
+      const ms = +t0 + i*1800000;
+      const sc = solunarScoreAt(ms + 900000, ctx);
+      const a = (0.08 + 0.85*(sc/100)).toFixed(2);
+      cells += '<div style="background:rgba(53,224,138,' + a + ')" title="' + tfmt(ms) + ' — ' + sc + '"></div>';
+    }
+    $('sunstrip').innerHTML = cells;
+    const row = (k, v) => '<div class="nightrow"><span>' + k + '</span><b>' + v + '</b></div>';
+    $('sunrows').innerHTML =
+      row('⭐ Major ' + lab[1], ctx.majors.map(tfmt).join(' · ') || '—')
+      + row('✨ Minor ' + lab[1], ctx.minors.map(tfmt).join(' · ') || '—')
+      + row('🌅 Sunrise / sunset', ctx.sunEdges.map(tfmt).join(' / '))
+      + row('🌙 Moon', Math.round(AST.moonIllumination(new Date()).fraction*100) + '% lit')
+      + row('☁ Live weather nudge', (ctx.nudge > 0 ? '+' : '') + ctx.nudge + ' (pressure & wind)');
+  }
+};
+$('sunbadge').addEventListener('click', () => SOLUNAR.openSheet());
+document.querySelectorAll('.sunspecies button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.sunspecies button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  SOLUNAR.species = b.dataset.sp;
+  SOLUNAR.build(); SOLUNAR.updateBadge();
+}));
+if (SOLUNAR_CFG.enabled){
+  settleFns.push(() => { SOLUNAR.updateBadge(); });
+  SOLUNAR.refreshWx().then(() => SOLUNAR.updateBadge());
+  SOLUNAR.updateBadge();
+} else $('sunbadge').style.display = 'none';
+
+/* ---- 🔗 rescuer-link VIEWER: skydoggps.com/?rescue=CODE in any browser.
+   Read-only, no app, no login; ignores anything older than 24 h. ---- */
+(function(){
+  const m = /[?&]rescue=([A-Za-z2-9]{8})\b/.exec(location.search);
+  if (!m) return;
+  const code = m[1].toUpperCase();
+  const wrap = $('rescuewrap');
+  wrap.style.display = 'flex';
+  $('rescuestatus').textContent = 'Connecting to the shared position…';
+  BUDDY.loadFirebase().then(fb => {
+    fb.database().ref('rescue/' + code).on('value', snap => {
+      const v = snap.val();
+      const last = v && v.last;
+      if (!last || Date.now() - (last.ts || 0) > SAFETY_CFG.rescueMaxAgeMs){
+        $('rescuestatus').textContent = 'No recent position on this link (older than 24 hours or never started).';
+        return;
+      }
+      const ageS = Math.round((Date.now() - last.ts)/1000);
+      $('rescuestatus').textContent = ageS < 90 ? '🟢 LIVE — updating while their phone has signal'
+        : '🟡 Last seen ' + tfmt(last.ts) + ' (' + (ageS < 3600 ? Math.round(ageS/60) + ' min' : Math.round(ageS/3600) + ' hr') + ' ago)';
+      $('rescuecoords').textContent = last.lat.toFixed(5) + ', ' + last.lng.toFixed(5);
+      $('rescuemeta').innerHTML = esc(degMin(last.lat, true) + '  ' + degMin(last.lng, false))
+        + '<br>MGRS ' + esc(mgrsPretty(toMGRS(last.lat, last.lng)))
+        + '<br>GPS accuracy ±' + Math.round((last.accM || 0)*3.28084) + ' ft'
+        + (last.batt >= 0 ? ' · their battery ' + last.batt + '%' : '');
+      $('rescuemaps').href = 'https://maps.google.com/?q=' + last.lat.toFixed(5) + ',' + last.lng.toFixed(5);
+      map.setView(last.lat, last.lng, 14);
+    });
+  }).catch(() => { $('rescuestatus').textContent = 'No connection — try again when you have signal.'; });
+})();
+
+/* test hooks */
+window.__sdsafety = { SOS, OVERDUE, SAFETY_CFG, toMGRS, mgrsPretty, degMin, sosSmsBody, smsHref, overdueSmsBody };
+window.__sdnight = { NIGHT, NIGHT_CFG, AST };
+window.__sdsolunar = { SOLUNAR, SOLUNAR_CFG, solunarPeriods, solunarPhaseWeight, solunarWxNudge, solunarScoreAt };
+
+/* =====================================================================
    🎡 MODE WHEEL — free core navigation. Every MODE *and* every utility
    tool lives on a cyclic wheel anchored in the bottom-right thumb
    corner: flick to spin (momentum + firm snap detents), tap any button
@@ -4524,7 +5399,7 @@ const WHEEL_CFG = {
 };
 /* utility (ex-fab) tools that ride the wheel after the modes.
    installfab only joins while it's actually installable (display!=='none'). */
-const WHEEL_UTILS = ['layer', 'locate', 'saved', 'key', 'what', 'clear', 'install'];
+const WHEEL_UTILS = ['sos', 'night', 'layer', 'locate', 'saved', 'key', 'what', 'clear', 'install'];
 /* effective detent spacing: tightens as the wheel fills, never below the
    glove-friendly floor — one flick still reaches anything within a spin */
 function wheelStepDeg(){
