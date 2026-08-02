@@ -970,7 +970,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v2.0');
+    const ver = document.getElementById('aboutver').textContent.includes('v2.1');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -1195,6 +1195,69 @@ async function main(){
     b.click();
     return flipped && __sdt3d.T3D.bldOn === was;
   })()`));
+  console.log('\n— 🌄 3D far field: the horizon (v2.1) —');
+  T('far zoom sits farZoomDrop levels out and clamps at farZoomMin', await page.evaluate(`(function(){
+    const C = __sdt3d.T3D_CFG, F = __sdt3d.farZoom;
+    return F(12) === 12 - C.farZoomDrop && F(13) === 13 - C.farZoomDrop
+      && F(C.farZoomMin + 1) === C.farZoomMin && F(C.farZoomMin) === C.farZoomMin
+      && F(C.demZoomMin) >= C.farZoomMin;
+  })()`));
+  T('tile span: halves every zoom, shrinks with latitude', await page.evaluate(`(function(){
+    const S = __sdt3d.tileSpanM;
+    return Math.abs(S(0, 0) - 40075016.7) < 1 && Math.abs(S(1, 0) - 40075016.7 / 2) < 1
+      && S(10, 45) < S(10, 0) && S(11, 45) < S(10, 45);
+  })()`));
+  /* THE invariant that keeps the horizon from poking through the sharp terrain in
+     front of it: the near block's edge must land exactly on a far-mesh quad edge. */
+  T('far mesh aligns with the near block, so the hole cut is exact', await page.evaluate(`(function(){
+    const C = __sdt3d.T3D_CFG;
+    const q = C.grid * C.farMeshN / Math.pow(2, C.farZoomDrop);
+    return q === Math.round(q) && q > 0 && C.farGrid % 2 === 1
+      && C.farMeshN < C.meshN && C.farGrid >= 3;
+  })()`));
+  T('haze never fully saturates (distant ridges keep contrast) but the rim does', await page.evaluate(`(function(){
+    const C = __sdt3d.T3D_CFG;
+    return C.fogD > 0 && C.fogMax > 0.5 && C.fogMax < 1 && C.fogFade > 0 && C.fogFade < 1
+      && C.farTintHaze > 0 && C.farTintHaze < 1 && C.farSinkM > 0;
+  })()`));
+  T('near and far tiles at the same z/x/y are cached separately', await page.evaluate(`(function(){
+    const T = __sdt3d.T3D;
+    return T._key(9, 5, 6) !== T._key(9, 5, 6, true) && T._key(9, 5, 6) === T._key(9, 5, 6, false);
+  })()`));
+  await page.evaluate('__sdt3d.setT3dMode(true)');
+  await page.waitForFunction(`(function(){
+    const T = __sdt3d.T3D;
+    return T.farActive && T.farActive.length > 0 && T.farActive.every(function(k){
+      const r = T.tiles.get(k); return r && r.vbo;
+    });
+  })()`, null, { timeout: 15000 });
+  T('a full horizon block loads and builds behind the detailed one', await page.evaluate(`(function(){
+    const T = __sdt3d.T3D, C = __sdt3d.T3D_CFG;
+    return T.farActive.length === C.farGrid * C.farGrid
+      && T.farActive.every(function(k){ return k.charAt(0) === 'F'; })
+      && T.active.every(function(k){ return k.charAt(0) === 'N'; });
+  })()`));
+  T('the hole under the near block is cut to the exact quad', await page.evaluate(`(function(){
+    const T = __sdt3d.T3D, C = __sdt3d.T3D_CFG;
+    const sc = Math.pow(2, T.demZ - __sdt3d.farZoom(T.demZ));
+    const holeQuads = Math.pow(C.grid / sc * C.farMeshN, 2);
+    let drawn = 0;
+    T.farActive.forEach(function(k){ drawn += T.tiles.get(k).icount; });
+    const whole = C.farGrid * C.farGrid * C.farMeshN * C.farMeshN * 6;
+    return drawn === whole - holeQuads * 6;
+  })()`));
+  T('the horizon costs a rounding error in vertices (mobile battery budget)', await page.evaluate(`(function(){
+    const C = __sdt3d.T3D_CFG;
+    const far = C.farGrid * C.farGrid * Math.pow(C.farMeshN + 1, 2);
+    const near = C.grid * C.grid * Math.pow(C.meshN + 1, 2);
+    return far < near * 0.25 && far < 8000;
+  })()`));
+  T('the horizon adds no new hosts and no basemap fetches', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    /* far tiles go through _tintTexture, never _makeTexture */
+    return /if\(rec\.far\) this\._tintTexture\(rec\); else this\._texQueue\.push\(rec\);/.test(src)
+      && (src.match(/demHost:/g) || []).length === 1;
+  })());
   T('CSP allowlists the terrain tile host (img-src)', (function(){
     const m = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8'));
     return !!m && /img-src[^;]*s3\.amazonaws\.com/.test(m[1]);
@@ -2887,7 +2950,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v36 (ad-gate race fix ships fresh)', sw.includes("skydog-gps-v36") && !sw.includes("skydog-gps-v35") && !sw.includes("skydog-gps-v34"));
+  T('sw.js cache bumped to v37 (3D horizon ships fresh)', sw.includes("skydog-gps-v37") && !sw.includes("skydog-gps-v36") && !sw.includes("skydog-gps-v35"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

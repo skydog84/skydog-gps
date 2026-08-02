@@ -105,12 +105,12 @@ any sync, because Capacitor has been known to rewrite the manifest on plugin cha
 
 ---
 
-## 3. sw.js — bump the cache version (now v36 → v37 after the ad-gate race fix)
+## 3. sw.js — bump the cache version (now v37 → v38 after the 3D horizon build)
 
 index.html changed, so the service worker version MUST move in the same commit.
 
-    line 3:  const CACHE = 'skydog-gps-v36';
-      →      const CACHE = 'skydog-gps-v37';
+    line 3:  const CACHE = 'skydog-gps-v37';
+      →      const CACHE = 'skydog-gps-v38';
 
 ---
 
@@ -120,13 +120,13 @@ Search test.js for "sw.js cache bumped" (the line number moves every run). The p
 other is an instant red suite.
 
 ```js
-T('sw.js cache bumped to v34 (Activity Engine ships fresh)', sw.includes("skydog-gps-v34") && !sw.includes("skydog-gps-v33") && !sw.includes("skydog-gps-v32"));
+T('sw.js cache bumped to v37 (3D horizon ships fresh)', sw.includes("skydog-gps-v37") && !sw.includes("skydog-gps-v36") && !sw.includes("skydog-gps-v35"));
 ```
 
 becomes:
 
 ```js
-T('sw.js cache bumped to v35 (platform-aware AdMob ids ship fresh)', sw.includes("skydog-gps-v35") && !sw.includes("skydog-gps-v34") && !sw.includes("skydog-gps-v33"));
+T('sw.js cache bumped to v38 (platform-aware AdMob ids ship fresh)', sw.includes("skydog-gps-v38") && !sw.includes("skydog-gps-v37") && !sw.includes("skydog-gps-v36"));
 ```
 
 ---

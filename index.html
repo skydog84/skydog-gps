@@ -1708,7 +1708,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '2.0';
+const SD_VERSION = '2.1';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -4584,8 +4584,24 @@ const T3D_CFG = {
   minDistM: 260, maxDistM: 240000,
   bldMaxDistM: 2600,               /* buildings only fetch when flown in this close */
   bldFloorM: 3.2, bldDefaultM: 6.5, bldLimit: 600, bldMaxVerts: 60000,
-  fog: [0.66, 0.78, 0.92], skyTop: [0.30, 0.58, 0.94], skyBot: [0.79, 0.88, 0.97],
-  lightDir: [-0.45, 0.78, 0.43]    /* NW morning sun, normalized-ish */
+  /* fog sits close to the sky's colour AT THE HORIZON so hazed-out terrain
+     dissolves into it instead of ending on a visible line */
+  fog: [0.60, 0.75, 0.94], skyTop: [0.30, 0.58, 0.94], skyBot: [0.79, 0.88, 0.97],
+  lightDir: [-0.45, 0.78, 0.43],   /* NW morning sun, normalized-ish */
+  /* ---- 🌄 FAR FIELD (the horizon). Coarse tiles behind the detailed ones so
+     the world stops ending two tiles out. Silhouette + haze, never detail. ---- */
+  farGrid: 3,                      /* 3×3 coarse tiles — 8× the ground of the near block */
+  farZoomDrop: 3,                  /* far tiles come from demZ-3 */
+  farZoomMin: 4,                   /* never ask Terrarium for continent tiles */
+  farMeshN: 16,                    /* 17×17 verts per far tile ≈ 2.6k verts for the whole ring */
+  farSinkM: 45,                    /* far field tucks this far under the near field (× exag) */
+  /* far tint is pre-mixed well toward fog: the horizon is atmosphere, and it keeps
+     Terrarium's lake-surface elevations from painting the Great Lakes green */
+  farTintHaze: 0.45,
+  /* aerial perspective: exponential haze, distance scale = this × the near block's
+     half-span. fogFade forces the outer rim of the far field all the way to fog
+     colour so the world dissolves into sky instead of ending on a line. */
+  fogD: 3.0, fogMax: 0.94, fogFade: 0.70
 };
 
 /* ---- pure helpers (unit-tested) ---- */
@@ -4597,6 +4613,14 @@ function t3dPickDemZoom(distM, lat){
   const perTile = span / T3D_CFG.grid;
   const z = Math.floor(Math.log2(40075016.7 * Math.cos(lat * Math.PI / 180) / perTile));
   return clamp(z, T3D_CFG.demZoomMin, T3D_CFG.demZoomMax);
+}
+/* the horizon ring's zoom: a few levels coarser than the detailed block */
+function t3dFarZoom(demZ){
+  return clamp(demZ - T3D_CFG.farZoomDrop, T3D_CFG.farZoomMin, T3D_CFG.demZoomMax);
+}
+/* metres across one web-mercator tile at this zoom & latitude — sizes both blocks */
+function t3dTileSpanM(z, lat){
+  return 40075016.7 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
 }
 function t3dTile2Lat(y, z){
   const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
@@ -4680,7 +4704,7 @@ const T3D = {
   exag: T3D_CFG.exagDefault, bldOn: true,
   demZ: -1, anchorTx: null, anchorTy: null,
   lat0: null, lng0: null, mPerLng: 1, mPerLat: 110540,
-  tiles: new Map(), active: [],
+  tiles: new Map(), active: [], farActive: [],
   bld: null, bldKey: '', trk: null, me: null,
   _raf: 0, _trackLen: -1, _texQueue: [],
 
@@ -4715,18 +4739,25 @@ const T3D = {
     try{
       this.prog = mk(
         'attribute vec2 aPos; attribute float aH; attribute float aUp; attribute float aShade; attribute vec2 aUV;' +
-        'uniform mat4 uMVP; uniform float uExag;' +
+        'uniform mat4 uMVP; uniform float uExag; uniform float uSink;' +
         'varying vec2 vUV; varying float vShade; varying float vW;' +
         'void main(){' +
-        '  vec4 p = vec4(aPos.x, aH * uExag + aUp, aPos.y, 1.0);' +
+        '  vec4 p = vec4(aPos.x, aH * uExag + aUp - uSink, aPos.y, 1.0);' +
         '  gl_Position = uMVP * p; vUV = aUV; vShade = aShade; vW = gl_Position.w; gl_PointSize = 15.0; }',
         'precision mediump float;' +
         'varying vec2 vUV; varying float vShade; varying float vW;' +
-        'uniform sampler2D uTex; uniform int uUseTex; uniform vec4 uColor; uniform float uFar; uniform vec3 uFog;' +
+        'uniform sampler2D uTex; uniform int uUseTex; uniform vec4 uColor;' +
+        'uniform float uFogD; uniform float uFogMax; uniform vec3 uFog;' +
+        'uniform float uFadeA; uniform float uFadeB;' +
         'void main(){' +
         '  vec4 c = (uUseTex == 1) ? texture2D(uTex, vUV) : uColor;' +
         '  c.rgb *= (0.62 + 0.38 * vShade);' +
-        '  float f = smoothstep(0.6, 1.0, vW / uFar);' +
+        /* exponential aerial perspective — never fully saturates, so distant
+           ridgelines keep enough contrast to stack instead of vanishing... */
+        '  float f = min(1.0 - exp(-vW / uFogD), uFogMax);' +
+        /* ...except at the very rim of the far field, which is forced all the way
+           to fog colour so the edge of the world dissolves into sky */
+        '  f = max(f, smoothstep(uFadeA, uFadeB, vW));' +
         '  gl_FragColor = vec4(mix(c.rgb, uFog, f), c.a); }');
       this.sky = mk(
         'attribute vec2 aPos; varying float vY; void main(){ vY = aPos.y; gl_Position = vec4(aPos, 0.9999, 1.0); }',
@@ -4737,7 +4768,8 @@ const T3D = {
     this.attr = {};
     ['aPos','aH','aUp','aShade','aUV'].forEach(n => this.attr[n] = gl.getAttribLocation(this.prog, n));
     this.uni = {};
-    ['uMVP','uExag','uTex','uUseTex','uColor','uFar','uFog'].forEach(n => this.uni[n] = gl.getUniformLocation(this.prog, n));
+    ['uMVP','uExag','uSink','uTex','uUseTex','uColor','uFogD','uFogMax','uFadeA','uFadeB','uFog']
+      .forEach(n => this.uni[n] = gl.getUniformLocation(this.prog, n));
     this.skyUni = { uTop: gl.getUniformLocation(this.sky, 'uTop'), uBot: gl.getUniformLocation(this.sky, 'uBot') };
     this.skyPos = gl.getAttribLocation(this.sky, 'aPos');
     this.skyBuf = gl.createBuffer();
@@ -4770,7 +4802,9 @@ const T3D = {
   },
 
   /* ---- DEM tile management ---- */
-  _key(z, x, y){ return z + '/' + x + '/' + y; },
+  /* near and far blocks can want the SAME z/x/y (fly out, then back in) but they
+     need different mesh densities and hole cuts — so far-ness is part of the key */
+  _key(z, x, y, far){ return (far ? 'F' : 'N') + z + '/' + x + '/' + y; },
   _freeTile(rec){
     const gl = this.gl; if(!gl) return;
     if(rec.vbo) gl.deleteBuffer(rec.vbo);
@@ -4801,25 +4835,53 @@ const T3D = {
       if(!this.tiles.has(k)) this._loadTile(z, xx, yy);
       else { const rec = this.tiles.get(k); if(rec.heights && !rec.vbo) this._buildMesh(rec); }
     }
+    /* ---- 🌄 the far field: a coarse block behind the detailed one so there is
+       a horizon to fly toward. Same DEM host, 3–4 zooms out, 1/9th the mesh
+       density, no basemap drape — silhouette and haze, not detail. ---- */
+    this.farActive = [];
+    const fz = t3dFarZoom(z), hk = z + '/' + tx + '/' + ty;
+    if(fz < z){
+      const fn = Math.pow(2, fz);
+      const ftx = Math.floor((this.center.lng + 180) / 360 * fn);
+      const fty = clamp(Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * fn), 0, fn - 1);
+      const fr = Math.floor((T3D_CFG.farGrid - 1) / 2);
+      for(let dy = -fr; dy <= fr; dy++) for(let dx = -fr; dx <= fr; dx++){
+        const yy = fty + dy;
+        if(yy < 0 || yy >= fn) continue;
+        const xx = ((ftx + dx) % fn + fn) % fn;
+        const k = this._key(fz, xx, yy, true);
+        this.farActive.push(k);
+        if(!this.tiles.has(k)) this._loadTile(fz, xx, yy, true);
+        else {
+          const rec = this.tiles.get(k);
+          /* the hole follows the near block — recut when it moves (17×17 verts, cheap) */
+          if(rec.heights && (!rec.vbo || rec.holeKey !== hk)) this._buildMesh(rec);
+        }
+      }
+    }
     /* LRU-ish eviction of tiles that fell out of view */
-    if(this.tiles.size > 30){
+    if(this.tiles.size > 40){
       for(const k of this.tiles.keys()){
-        if(this.tiles.size <= 30) break;
-        if(this.active.indexOf(k) < 0){ this._freeTile(this.tiles.get(k)); this.tiles.delete(k); }
+        if(this.tiles.size <= 40) break;
+        if(this.active.indexOf(k) < 0 && this.farActive.indexOf(k) < 0){
+          this._freeTile(this.tiles.get(k)); this.tiles.delete(k);
+        }
       }
     }
     this._trackLen = -1;
   },
-  _loadTile(z, x, y){
-    const k = this._key(z, x, y);
-    const rec = { z, x, y, heights: null, vbo: null, ibo: null, icount: 0, tex: null };
+  _loadTile(z, x, y, far){
+    const k = this._key(z, x, y, far);
+    const rec = { z, x, y, far: !!far, heights: null, vbo: null, ibo: null, icount: 0, tex: null };
     this.tiles.set(k, rec);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     const done = flat => {
       if(flat) rec.heights = new Float32Array(256 * 256);
       this._buildMesh(rec);
-      this._texQueue.push(rec);
+      /* horizon tiles never drape — hypsometric tint only, so the far field
+         costs zero extra basemap fetches */
+      if(rec.far) this._tintTexture(rec); else this._texQueue.push(rec);
       this._trackLen = -1;
     };
     img.onload = () => {
@@ -4845,7 +4907,7 @@ const T3D = {
   },
   _buildMesh(rec){
     const gl = this.gl; if(!gl || !rec.heights) return;
-    const N = T3D_CFG.meshN, V = N + 1, n2 = Math.pow(2, rec.z);
+    const N = rec.far ? T3D_CFG.farMeshN : T3D_CFG.meshN, V = N + 1, n2 = Math.pow(2, rec.z);
     const verts = new Float32Array(V * V * 7);
     const hgrid = new Float32Array(V * V);
     for(let j = 0; j < V; j++){
@@ -4870,18 +4932,31 @@ const T3D = {
       const shade = clamp(0.5 + 0.6 * ((nx*L[0] + ny*L[1] + nz*L[2]) / nl), 0, 1);
       verts[(j*V+i)*7 + 4] = shade;
     }
-    const idx = new Uint16Array(N * N * 6);
-    let q = 0;
+    /* 🌄 far tiles cut an exactly-aligned hole under the detailed block. farZoomDrop
+       and farMeshN are chosen so one far quad is a whole fraction of a near tile —
+       the hole lands on the near block's edge to the metre, so there is no coarse
+       terrain left to poke up through the sharp stuff in front of it. */
+    let hx0 = 2, hx1 = -1, hy0 = 2, hy1 = -1;
+    if(rec.far && this.demZ > rec.z && this.anchorTx != null){
+      const sc = Math.pow(2, this.demZ - rec.z), rr = Math.floor((T3D_CFG.grid - 1) / 2);
+      hx0 = (this.anchorTx - rr) / sc - rec.x; hx1 = (this.anchorTx + rr + 1) / sc - rec.x;
+      hy0 = (this.anchorTy - rr) / sc - rec.y; hy1 = (this.anchorTy + rr + 1) / sc - rec.y;
+    }
+    rec.holeKey = this.demZ + '/' + this.anchorTx + '/' + this.anchorTy;
+    const idx = [];
+    const E = 1e-6;
     for(let j = 0; j < N; j++) for(let i = 0; i < N; i++){
+      if(i / N >= hx0 - E && (i + 1) / N <= hx1 + E
+         && j / N >= hy0 - E && (j + 1) / N <= hy1 + E) continue;   /* inside the hole */
       const a = j*V+i, b = a+1, c = a+V, d = c+1;
-      idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d;
+      idx.push(a, c, b, b, c, d);
     }
     if(rec.vbo) gl.deleteBuffer(rec.vbo);
     if(rec.ibo) gl.deleteBuffer(rec.ibo);
     rec.vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, rec.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
     rec.ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rec.ibo);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
     rec.icount = idx.length;
   },
 
@@ -4925,6 +5000,9 @@ const T3D = {
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
     const cx = cv.getContext('2d');
     const im = cx.createImageData(256, 256);
+    /* far-field tiles get a head start on haze so the seam with the draped near
+       field reads as distance, not as a colour cliff */
+    const hz = rec.far ? T3D_CFG.farTintHaze : 0, F = T3D_CFG.fog;
     for(let i = 0; i < 65536; i++){
       const h = rec.heights[i];
       let r, g, b;
@@ -4932,6 +5010,7 @@ const T3D = {
       else if(h < 250){ const t = h/250; r = 60+40*t; g = 122+20*t; b = 64; }
       else if(h < 1200){ const t = (h-250)/950; r = 100+70*t; g = 142-40*t; b = 64+20*t; }
       else { const t = clamp((h-1200)/1800, 0, 1); r = 170+70*t; g = 102+120*t; b = 84+140*t; }
+      if(hz){ r += (F[0]*255 - r) * hz; g += (F[1]*255 - g) * hz; b += (F[2]*255 - b) * hz; }
       im.data[i*4] = r; im.data[i*4+1] = g; im.data[i*4+2] = b; im.data[i*4+3] = 255;
     }
     cx.putImageData(im, 0, 0);
@@ -5080,9 +5159,14 @@ const T3D = {
     const eye = [ target[0] + this.dist * cp * Math.sin(this.heading),
                   target[1] + this.dist * sp,
                   target[2] + this.dist * cp * Math.cos(this.heading) ];
-    const far = Math.max(this.dist * 8, 30000);
+    /* 🌄 the two blocks size the frustum and the haze: the detailed block sets
+       where aerial perspective starts, the horizon block sets the far plane */
+    const nearEdgeM = 0.5 * T3D_CFG.grid * t3dTileSpanM(this.demZ, this.center.lat);
+    const farEdgeM = 0.5 * T3D_CFG.farGrid * t3dTileSpanM(t3dFarZoom(this.demZ), this.center.lat);
+    const fogD = Math.max(600, nearEdgeM * T3D_CFG.fogD);
+    const far = Math.max(this.dist * 8, farEdgeM * 1.55 + this.dist, 30000);
     const mvp = T3DM4.mul(
-      T3DM4.persp(55 * Math.PI / 180, W / H, Math.max(2, this.dist / 200), far),
+      T3DM4.persp(55 * Math.PI / 180, W / H, Math.max(2, this.dist / 150), far),
       T3DM4.lookAt(eye, target, [0, 1, 0]));
 
     gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
@@ -5101,10 +5185,27 @@ const T3D = {
     gl.useProgram(this.prog);
     gl.uniformMatrix4fv(this.uni.uMVP, false, mvp);
     gl.uniform1f(this.uni.uExag, this.exag);
-    gl.uniform1f(this.uni.uFar, far);
+    gl.uniform1f(this.uni.uFogD, fogD);
+    gl.uniform1f(this.uni.uFogMax, T3D_CFG.fogMax);
+    gl.uniform1f(this.uni.uFadeA, farEdgeM * T3D_CFG.fogFade);
+    gl.uniform1f(this.uni.uFadeB, farEdgeM * 1.02);
     gl.uniform3fv(this.uni.uFog, T3D_CFG.fog);
     gl.uniform1i(this.uni.uTex, 0);
     gl.activeTexture(gl.TEXTURE0);
+    /* 🌄 horizon first — sunk just under the detailed block so it can never
+       poke through it, and drawn coarse so it costs almost nothing */
+    gl.uniform1f(this.uni.uSink, T3D_CFG.farSinkM * this.exag);
+    for(const k of this.farActive){
+      const rec = this.tiles.get(k);
+      if(!rec || !rec.vbo) continue;
+      gl.bindBuffer(gl.ARRAY_BUFFER, rec.vbo);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rec.ibo);
+      this._bindAttrs();
+      if(rec.tex){ gl.uniform1i(this.uni.uUseTex, 1); gl.bindTexture(gl.TEXTURE_2D, rec.tex); }
+      else { gl.uniform1i(this.uni.uUseTex, 0); gl.uniform4f(this.uni.uColor, 0.42, 0.52, 0.46, 1); }
+      gl.drawElements(gl.TRIANGLES, rec.icount, gl.UNSIGNED_SHORT, 0);
+    }
+    gl.uniform1f(this.uni.uSink, 0);
     for(const k of this.active){
       const rec = this.tiles.get(k);
       if(!rec || !rec.vbo) continue;
@@ -5233,6 +5334,7 @@ $('t3dbld').addEventListener('click', () => {
 /* debug/test handle for the 3D pack */
 window.__sdt3d = { get mode(){ return t3dMode; }, setT3dMode, T3D, T3D_CFG,
   decodeTerrarium: t3dDecodeTerrarium, demTileUrl: t3dDemTileUrl, pickDemZoom: t3dPickDemZoom,
+  farZoom: t3dFarZoom, tileSpanM: t3dTileSpanM,
   tile2lat: t3dTile2Lat, bldHeight: t3dBldHeight, earclip: t3dEarclip,
   get gl(){ return !!T3D.gl; }, get glFailed(){ return T3D.glFailed; } };
 
