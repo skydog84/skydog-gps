@@ -385,7 +385,7 @@ async function main(){
 
   console.log('\n— Core regression —');
   T('12 discovery chips', await page.$$eval('#chips .chip', (e) => e.length) === 12);
-  T('12 activity modes', await page.$$eval('#modes .modebtn', (e) => e.length) === 12);
+  T('19 activity modes (Run 7 engine rows)', await page.$$eval('#modes .modebtn', (e) => e.length) === 19);
   T('5 base maps in layer sheet', await page.evaluate('Object.keys(__sdmap.constructor ? window.BASES || {} : {}).length || (function(){ return document.querySelectorAll("#basegrid .modebtn").length; })()') !== -1 && (await page.evaluate('(function(){ document.getElementById("layerfab").click(); return document.querySelectorAll("#basegrid .modebtn").length; })()')) === 5, 'basegrid count');
   T('9 overlays incl fishing pair, property lines, live radar + footprints/solitude', await page.$$eval('#ovchips .chip', (e) => e.length) === 9);
   await page.evaluate('(function(){ document.getElementById("layerdone").click(); })()');
@@ -969,7 +969,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.8');
+    const ver = document.getElementById('aboutver').textContent.includes('v1.9');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -2603,6 +2603,96 @@ async function main(){
   T('Safari Smart App Banner meta present (app-id pinned)', appSrc.includes('apple-itunes-app') && appSrc.includes('app-id=6792906988'));
   T('✕ dismisses the banner and snoozes it via sdStore', await page.evaluate('(function(){ document.getElementById("appbannerx").click(); return !document.getElementById("appbanner").classList.contains("on") && !!sdStore.get("sd-appbanner-snooze"); })()'));
 
+  console.log('\n— 🏁 Activity Engine: one declarative chassis (Run 7) —');
+  T('engine exported: 19 config rows, every row has id/em/name/unit, MODES is the alias', await page.evaluate(`(function(){
+    const A = window.__sdactivity;
+    return !!A && A.ACTIVITY_CONFIG.length === 19 && MODES === A.ACTIVITY_CONFIG
+      && A.ACTIVITY_CONFIG.every(r => r.id && r.em && r.name && (r.unit === 'mph' || r.unit === 'kn'));
+  })()`));
+  T('config honesty: every pack a row names actually exists; every tip row has real copy', await page.evaluate(`(function(){
+    return __sdactivity.ACTIVITY_CONFIG.every(r =>
+      (!r.pack || !!__sdpacks.PACKS_CONFIG.packs[r.pack]) && (!r.tip || r.tip.length > 20));
+  })()`));
+  T('new activities are rows: mtb, moto, ski, snowboard, hunt, camp, drone', await page.evaluate(`(function(){
+    const ids = __sdactivity.ACTIVITY_CONFIG.map(r => r.id);
+    return ['mtb','moto','ski','snowboard','hunt','camp','drone'].every(id => ids.includes(id));
+  })()`));
+  T('knots are display-only math: 22.3694 mph → 19.4 kn, hike stays mph', await page.evaluate(`(function(){
+    const A = __sdactivity.ACTIVITY;
+    return A.unitFor({id:'boat'}) === 'kn' && A.unitFor({id:'hike'}) === 'mph'
+      && A.dispSpeed(22.3694, {id:'boat'}).toFixed(1) === '19.4'
+      && A.dispSpeed(22.3694, {id:'hike'}).toFixed(1) === '22.4';
+  })()`));
+  /* quiet geolocation stub so startTracking runs deterministically headless */
+  await page.evaluate(`Object.defineProperty(navigator, 'geolocation',
+    { value: { watchPosition: function(){ return 991; }, clearWatch: function(){} }, configurable: true })`);
+  T('start Boat → HUD reads KN / Max KN + boat accent tints the mode chip', await page.evaluate(`(function(){
+    startTracking(__sdactivity.ACTIVITY_CONFIG.find(r => r.id === 'boat'));
+    return document.getElementById('st-speed-u').textContent === 'KN'
+      && document.getElementById('st-max-u').textContent === 'Max KN'
+      && document.getElementById('hudmode').style.color !== '';
+  })()`));
+  T('boat fixes: HUD speed shows knots while the recorded track stays mph inside', await page.evaluate(`(function(){
+    onFix({coords:{latitude:45.0,   longitude:-85.0, accuracy:5, speed:10, altitude:null}});
+    onFix({coords:{latitude:45.001, longitude:-85.0, accuracy:5, speed:10, altitude:null}});
+    return document.getElementById('st-speed').textContent === '19.4'
+      && Math.abs(trk.maxMph - 22.3694) < 0.01;
+  })()`));
+  T('finish Boat → save summary speaks knots too', await page.evaluate(`(function(){
+    document.getElementById('stopbtn').click();
+    const s = document.getElementById('savesummary').textContent;
+    document.getElementById('discardbtn').click();
+    return s.includes('max 19.4 kn') && !s.includes('mph');
+  })()`));
+  T('start Hike → labels flip back to MPH (unit follows the row, not the session)', await page.evaluate(`(function(){
+    startTracking(__sdactivity.ACTIVITY_CONFIG.find(r => r.id === 'hike'));
+    const ok = document.getElementById('st-speed-u').textContent === 'MPH'
+      && document.getElementById('st-max-u').textContent === 'Max MPH';
+    document.getElementById('stopbtn').click(); document.getElementById('discardbtn').click();
+    return ok;
+  })()`));
+  await page.evaluate(`(function(){
+    document.getElementById('toast').textContent = '';
+    startTracking(__sdactivity.ACTIVITY_CONFIG.find(r => r.id === 'hunt'));
+  })()`);
+  await page.waitForFunction(`document.getElementById('toast').textContent.includes('wind')`, null, { timeout: 6000 });
+  T('Hunting start → ONE quiet tip pointing at the existing 🦌 wheel tools', await page.evaluate(`(function(){
+    const ok = document.getElementById('toast').textContent.includes('wind')
+      && __sdactivity.ACTIVITY.tipShown.hunt === true;
+    document.getElementById('stopbtn').click(); document.getElementById('discardbtn').click();
+    return ok;
+  })()`));
+  T('tip never repeats: second Hunting start stays quiet', await page.evaluate(`(async function(){
+    document.getElementById('toast').textContent = '';
+    __sdactivity.ACTIVITY.onStart({id:'hunt'});
+    await new Promise(r => setTimeout(r, 2100));
+    return document.getElementById('toast').textContent === '';
+  })()`));
+  T('Fishing activity + unlocked pack → depth layers switch on automatically', await page.evaluate(`(function(){
+    const st = __sdpacks.PACK_STATE.fishing, was = st._session;
+    st._session = true;
+    startTracking(__sdactivity.ACTIVITY_CONFIG.find(r => r.id === 'fish'));
+    const on = __sdfish.mode === true;
+    document.getElementById('stopbtn').click(); document.getElementById('discardbtn').click();
+    __sdfish.setFishingMode(false); st._session = was;
+    return on;
+  })()`));
+  T('locked pack never hijacks a free start: snowmobile tracks either way', await page.evaluate(`(function(){
+    const locked = !__sdpacks.Entitlements.isUnlocked('orv');
+    startTracking(__sdactivity.ACTIVITY_CONFIG.find(r => r.id === 'snowmobile'));
+    const hudOn = document.getElementById('hud').style.display === 'block';
+    const orvOn = !!(window.__sdorv && __sdorv.mode);
+    document.getElementById('stopbtn').click(); document.getElementById('discardbtn').click();
+    if(window.__sdorv && __sdorv.mode) __sdorv.setOrvMode(false);
+    return hudOn && (locked ? orvOn === false : orvOn === true);
+  })()`));
+  T('file contract: Run 7 banner, declarative rows, free-stays-free stated in-code', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
+    const seg = src.slice(src.indexOf('ACTIVITY ENGINE — RUN 7'));
+    return seg.length > 1000 && seg.includes('Free tracking stays free')
+      && seg.includes("const ACTIVITY_CONFIG = [") && seg.includes('display-only');
+  })());
+
   console.log('\n— 📁▶ Trip Log + Replay: persistence + honest math (Run 6) —');
   await page.waitForFunction('window.__sdtriplog && __sdtriplog.TRIPLOG.booted === true', null, { timeout: 8000 });
   T('TRIPLOG booted with IndexedDB alive (persistent, not in-session)',
@@ -2716,7 +2806,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v33 (Trip Log + Replay ships fresh)', sw.includes("skydog-gps-v33") && !sw.includes("skydog-gps-v32") && !sw.includes("skydog-gps-v31"));
+  T('sw.js cache bumped to v34 (Activity Engine ships fresh)', sw.includes("skydog-gps-v34") && !sw.includes("skydog-gps-v33") && !sw.includes("skydog-gps-v32"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

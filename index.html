@@ -553,8 +553,8 @@
     <div id="stats">
       <div class="stat"><b id="st-time">0:00</b><span>Time</span></div>
       <div class="stat"><b id="st-dist">0.00</b><span>Miles</span></div>
-      <div class="stat"><b id="st-speed">0.0</b><span>MPH</span></div>
-      <div class="stat"><b id="st-max">0.0</b><span>Max MPH</span></div>
+      <div class="stat"><b id="st-speed">0.0</b><span id="st-speed-u">MPH</span></div>
+      <div class="stat"><b id="st-max">0.0</b><span id="st-max-u">Max MPH</span></div>
       <div class="stat"><b id="st-elev">—</b><span>Elev FT</span></div>
       <div class="stat"><b id="st-gain">0</b><span>Climb FT</span></div>
     </div>
@@ -1708,7 +1708,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.8';
+const SD_VERSION = '1.9';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -1916,21 +1916,77 @@ $('clearfab').addEventListener('click', () => {
   toast('Map cleared');
 });
 
-/* ---------- activity modes ---------- */
-const MODES = [
-  {id:'hike', em:'🥾', name:'Hike'},
-  {id:'walk', em:'🚶', name:'Walk'},
-  {id:'run', em:'🏃', name:'Trail Run'},
-  {id:'bike', em:'🚵', name:'Bike'},
-  {id:'waverunner', em:'🌊', name:'Wave Runner'},
-  {id:'boat', em:'🛥️', name:'Boat'},
-  {id:'kayak', em:'🛶', name:'Kayak'},
-  {id:'fourwheeler', em:'🏍️', name:'4-Wheeler'},
-  {id:'snowmobile', em:'🛷', name:'Snowmobile'},
-  {id:'fish', em:'🎣', name:'Fishing'},
-  {id:'beach', em:'🏖️', name:'Beach Day'},
-  {id:'explore', em:'🧭', name:'Explore'},
+/* =====================================================================
+   🏁 ACTIVITY ENGINE — RUN 7 «ONE CHASSIS» (V1.2 review feature ②)
+   Every activity is one declarative config row — the engine reads the
+   row, nothing is hard-coded per activity anymore. A row can declare:
+     unit    'mph' | 'kn' — HUD + save-summary speed display (knots on
+             the water). Recorded track data stays mph internally so
+             Replay / GPX / trip math never fork — display-only.
+     accent  CSS color — HUD activity tint while tracking.
+     pack    pack id — the pack that makes this activity richer. If the
+             pack is UNLOCKED its layers switch on automatically at
+             start. If it's locked we show ONE quiet tip, once per
+             session — never a forced paywall. Free tracking stays free
+             for every activity, always.
+     tip     one-time hint pointing at tools that exist TODAY. Honest
+             rule: a row may only name features that actually ship.
+   Adding a future activity = adding a config row. That's the point.
+   ===================================================================== */
+const ACTIVITY_CONFIG = [
+  {id:'hike',        em:'🥾', name:'Hike',          unit:'mph', accent:'#7fd48a'},
+  {id:'walk',        em:'🚶', name:'Walk',          unit:'mph', accent:'#7fd48a'},
+  {id:'run',         em:'🏃', name:'Trail Run',     unit:'mph', accent:'#ffd166'},
+  {id:'bike',        em:'🚴', name:'Bike',          unit:'mph', accent:'#ffd166'},
+  {id:'mtb',         em:'🚵', name:'Mountain Bike', unit:'mph', accent:'#ffd166'},
+  {id:'moto',        em:'🏍️', name:'Motorcycle',    unit:'mph', accent:'#ff8a00', pack:'orv',
+    tip:'🏔 ORV Trails shows Michigan motorcycle trails — it rides the wheel'},
+  {id:'fourwheeler', em:'🛞', name:'4-Wheeler',     unit:'mph', accent:'#ff8a00', pack:'orv',
+    tip:'🏔 ORV Trails shows every DNR ORV/ATV route — it rides the wheel'},
+  {id:'snowmobile',  em:'🛷', name:'Snowmobile',    unit:'mph', accent:'#ff3df0', pack:'orv',
+    tip:'🏔 ORV Trails shows the DNR snowmobile network — it rides the wheel'},
+  {id:'ski',         em:'⛷️', name:'Ski',           unit:'mph', accent:'#9ad1ff',
+    tip:'🏂 The Ski & Board Runs overlay colors real runs by difficulty — stack it in 🗺 Map Style'},
+  {id:'snowboard',   em:'🏂', name:'Snowboard',     unit:'mph', accent:'#9ad1ff',
+    tip:'🏂 The Ski & Board Runs overlay colors real runs by difficulty — stack it in 🗺 Map Style'},
+  {id:'waverunner',  em:'🌊', name:'Wave Runner',   unit:'kn',  accent:'#59c9ff'},
+  {id:'boat',        em:'🛥️', name:'Boat',          unit:'kn',  accent:'#59c9ff', pack:'fishing',
+    tip:'🎣 The Fishing Pack adds NOAA depth charts under your hull'},
+  {id:'kayak',       em:'🛶', name:'Kayak',         unit:'mph', accent:'#59c9ff', pack:'fishing',
+    tip:'🎣 The Fishing Pack adds lake depth contours under your paddle'},
+  {id:'fish',        em:'🎣', name:'Fishing',       unit:'mph', accent:'#59c9ff', pack:'fishing',
+    tip:'🎣 The Fishing Pack adds depth contours, charts & launch intel'},
+  {id:'hunt',        em:'🦌', name:'Hunting',       unit:'mph', accent:'#e0a458',
+    tip:'🦌 Hunt tools — wind, thermals & stands — live under 🦌 on the wheel'},
+  {id:'camp',        em:'🏕️', name:'Camping',       unit:'mph', accent:'#e0a458',
+    tip:'🌙 Night tools — red-light mode & darkness times — live under 🌙 on the wheel'},
+  {id:'drone',       em:'🛸', name:'Drone Op',      unit:'mph', accent:'#c792ff',
+    tip:'🚁 Flight check, airspace ceilings & launch wind live under 🚁 on the wheel'},
+  {id:'beach',       em:'🏖️', name:'Beach Day',     unit:'mph', accent:'#ffd166'},
+  {id:'explore',     em:'🧭', name:'Explore',       unit:'mph', accent:'#7fd48a'},
 ];
+const MODES = ACTIVITY_CONFIG;   /* legacy alias — same rows, richer fields */
+const KN_PER_MPH = 0.868976;     /* 1 mph in knots — display-only conversion */
+const ACTIVITY = {
+  cfgOf(m){ return ACTIVITY_CONFIG.find(a => a.id === (m && m.id)) || m || {}; },
+  unitFor(m){ return this.cfgOf(m).unit === 'kn' ? 'kn' : 'mph'; },
+  /* display value for an internal-mph speed, in this activity's unit */
+  dispSpeed(mph, m){ return this.unitFor(m) === 'kn' ? mph * KN_PER_MPH : mph; },
+  tipShown: {},                  /* once per activity per session — no nagging */
+  onStart(m){
+    const cfg = this.cfgOf(m);
+    const kn = this.unitFor(cfg) === 'kn';
+    $('st-speed-u').textContent = kn ? 'KN' : 'MPH';
+    $('st-max-u').textContent = kn ? 'Max KN' : 'Max MPH';
+    $('hudmode').style.color = cfg.accent || '';
+    if(cfg.pack && Entitlements.isUnlocked(cfg.pack)){
+      activatePack(cfg.pack);              /* unlocked → layers on, no questions */
+    } else if(cfg.tip && !this.tipShown[cfg.id]){
+      this.tipShown[cfg.id] = true;
+      setTimeout(() => toast(cfg.tip, 5200), 1600);  /* after the start toast */
+    }
+  }
+};
 MODES.forEach(m => {
   const b = document.createElement('button');
   b.className = 'modebtn';
@@ -1938,6 +1994,8 @@ MODES.forEach(m => {
   b.addEventListener('click', () => { closeSheets(); startTracking(m); });
   $('modes').appendChild(b);
 });
+/* debug/test handle for the activity engine */
+window.__sdactivity = { ACTIVITY_CONFIG, ACTIVITY, KN_PER_MPH };
 
 /* ---------- map key (legend) ---------- */
 function sw(style){ return '<span class="lg-sw" style="'+style+'"></span>'; }
@@ -2760,6 +2818,7 @@ function startTracking(mode){
   $('st-elev').textContent = '—'; $('st-gain').textContent = '0';
   map.setTrack([]);
   $('hudmode').textContent = mode.em+' '+mode.name;
+  ACTIVITY.onStart(mode);        /* Run 7 engine: units, accent, pack layers, tip */
   $('hud').style.display = 'block';
   $('startbtn').style.display = 'none';
   $('pausebtn').textContent = '⏸ Pause';
@@ -2802,7 +2861,7 @@ function onFix(p){
     trk.lastMph = mph;
     if(mph >= 0 && mph < 130){                    // ignore GPS glitch speeds
       trk.maxMph = Math.max(trk.maxMph, mph);
-      $('st-speed').textContent = mph.toFixed(1);
+      $('st-speed').textContent = ACTIVITY.dispSpeed(mph, trk.mode).toFixed(1);
     }
   }
   /* elevation & climb (from GPS altitude when the device provides it) */
@@ -2827,7 +2886,7 @@ function updateStats(){
   if(!trk) return;
   $('st-time').textContent = fmtTime(elapsedSec());
   $('st-dist').textContent = trk.distMi.toFixed(2);
-  $('st-max').textContent = trk.maxMph.toFixed(1);
+  $('st-max').textContent = ACTIVITY.dispSpeed(trk.maxMph, trk.mode).toFixed(1);
 }
 
 $('pausebtn').addEventListener('click', () => {
@@ -2850,7 +2909,7 @@ $('stopbtn').addEventListener('click', () => {
   if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
   const gainFt = Math.round(trk.gainM * 3.28084);
   $('savesummary').innerHTML = trk.mode.em+' <b>'+esc(trk.mode.name)+'</b> · '+trk.distMi.toFixed(2)
-    +' mi · '+fmtTime(trk.elapsed/1000)+' · max '+trk.maxMph.toFixed(1)+' mph'
+    +' mi · '+fmtTime(trk.elapsed/1000)+' · max '+ACTIVITY.dispSpeed(trk.maxMph, trk.mode).toFixed(1)+' '+ACTIVITY.unitFor(trk.mode)
     +(gainFt > 0 ? ' · ⛰ +'+gainFt+' ft climb' : '')+' · '+trk.points.length+' GPS points';
   $('tripname').value = trk.mode.name+' — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
   openSheet('savesheet');
