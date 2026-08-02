@@ -5,7 +5,8 @@
   "scripts": {
     "ios:setup": "npm install && npx cap add ios",
     "ios:sync": "mkdir -p www && cp index.html manifest.json sw.js icon-192.png icon-512.png apple-touch-icon.png favicon.png skydog-logo.png www/ && npx cap sync ios",
-    "ios:open": "npx cap open ios",
+    "ios:open": "npm run ios:sync && npx cap open ios",
+    "check:sync": "diff -q index.html www/index.html && diff -q index.html ios/App/App/public/index.html && diff -q index.html android/app/src/main/assets/public/index.html && echo '✅ built copies match root index.html'",
     "android:sync": "mkdir -p www && cp index.html manifest.json sw.js icon-192.png icon-512.png apple-touch-icon.png favicon.png skydog-logo.png www/ && npx cap sync android",
     "android:build": "npm run android:sync && cd android && ./gradlew bundleRelease"
   },
