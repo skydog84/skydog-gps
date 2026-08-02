@@ -455,7 +455,7 @@ async function main(){
   await page.click('#fishfab');
   T('locked: fab opens paywall, not mode', await page.evaluate('__sdfish.mode') === false
     && await page.$eval('#paysheet', (el) => el.classList.contains('open')));
-  T('one paywall: subscribe sells All Access at $2.99', (await page.$eval('#paysub', (el) => el.textContent)).includes('$2.99')
+  T('one paywall: subscribe sells All Access at $4.99', (await page.$eval('#paysub', (el) => el.textContent)).includes('$4.99')
     && !(await page.$eval('#paysub', (el) => el.getAttribute('href')))); /* old $4.99 fishing-only Stripe links retired */
   T('paywall spotlights the pack you tapped', (await page.$eval('#paytitle', (el) => el.textContent)).includes('Fishing'));
   T('free trial offered', await page.$eval('#paytrial', (el) => getComputedStyle(el).display !== 'none'));
@@ -768,10 +768,11 @@ async function main(){
   console.log('\n— 🎒 Packs system (one paywall) —');
   T('packs config: fishing + drone + orv + terrain3d + All Access bundle', await page.evaluate(
     '!!(__sdpacks.PACKS_CONFIG.packs.fishing && __sdpacks.PACKS_CONFIG.packs.drone && __sdpacks.PACKS_CONFIG.packs.orv && __sdpacks.PACKS_CONFIG.packs.terrain3d && __sdpacks.PACKS_CONFIG.bundle)'));
-  T('All Access is the ONE sellable product ($2.99/mo sub)', await page.evaluate(`(function(){
+  T('All Access is the ONE sellable product ($4.99/mo sub, $44.99/yr option)', await page.evaluate(`(function(){
     const C = __sdpacks.PACKS_CONFIG;
     const separately = Object.values(C.packs).some(p => p.sellable);
-    return !separately && C.bundle.price === '$2.99/mo' && C.bundle.product.type === 'subs'
+    return !separately && C.bundle.price === '$4.99/mo' && C.bundle.priceAnnual === '$44.99/yr'
+      && C.bundle.product.type === 'subs'
       && C.bundle.product.ios === 'com.skydog.skygps.allaccess.monthly';
   })()`));
   T('legacy fishing one-time product still honored', await page.evaluate(
@@ -780,7 +781,7 @@ async function main(){
   await page.click('#packsfab');
   T('🎒 fab opens the store sheet', await page.$eval('#packsheet', (el) => el.classList.contains('open')));
   T('store lists every pack (4 cards, config-driven)', await page.$$eval('#packlist .packcard', (e) => e.length) === 4);
-  T('one subscribe button at the bundle price', (await page.$eval('#packsub', (el) => el.textContent)).includes('$2.99'));
+  T('one subscribe button at the bundle price', (await page.$eval('#packsub', (el) => el.textContent)).includes('$4.99'));
   await page.evaluate('(function(){ document.getElementById("backdrop").click(); })()');
   T('all-access entitlement unlocks every pack (incl ORV + 3D)', await page.evaluate(`(function(){
     localStorage.setItem('sd-allaccess-iap', '1');
@@ -969,7 +970,7 @@ async function main(){
     const open = document.getElementById('aboutsheet').classList.contains('open');
     const brand = document.getElementById('aboutbrand').textContent.includes('DOG')
       && document.getElementById('aboutbrand').textContent.includes('Powered by SkyDog AI');
-    const ver = document.getElementById('aboutver').textContent.includes('v1.9');
+    const ver = document.getElementById('aboutver').textContent.includes('v2.0');
     const dog = (document.getElementById('aboutdog').src || '').startsWith('data:image/png');
     const s = document.getElementById('aboutsupport').getAttribute('href') === 'support.html';
     const p = document.getElementById('aboutprivacy').getAttribute('href') === 'privacy-policy.html';
@@ -2252,30 +2253,34 @@ async function main(){
   T('party rides the buddy room: listener on party/<code>, host=false on join', await page.evaluate(`(function(){
     return !!(window.__fbCBs && __fbCBs['party/PARTYAA2']) && __sdparty.PARTY.isHost === false;
   })()`));
-  T('party of 2 rides FREE: locked phone, small crew → the talk button is live', await page.evaluate(`(function(){
+  T('party tools ride FREE: locked phone, solo → the talk button is live', await page.evaluate(`(function(){
     __sdparty.PARTY.render();
     return !!document.getElementById('pttbtn') && !document.getElementById('partyunlock');
   })()`));
-  T('crew of 3 + locked → All Access pitch, tap opens the paywall', await page.evaluate(`(function(){
+  T('FULL CREW rides free: crew of 3 on a locked phone → talk button live, no paywall, no unlock pitch', await page.evaluate(`(function(){
     const me = __BUDDY.BUDDY.memberId, now = Date.now();
     __fbCBs['trips/PARTYAA2/members']({ val: () => ({
       [me]: { name: 'Sky', lat: 44.76, lng: -85.62, ts: now, kind: 'person', color: '#4aa3ff' },
       m2: { name: 'Dave', lat: 44.761, lng: -85.621, ts: now, kind: 'person', color: '#ff7a59', batt: 87, spd: 3.2 },
       m3: { name: 'Hank', lat: 44.762, lng: -85.622, ts: now, kind: 'person', color: '#ffd166' } }) });
     __sdparty.PARTY.render();
-    const gated = !document.getElementById('pttbtn') && !!document.getElementById('partyunlock');
-    document.getElementById('partyunlock').click();
-    const paywalled = document.getElementById('paysheet').classList.contains('open');
-    document.getElementById('backdrop').click();
-    return gated && paywalled;
+    return localStorage.getItem('sd-allaccess-iap') === '0'
+      && !!document.getElementById('pttbtn') && !document.getElementById('partyunlock')
+      && !document.getElementById('paysheet').classList.contains('open');
   })()`));
-  T('unlocked → full tools: PTT, rally, crew battery/speed, 24 h honesty copy', await page.evaluate(`(function(){
-    localStorage.setItem('sd-allaccess-iap', '1');
+  T('locked phone, full crew → PTT, rally, battery/speed, 24 h + free-for-your-crew copy', await page.evaluate(`(function(){
     __sdparty.PARTY.render();
     const w = document.getElementById('partyblock');
-    return !!document.getElementById('pttbtn') && !!document.getElementById('rallybtn')
+    return localStorage.getItem('sd-allaccess-iap') === '0'
+      && !!document.getElementById('pttbtn') && !!document.getElementById('rallybtn')
       && w.textContent.includes('87%') && w.textContent.includes('3 mph')
-      && w.textContent.includes('24 hours');
+      && w.textContent.includes('24 hours') && w.textContent.includes('Free for your whole crew');
+  })()`));
+  T('PARTY.allowed() consults NO entitlement — the gate is gone, not hidden', await page.evaluate(`(function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdpacks.PACK_STATE.allaccess._session = false;
+    const src = String(__sdparty.PARTY.allowed);
+    return __sdparty.PARTY.allowed() === true && !/Entitlements|isUnlocked|freeCrew/.test(src);
   })()`));
   T('hold-to-talk clip → uploaded to the worker, pointer rides the party node', await page.evaluate(`(async function(){
     const blob = new Blob([new Uint8Array(1200)], { type: 'audio/webm' });
@@ -2390,9 +2395,10 @@ async function main(){
     document.getElementById('layerdone').click();
     return bare;
   })()`) && (function(){ return printsCalls.filter((c) => c.u.startsWith('/prints/add')).length === 1; })());
-  T('paywall copy sells full-crew party + Solitude inside All Access', await page.evaluate(`(function(){
+  T('paywall sells Solitude + no-ads, and NEVER sells Party Mode (it is free now)', await page.evaluate(`(function(){
     const F = __sdpacks.PACKS_CONFIG.bundle.features;
-    return F.some((f) => f[1].includes('Party')) && F.some((f) => f[1].includes('Solitude'));
+    return F.some((f) => f[1].includes('Solitude')) && F.some((f) => /No ads/i.test(f[1]))
+      && !F.some((f) => /Party Mode|push-to-talk/i.test(f[1]));
   })()`));
   T('CSP gained exactly media-src blob: (clips play from local blobs only)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
@@ -2588,10 +2594,85 @@ async function main(){
       return s.includes('skydog8426@gmail.com') && /in scope/i.test(s) && !SECRET_PAT.test(s)
         && !/unhackable|impenetrable|uncrackable|hack-?proof/i.test(s); })());
 
-  console.log('\n— 📢 Ads stay for everyone —');
-  T('ADS ARE PERMANENT rule documented at the ad init', appSrc.includes('ADS ARE PERMANENT'));
-  T('no purchase copy promises ad removal', !/removes ads|ads gone|ad-free|removes the ads/i.test(appSrc));
-  T('grant path never touches the ad banner', !appSrc.slice(appSrc.indexOf('function sdGrantPack')).includes('SkyGPSAds.remove'));
+  console.log('\n— 📢 Ads pay for the free app · All Access removes them (v2.0) —');
+  T('the new rule is documented at the ad init and the old one is gone', appSrc.includes('ALL ACCESS REMOVES ADS')
+    && !appSrc.includes('ADS ARE PERMANENT'));
+  T('ad removal is a REAL entitlement check, not a copy promise', (function(){
+    const seg = appSrc.slice(appSrc.indexOf('const SkyGPSAds = {'), appSrc.indexOf('function sdGrantPack'));
+    return /adsOff\(\)\s*\{[^}]*Entitlements\.isUnlocked\('allaccess'\)/.test(seg)
+      && seg.includes('if (this.adsOff())') && /async sync\(\)/.test(seg);
+  })());
+  T('every entitlement path re-syncs the banner (purchase, restore/lapse, code redeem, trial)',
+    (appSrc.match(/sdAdsSync\(\);/g) || []).length >= 4);
+  T('the legacy one-time Fishing Pack still promises nothing about ads', (function(){
+    /* anchor inside PACKS_CONFIG — the Run 7 activity rows also carry id:'drone' */
+    const packs = appSrc.slice(appSrc.indexOf('const PACKS_CONFIG'), appSrc.indexOf('offline unlock-code checksum'));
+    const seg = packs.slice(packs.indexOf("id:'fishing'"), packs.indexOf("id:'drone'"));
+    return seg.length > 200 && !/removes? (all )?(the )?ads/i.test(seg);
+  })());
+  await page.evaluate(`(function(){
+    window.__adcalls = [];
+    if (!window.Capacitor){ window.Capacitor = {}; window.__sdFakeCap = true; }
+    window.Capacitor.Plugins = window.Capacitor.Plugins || {};
+    window.Capacitor.Plugins.AdMob = {
+      initialize: async () => { __adcalls.push('init'); },
+      requestTrackingAuthorization: async () => {},
+      addListener: () => {},
+      showBanner: async () => { __adcalls.push('show'); },
+      hideBanner: async () => { __adcalls.push('hide'); },
+      removeBanner: async () => { __adcalls.push('remove'); }
+    };
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdpacks.PACK_STATE.allaccess._session = false;
+    __sdads.SkyGPSAds.showing = false;
+    __sdads.SkyGPSAds.setInset(0);
+  })()`);
+  T('FREE user: banner attaches and reserves its space (--adh 62px)', await page.evaluate(`(async function(){
+    await __sdads.SkyGPSAds.init();
+    return __adcalls.includes('show') && __sdads.SkyGPSAds.showing === true
+      && getComputedStyle(document.documentElement).getPropertyValue('--adh').trim() === '62px';
+  })()`));
+  T('subscribes mid-session: banner pulled AND --adh back to 0px — no dead strip, no reload', await page.evaluate(`(async function(){
+    localStorage.setItem('sd-allaccess-iap', '1');
+    await __sdads.SkyGPSAds.sync();
+    return __adcalls.includes('remove') && __sdads.SkyGPSAds.showing === false
+      && getComputedStyle(document.documentElement).getPropertyValue('--adh').trim() === '0px';
+  })()`));
+  T('SUBSCRIBER at boot: init never attaches a banner at all', await page.evaluate(`(async function(){
+    window.__adcalls = [];
+    await __sdads.SkyGPSAds.init();
+    return __adcalls.length === 0 && __sdads.SkyGPSAds.showing === false
+      && getComputedStyle(document.documentElement).getPropertyValue('--adh').trim() === '0px';
+  })()`));
+  T('subscription lapses: the banner comes back (we take back what we gave)', await page.evaluate(`(async function(){
+    localStorage.setItem('sd-allaccess-iap', '0');
+    __sdpacks.PACK_STATE.allaccess._session = false;
+    window.__adcalls = [];
+    await __sdads.SkyGPSAds.sync();
+    return __adcalls.includes('show') && __sdads.SkyGPSAds.showing === true;
+  })()`));
+  T('web has no ad path at all: no native plugin → nothing attaches, --adh stays 0px', await page.evaluate(`(async function(){
+    delete window.Capacitor.Plugins.AdMob;
+    if (window.__sdFakeCap){ delete window.Capacitor; delete window.__sdFakeCap; }
+    __sdads.SkyGPSAds.showing = false;
+    __sdads.SkyGPSAds.setInset(0);
+    window.__adcalls = [];
+    await __sdads.SkyGPSAds.init();
+    return __adcalls.length === 0 && __sdads.SkyGPSAds.showing === false
+      && getComputedStyle(document.documentElement).getPropertyValue('--adh').trim() === '0px';
+  })()`));
+  T('paywall copy states the price AND the ad removal, and always says per month', await page.evaluate(`(function(){
+    __sdpacks.openPaywall('allaccess');
+    const legal = document.getElementById('paylegal').textContent;
+    const note = document.getElementById('paynote').textContent;
+    const sub = document.getElementById('paysub').textContent;
+    document.getElementById('backdrop').click();
+    return sub.includes('$4.99') && legal.includes('$4.99 per month') && legal.includes('$44.99')
+      && /removes them/.test(legal) && /removes the ads/.test(note) && !/2\\.99/.test(legal + note + sub);
+  })()`));
+  T('file contract: v2.0 pricing + free-crew rules stated in-code, zero $2.99 left in the app',
+    appSrc.includes('$4.99/mo') && appSrc.includes('PARTY MODE + PUSH-TO-TALK ARE FREE')
+    && !/\$2\.99/.test(appSrc));
 
   console.log('\n— 📲 Get-the-app banner —');
   T('web visitors see the Get-the-app banner', await page.$eval('#appbanner', (el) => el.classList.contains('on') && getComputedStyle(el).display !== 'none'));
@@ -2806,7 +2887,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v34 (Activity Engine ships fresh)', sw.includes("skydog-gps-v34") && !sw.includes("skydog-gps-v33") && !sw.includes("skydog-gps-v32"));
+  T('sw.js cache bumped to v35 ($4.99 + no-ads-for-subscribers ships fresh)', sw.includes("skydog-gps-v35") && !sw.includes("skydog-gps-v34") && !sw.includes("skydog-gps-v33"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

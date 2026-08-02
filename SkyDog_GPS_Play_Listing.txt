@@ -1,7 +1,13 @@
-SkyDog GPS — GOOGLE PLAY listing copy (v1.1 model: subscription, ads permanent)
+SkyDog GPS — GOOGLE PLAY listing copy (v2.0 model: $4.99/mo or $44.99/yr,
+All Access removes ads, Party Mode + push-to-talk free for the whole crew)
 ================================================================================
-NOTE: Nowhere in this file does any wording say or imply that a purchase removes
-ads. Ads are shown to everyone, forever. Do not reintroduce "removes ads" copy.
+NOTE (rule updated 2026-08-02 — this REPLACES the old "ads are permanent" note):
+An active SkyDog All Access subscription DOES remove the ads. This is a real
+entitlement check in index.html (SkyGPSAds.adsOff / .sync), pinned by the test
+suite — the copy below is allowed to say it because the app actually does it.
+Free users keep the banner. Never write ad-removal copy for anything other than
+All Access, and never for the legacy one-time Fishing Pack (it does not).
+Party Mode + push-to-talk are FREE for the full crew — do not sell them.
 
 APP NAME (max 30)
 SkyDog GPS
@@ -32,9 +38,11 @@ live time, miles, current speed and max speed on a clean HUD. Save the trip,
 then share a summary or export a GPX file that opens in Google Earth, OnX,
 Gaia and AllTrails.
 
-BUDDY TRIPS
+BUDDY TRIPS + PARTY MODE — FREE FOR YOUR WHOLE CREW
 Share a live trip with the people you are out with, so everyone can see where
-everyone is.
+everyone is. Hold the button to talk — walkie-style push-to-talk voice, a rally
+point everyone can see, and battery and speed for every rider. Up to 12 people,
+no subscription, no per-seat fee.
 
 WHAT'S THIS?
 Tap anything on the map — SkyDog identifies it. A Map Key explains every color
@@ -47,15 +55,18 @@ and symbol on whichever map style you are on.
   go / no-go flight check
 • ORV Trails — Michigan snowmobile and ORV network with open/closed status,
   pit stops and staging
-One low subscription unlocks every pack — and the map stays free.
+• No ads — the banner that pays for the free app is gone while you subscribe
+$4.99 per month, or $44.99 per year. One subscription unlocks every pack and
+removes the ads — and the map stays free.
 
 🏡 PROPERTY LINES (early preview)
 Flip on the Property Lines layer and tap a parcel to see boundaries, owner and
 acreage. Live in our first preview areas now — wider coverage is on the way.
 
 FREE FOREVER
-GPS tracking, all three maps, discovery, saving and GPX export stay 100% free.
-SkyDog GPS is ad-supported and ads are shown to everyone.
+GPS tracking, all three maps, discovery, saving, GPX export, Buddy Trips and
+push-to-talk stay 100% free. The free app is supported by ads; a SkyDog All
+Access subscription removes them.
 
 A SkyDog AI app. Made with love. Find your spot. 🐾
 --------------------------------------------------------------------------------
@@ -64,7 +75,8 @@ CATEGORY:            Maps & Navigation
 TAGS:                Navigation, Outdoors, Travel
 CONTENT RATING:      expect Teen (users can share live location with each other)
 PRICE:               Free
-IN-APP PRODUCTS:     SkyDog All Access — com.skydog.skygps.allaccess.monthly — $2.99/month
+IN-APP PRODUCTS:     SkyDog All Access — com.skydog.skygps.allaccess.monthly — $4.99/month
+                     SkyDog All Access — com.skydog.skygps.allaccess.annual  — $44.99/year
 CONTAINS ADS:        Yes
 PRIVACY POLICY:      https://skydoggps.com/privacy-policy.html
 TERMS:               https://skydoggps.com/terms.html

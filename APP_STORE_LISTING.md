@@ -1,7 +1,10 @@
 > ⚠️ **SUPERSEDED — DO NOT PASTE.** This file is the original **v1.0** listing copy.
-> It contains claims that are **no longer true in v1.1** (the Fishing Pack does NOT
-> remove ads — ads stay for everyone; the current product is the $2.99/mo SkyDog
-> All Access auto-renewing subscription). The v1.1 listing source of truth is
+> It contains claims that are **no longer true** (the legacy one-time Fishing Pack
+> does NOT remove ads). ⚠️ **Current model, updated 2026-08-02:** the product is
+> **SkyDog All Access — $4.99 per month or $44.99 per year**, and an *active All
+> Access subscription* removes the ads (a real entitlement check in
+> `SkyGPSAds.adsOff()`, pinned by the suite). Party Mode + push-to-talk are FREE
+> for the whole crew. The v1.1 listing source of truth is
 > `SkyDog_GPS_v1.1_Paste_Text.txt`. Kept for history only.
 >
 > **Privacy label correction (use for v1.2 submission):** Location (Precise) →
@@ -101,7 +104,10 @@ All "None" → lands at **4+**. "Does this app contain third-party advertising?"
 - **Type:** Non-Consumable
 - **Price:** $4.99 (Tier 5)
 - **Display Name:** Fishing Pack
-- **Description:** `Lake depth contours, launch intel & local rules — forever. Also removes all ads.`
+- **Description:** `Lake depth contours, launch intel & local rules — forever.`
+- ⚠️ Historical. This legacy one-time product does **not** remove ads; only an
+  active All Access subscription does. Do not restore the old "removes all ads"
+  line on this product.
 
 ## URLs
 
@@ -130,7 +136,13 @@ All "None" → lands at **4+**. "Does this app contain third-party advertising?"
 SkyDog GPS is a fully client-side maps/tracking app. No account or login is
 required anywhere in the app. Location is used only on-device (when-in-use)
 to show the user on the map and record their trip; it is never uploaded.
-The single in-app purchase (com.skydog.skygps.fishingpack, non-consumable)
-unlocks the Fishing Pack features and permanently removes ads. Restore
-Purchases is available on the same purchase sheet.
+The product on sale is SkyDog All Access, an auto-renewing subscription
+(com.skydog.skygps.allaccess.monthly, $4.99/month; annual option
+com.skydog.skygps.allaccess.annual, $44.99/year). It unlocks every feature
+pack and removes the AdMob banner for as long as it is active; if it lapses,
+the banner returns. The legacy one-time Fishing Pack
+(com.skydog.skygps.fishingpack, non-consumable) is still honored on restore
+for early buyers, unlocks Fishing Pack features only, and does not affect ads.
+Party Mode and push-to-talk are free for all users. Restore Purchases is
+available on the same purchase sheet.
 ```

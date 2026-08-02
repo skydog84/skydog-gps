@@ -636,17 +636,17 @@
     <button class="btn gray" id="paytrial">🎁 Try it free today</button>
   </div>
   <div class="lg-note" id="paynote"></div>
-  <div class="lg-note" id="paylegal" style="margin-top:8px">SkyDog All Access is a monthly auto-renewing subscription: $2.99/month (or your local App Store price) until cancelled. Cancel anytime — iPhone: Settings → your name → Subscriptions. Ads stay the same for everyone; subscribing adds features. <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a> · <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
+  <div class="lg-note" id="paylegal" style="margin-top:8px">SkyDog All Access is an auto-renewing subscription: $4.99 per month, or $44.99 per year (or your local App Store price), until cancelled. Cancel anytime — iPhone: Settings → your name → Subscriptions. The free app is paid for by ads; All Access removes them and unlocks every pack. <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a> · <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a></div>
 </div>
 
 <div class="sheet" id="packsheet">
   <div class="grabber"></div>
   <h3>🎒 SkyDog All Access</h3>
-  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery &amp; buddy trips are <b>free</b> — and we plan to keep them that way. One cheap subscription unlocks every pack included in All Access — today that’s Fishing, Drone, ORV Trails &amp; 3D Terrain, plus new packs we add to it.</div>
+  <div class="lg-note" style="margin:0 0 12px">The map, GPS tracking, discovery, buddy trips &amp; push-to-talk are <b>free</b> — and we plan to keep them that way. One subscription unlocks every pack included in All Access and removes the ads — today that’s Fishing, Drone, ORV Trails &amp; 3D Terrain, plus new packs we add to it.</div>
   <div id="packlist"></div>
   <button class="btn green" id="packsub" style="width:100%;margin-top:4px">🔓 Unlock everything</button>
   <button class="btn gray" id="packrestore" style="width:100%;margin-top:8px;display:none">↻ Restore Purchases</button>
-  <div class="lg-note">Ads support the free app and stay for everyone — subscribing adds features, it never changes the ads.</div>
+  <div class="lg-note">Ads pay for the free app. All Access removes them and unlocks every pack.</div>
   <div class="lg-note" style="text-align:center;letter-spacing:.8px;text-transform:uppercase">🐾 SkyDog GPS — Powered by SkyDog AI</div>
 </div>
 
@@ -1708,7 +1708,7 @@ $('searchbtn').addEventListener('click', doSearch);
 $('searchbox').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
 
 /* ---------- 🐾 about sheet (small dog icon in the search bar) ---------- */
-const SD_VERSION = '1.9';
+const SD_VERSION = '2.0';
 $('brandbtn').addEventListener('click', () => {
   if(!$('aboutdog').src) $('aboutdog').src = document.querySelector('#brandbtn .dog').src;
   $('aboutver').textContent = 'SkyDog GPS v' + SD_VERSION + ' — your adventure tracker.';
@@ -2319,15 +2319,22 @@ buildFishChips();
    paying repeatedly across separate apps — and every pack below runs on
    free public data, so serving a subscriber costs the owner ~nothing.
 
-   PRICING MODEL (owner decision 2026-07-21): ONE paywall. "All Access"
-   at $2.99/mo unlocks every pack, current and future. Packs are still
-   defined individually below so the store can list what's included and
-   so any pack COULD be sold separately later (sellable:true + its own
-   product id) — the system never assumes bundle-only OR subscription-
-   only; a pack's product.type may be 'subs' or a one-time 'inapp'.
+   PRICING MODEL (owner decision 2026-08-02, replaces the 2026-07-21
+   launch price): ONE paywall. "All Access" at $4.99/mo — or $44.99/yr
+   — unlocks every pack, current and future. Packs are still defined
+   individually below so the store can list what's included and so any
+   pack COULD be sold separately later (sellable:true + its own product
+   id) — the system never assumes bundle-only OR subscription-only; a
+   pack's product.type may be 'subs' or a one-time 'inapp'.
 
-   ADS ARE PERMANENT: the banner shows for every user, free or paid.
-   Packs add features. No product here may remove or reduce the ads.
+   ALL ACCESS REMOVES ADS (owner decision 2026-08-02, reverses the old
+   "ads are permanent" rule). Free users keep the banner — it pays for
+   the map. The removal is a REAL entitlement check in SkyGPSAds, not a
+   copy promise; see SkyGPSAds.adsOff() / .sync(). Never write ad-removal
+   copy that the gate does not actually deliver.
+
+   PARTY MODE + PUSH-TO-TALK ARE FREE for the whole crew — growth
+   engine, not revenue. See PARTY.allowed().
 
    ADDING A PACK = (1) add a definition below, (2) ship a feature module
    gated by Entitlements.isUnlocked('<id>') and register its "switch on"
@@ -2419,17 +2426,20 @@ const PACKS_CONFIG = {
       ['🎁','<b>Everything unlocked</b> — fishing, drone &amp; every future pack, automatically'],
       ['🦌','<b>Wind &amp; thermals per stand</b> — huntable-wind windows &amp; modeled thermal calls (they charge $30–100/yr for less)'],
       ['📸','<b>Trail Cam Hub</b> — every cam brand emails photos to one private address, auto-tagged on your map (no per-camera fees)'],
-      ['📻','<b>Full-crew Party Mode</b> — up to 12 on one map with push-to-talk voice, rally point &amp; battery/speed readouts (party of 2 is free)'],
+      ['🚫','<b>No ads</b> — the banner that pays for the free app disappears the moment you subscribe'],
       ['👣','<b>Solitude Mode + full-res Footprints</b> — the community heat layer inverted, so untouched country stands out'],
       ['🆓','<b>The map stays free</b> — this only adds the specialist extras on top']
     ],
-    price:'$2.99/mo', priceNote:'subscription',
+    price:'$4.99/mo', priceAnnual:'$44.99/yr', priceNote:'subscription',
     product:{ ios:'com.skydog.skygps.allaccess.monthly', type:'subs' },
     storeKey:'sd-allaccess',
     web:{ codePrefix:'SKY', signedOnly:true,   /* Fort SkyDog B2: SKY codes must carry an Ed25519 signature — the public checksum is forgeable and is retired for anything that costs money */
-      /* ↓ paste the NEW $2.99/mo Stripe payment link here when created —
-         the old fishing-only links charged $4.99 and are retired */
-      stripeUrl:null, stripeUrlAnnual:null, annualLabel:null },
+      /* ↓ paste the NEW Stripe payment links here when created:
+         stripeUrl = $4.99 PER MONTH · stripeUrlAnnual = $44.99 per year.
+         ⚠️ The retired one-time Fishing Pack link was also $4.99 — never
+         reuse it; the numbers now match and a buyer must never think a
+         one-time purchase became a recurring charge. Say "per month". */
+      stripeUrl:null, stripeUrlAnnual:null, annualLabel:'⭐ Year pass — $44.99/yr (save 25%)' },
     trial:true,
     unlockToast:'🎒 All Access unlocked — everything is yours!'
   }
@@ -2578,8 +2588,8 @@ function openPaywall(packId){
   $('paycode').style.display = ''; $('payunlock').style.display = '';
   $('paytrial').style.display = (bundle.trial && !PACK_STATE.allaccess.trialUsed()) ? '' : 'none';
   $('paynote').textContent = bundle.web.stripeUrl
-    ? 'Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page & receipt. Auto-renews monthly until you cancel (from your Stripe receipt, or email us). GPS tracking, maps & discovery stay free.'
-    : 'One cheap subscription in the SkyDog GPS iOS app unlocks everything. Have an unlock code? Enter it below. GPS tracking, maps & discovery stay free.';
+    ? 'Subscribing opens secure Stripe checkout in a new tab — your unlock code is on the confirmation page & receipt. Auto-renews until you cancel (from your Stripe receipt, or email us). Removes the ads in the phone app. GPS tracking, maps, buddy trips & push-to-talk stay free.'
+    : 'One subscription in the SkyDog GPS iOS app unlocks every pack and removes the ads. Have an unlock code? Enter it below. GPS tracking, maps, buddy trips & push-to-talk stay free.';
   openSheet('paysheet');
 }
 function activatePack(id){ const fn = PACK_ACTIVATE[id]; if(fn) fn(); }
@@ -2607,6 +2617,7 @@ $('payunlock').addEventListener('click', async () => {
     if(granted === 'allaccess' || granted === currentPay) activatePack(currentPay === 'allaccess' ? granted : currentPay);
     else activatePack(granted);
     toast(packDef(granted).unlockToast, 3600);
+    sdAdsSync();   /* a redeemed All Access code pulls the banner too */
   } else {
     toast('⚠️ That code didn’t check out — check for typos and paste the whole thing', 3600);
   }
@@ -2616,6 +2627,7 @@ $('paytrial').addEventListener('click', () => {
   closeSheets();
   activatePack(currentPay === 'allaccess' ? 'fishing' : currentPay);
   toast('🎁 Free taste of everything — enjoy today on the house!', 3600);
+  sdAdsSync();   /* the trial is a real All Access entitlement — ads off too */
 });
 
 /* ---- 🎒 store sheet: what's included + the one subscribe button ---- */
@@ -6999,7 +7011,7 @@ window.__sdhunt = { HUNT, RECOVERY, HUNT_CFG, RECOVERY_CFG, HUNT_DIRS, huntSecto
    built (Open-Meteo past_days=7 history; solunar is pure math for any
    date). Trail Cam Hub rides All Access (owner: one tier, everything).
    Kill switch: CAMS_CFG.enabled. Quotas mirror the worker: 400 photos,
-   60 days — cost discipline for a $2.99 sub, stated honestly in-sheet.
+   60 days — cost discipline for a $4.99 sub, stated honestly in-sheet.
    ===================================================================== */
 const CAMS_CFG = {
   enabled: true,                 /* kill switch: 📸 wheel stop + sheets        */
@@ -7366,14 +7378,19 @@ window.__sdcams = { CAMS, CAMS_CFG, CAM_BRANDS, camsFilterPhotos, camsCondsAt, c
    anything more. Render: 👣 Footprints dots, or 🤫 SOLITUDE MODE — the
    same data inverted (dark = pressured, clear = untouched), the
    hunter's screenshot feature nobody in the US ships.
-   💰 Gate (owner decision #6, locked): coarse dots free, full-res +
-   Solitude ride All Access.
+   💰 Gate (owner decision 2026-08-02): Party Mode + push-to-talk are FREE
+   for the whole crew — they are a growth engine, not a revenue feature.
+   Footprints: coarse dots free, full-res + Solitude ride All Access.
    Kill switches: PARTY_CFG.enabled / PRINTS_CFG.enabled.
    ===================================================================== */
 const PARTY_CFG = {
   enabled: true,
   api: 'https://skydog-api.skydog8426.workers.dev',
-  freeCrew: 2,                 /* party of 2 free — bigger crews ride All Access */
+  freeCrew: 12,                /* = maxCrew. Party Mode + push-to-talk are FREE for
+                                  the WHOLE crew (owner decision 2026-08-02, replaces
+                                  the old party-of-2 gate). Kept as a named field so
+                                  older references still resolve; PARTY.allowed() no
+                                  longer consults entitlements at all.            */
   maxCrew: 12,                 /* honest cap, stated in-sheet                    */
   clipMaxSec: 15,              /* hold-to-talk hard stop                         */
   clipMaxBytes: 1024 * 1024,   /* mirrors the worker cap                         */
@@ -7437,8 +7454,13 @@ const PARTY = {
   beepOn(){ return sdStore.get('sd-pttbeep') !== '0'; },
 
   crewCount(){ return Object.keys(BUDDY.members || {}).length || 1; },
-  /* the owner-locked gate: 2 ride free, a real crew rides All Access */
-  allowed(){ return this.crewCount() <= PARTY_CFG.freeCrew || Entitlements.isUnlocked('allaccess'); },
+  /* PARTY MODE IS FREE FOR THE FULL CREW (owner decision 2026-08-02).
+     Push-to-talk is a growth engine, not a revenue feature — every extra
+     rider on the map is another install, and no consumer PTT product on
+     earth monetizes the talk button. Deliberately NO entitlement check
+     here; the only thing that can switch party tools off is the kill
+     switch. If a future gate is ever wanted, it goes in this one place. */
+  allowed(){ return PARTY_CFG.enabled; },
 
   telemetry(p){
     if(!PARTY_CFG.enabled) return {};
@@ -7513,7 +7535,7 @@ const PARTY = {
   },
   async recStart(){
     if(!this.code) return;
-    if(!this.allowed()){ openPaywall('allaccess'); return; }
+    if(!this.allowed()) return;        /* kill switch only — never a paywall */
     if(!this.canRecord()){ toast('😕 This phone can\'t record voice — you can still hear your crew'); return; }
     if(this._rec) return;
     try{ this._stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
@@ -7613,7 +7635,7 @@ const PARTY = {
 
   /* ---- 📍 rally point ---- */
   rallyPlace(){
-    if(!this.allowed()){ openPaywall('allaccess'); return; }
+    if(!this.allowed()) return;        /* kill switch only — never a paywall */
     this._rallyPlacing = true; closeSheets();
     toast('👆 Tap the map — everyone gets the rally point', 3600);
   },
@@ -7667,7 +7689,6 @@ const PARTY = {
     const w = $('partyblock');
     if(!w) return;
     if(!PARTY_CFG.enabled || !this.code){ w.innerHTML = ''; return; }
-    const unlocked = this.allowed();
     const rows = Object.entries(BUDDY.members || {})
       .filter(([id]) => id !== BUDDY.memberId).map(([id, m]) => {
         const bits = [];
@@ -7681,22 +7702,20 @@ const PARTY = {
           + (this.isHost ? '<button data-kick="' + id + '" aria-label="Remove from party">✕</button>' : '')
           + '</div>';
       }).join('');
+    /* no locked branch: party tools are free for the whole crew */
     w.innerHTML = '<h3 style="margin:14px 0 6px">📻 Party tools</h3>'
-      + (unlocked
-        ? '<button id="pttbtn" class="btn green" style="width:100%;padding:16px 12px;font-size:16px;touch-action:none">🎙 Hold to talk</button>'
-          + (this.pending ? '<button id="pttplaypend" class="btn blue" style="width:100%;margin-top:8px">🔊 Play ' + this.pending + ' waiting clip' + (this.pending > 1 ? 's' : '') + '</button>' : '')
-          + (this.outbox.length ? '<div class="lg-note">📡 ' + this.outbox.length + ' clip' + (this.outbox.length > 1 ? 's' : '') + ' queued for signal</div>' : '')
-          + '<div class="btnrow" style="margin-top:8px">'
-          + '<button id="rallybtn" class="btn blue">🚩 Rally point</button>'
-          + (this.rally ? '<button id="rallyclear" class="btn gray">Clear rally</button>' : '')
-          + '</div>'
-          + (this.rally && BUDDY.myPos ? '<div class="lg-note">🚩 Rally: ' + buddyDistTxt(BUDDY.myPos, this.rally) + ' from you</div>' : '')
-          + rows
-          + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:8px;cursor:pointer">'
-          + '<input type="checkbox" id="pttbeep"' + (this.beepOn() ? ' checked' : '') + '> 📢 Roger beep before clips</label>'
-          + '<div class="lg-note">Voice is walkie-style clips (up to ' + PARTY_CFG.clipMaxSec + 's), not a live call — clips vanish after 24 hours. Crews cap at ' + PARTY_CFG.maxCrew + '. Mixed iPhone/Android crews: a clip may not play across systems yet.</div>'
-        : '<button id="partyunlock" class="worldrow" style="border-color:#2f7d43">🔓 <b>Crew of ' + this.crewCount() + ' — party tools ride All Access</b><span class="wstate">$2.99</span></button>'
-          + '<div class="lg-note">Party of 2 talks free. Bigger crews — push-to-talk voice, rally point, battery &amp; speed for everyone — ride All Access.</div>');
+      + '<button id="pttbtn" class="btn green" style="width:100%;padding:16px 12px;font-size:16px;touch-action:none">🎙 Hold to talk</button>'
+      + (this.pending ? '<button id="pttplaypend" class="btn blue" style="width:100%;margin-top:8px">🔊 Play ' + this.pending + ' waiting clip' + (this.pending > 1 ? 's' : '') + '</button>' : '')
+      + (this.outbox.length ? '<div class="lg-note">📡 ' + this.outbox.length + ' clip' + (this.outbox.length > 1 ? 's' : '') + ' queued for signal</div>' : '')
+      + '<div class="btnrow" style="margin-top:8px">'
+      + '<button id="rallybtn" class="btn blue">🚩 Rally point</button>'
+      + (this.rally ? '<button id="rallyclear" class="btn gray">Clear rally</button>' : '')
+      + '</div>'
+      + (this.rally && BUDDY.myPos ? '<div class="lg-note">🚩 Rally: ' + buddyDistTxt(BUDDY.myPos, this.rally) + ' from you</div>' : '')
+      + rows
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:8px;cursor:pointer">'
+      + '<input type="checkbox" id="pttbeep"' + (this.beepOn() ? ' checked' : '') + '> 📢 Roger beep before clips</label>'
+      + '<div class="lg-note">Free for your whole crew — no subscription. Voice is walkie-style clips (up to ' + PARTY_CFG.clipMaxSec + 's), not a live call — clips vanish after 24 hours. Crews cap at ' + PARTY_CFG.maxCrew + '. Mixed iPhone/Android crews: a clip may not play across systems yet.</div>';
     const ptt = $('pttbtn');
     if(ptt){
       ptt.addEventListener('pointerdown', e => { e.preventDefault(); this.recStart(); });
@@ -7708,7 +7727,6 @@ const PARTY = {
     const rb = $('rallybtn'); if(rb) rb.addEventListener('click', () => this.rallyPlace());
     const rc = $('rallyclear'); if(rc) rc.addEventListener('click', () => this.rallyClear());
     const bp = $('pttbeep'); if(bp) bp.addEventListener('change', e => sdStore.set('sd-pttbeep', e.target.checked ? '1' : '0'));
-    const pu = $('partyunlock'); if(pu) pu.addEventListener('click', () => openPaywall('allaccess'));
     w.querySelectorAll('[data-mute]').forEach(b => b.addEventListener('click', () => this.muteToggle(b.dataset.mute)));
     w.querySelectorAll('[data-kick]').forEach(b => b.addEventListener('click', () => {
       if(this.ref) this.ref.child('kick/' + b.dataset.kick).set(Date.now()).catch(()=>{});
@@ -8151,12 +8169,18 @@ function sdNativeStore(){
 const SkyGPSAds = {
   showing: false,
   setInset(px){ document.documentElement.style.setProperty('--adh', (px|0) + 'px'); },
+  /* ALL ACCESS REMOVES ADS (owner decision 2026-08-02 — this replaces the
+     old "ads are permanent" rule). The gate below is the real mechanism,
+     not marketing: the banner is never attached while the All Access
+     entitlement is live, and sdAdsSync() re-checks it on every purchase,
+     restore, code redeem, trial and lapse. The copy is allowed to promise
+     ad removal ONLY because this check exists — build it, prove it in the
+     suite, then say it. Free users keep the banner; it pays for the map. */
+  adsOff(){ try{ return Entitlements.isUnlocked('allaccess'); }catch(e){ return false; } },
   async init(){
     const AdMob = sdNativeAdMob();
     if (!AdMob){ console.log('[SkyGPSAds] Browser mode — native ads not attached.'); return; }
-    /* ADS ARE PERMANENT — the banner shows for every user, free or paid.
-       No purchase may hide it, so there is deliberately NO entitlement
-       check here and no purchase path calls remove(). */
+    if (this.adsOff()){ this.setInset(0); console.log('[SkyGPSAds] All Access — no banner.'); return; }
     try{
       await AdMob.initialize({ initializeForTesting: ADMOB_TESTING });
       try{ await AdMob.requestTrackingAuthorization(); }catch(e){}
@@ -8178,20 +8202,33 @@ const SkyGPSAds = {
     const AdMob = sdNativeAdMob();
     if (AdMob){ try{ await AdMob.hideBanner(); }catch(e){} try{ await AdMob.removeBanner(); }catch(e){} }
     this.showing = false;
+  },
+  /* ONE entry point for every entitlement transition: subscribe mid-session,
+     Restore Purchases, redeem an unlock code, start a trial, or a lapsed
+     subscription re-locking. Zeroing --adh matters as much as pulling the
+     banner — leave the inset at 62 and a paying subscriber stares at a dead
+     strip of nothing where the ad used to be. */
+  async sync(){
+    if (this.adsOff()) return this.remove();
+    if (!this.showing) return this.init();
   }
 };
+/* safe to call from anywhere, including before the native layer exists */
+function sdAdsSync(){ try{ return SkyGPSAds.sync(); }catch(e){} }
+window.__sdads = { SkyGPSAds, sdAdsSync, ADMOB_IDS };
 
 /* ---- 📦 App Store purchases for the pack system (StoreKit) --------------
    Sellable today: the All Access subscription only. The legacy one-time
    Fishing Pack product (v1.0 submission) is still recognized on restore
-   so early buyers keep what they paid for. Purchases NEVER touch ads. */
+   so early buyers keep what they paid for. An All Access purchase also
+   pulls the ad banner — see SkyGPSAds.sync() above. */
 function sdGrantPack(id, msg){
   PACK_STATE[id].grantIap();
   closeSheets();
   if(id === 'allaccess') activatePack(currentPay !== 'allaccess' ? currentPay : 'fishing');
   else activatePack(id);
   toast(msg || packDef(id).unlockToast, 3600);
-  /* ads intentionally untouched — the banner stays for everyone, always */
+  sdAdsSync();   /* All Access → banner goes now, no reload, inset back to 0 */
 }
 
 const SkyGPSStore = {
@@ -8212,6 +8249,7 @@ const SkyGPSStore = {
       }
       /* one-time (non-consumable) purchases are never revoked */
     });
+    sdAdsSync();   /* restore → ads off; a lapsed subscription → ads back */
   },
   async init(){
     const Store = sdNativeStore();
@@ -8279,7 +8317,7 @@ if (SD_NATIVE){
     $('paysubyr').style.display = 'none';
     $('paycode').style.display = 'none';
     $('payunlock').style.display = 'none';
-    $('paynote').textContent = 'SkyDog All Access: $2.99/month (or your local price), auto-renews monthly until cancelled — cancel anytime in Settings \u2192 your name \u2192 Subscriptions. Unlocks every pack included in All Access. GPS tracking, maps & discovery stay free.';
+    $('paynote').textContent = 'SkyDog All Access: $4.99 per month (or your local price), auto-renews monthly until cancelled — cancel anytime in Settings \u2192 your name \u2192 Subscriptions. Unlocks every pack included in All Access and removes the ads. GPS tracking, maps, buddy trips & push-to-talk stay free.';
     $('paytrial').style.display = 'none';   /* Apple 3.1.2: no DIY trials on the native paywall — use a StoreKit intro offer instead */
     if (!$('payrestore')){
       const r = document.createElement('button');

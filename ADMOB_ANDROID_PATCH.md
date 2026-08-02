@@ -64,10 +64,18 @@ const ADMOB_IDS = ADMOB_IDS_BY_PLATFORM[SD_PLATFORM] || ADMOB_IDS_BY_PLATFORM.io
 Leave `const ADMOB_TESTING = false;` exactly as it is on the next line.
 Nothing else in `SkyGPSAds` changes — it already reads `ADMOB_IDS.banner`.
 
+**✅ The entitlement gate is ALREADY BUILT (v2.0, 2026-08-02).** `SkyGPSAds.init()`
+returns early when `adsOff()` is true, and `SkyGPSAds.sync()` (called from
+`sdGrantPack`, `_syncOwned`, the code-redeem handler and the trial handler) pulls
+the banner and zeroes `--adh` the moment All Access turns on. Android inherits all
+of it for free — this patch only swaps the ad **ids**, so there is nothing extra to
+wire. Do NOT add a second gate; one is enough and two will fight.
+
 **Guards this must not trip:**
 - `localStorage` must still appear EXACTLY 2× in index.html (this patch adds none).
 - No CDN or `script src` added (this patch adds none).
-- No copy anywhere may suggest a purchase removes ads (this patch adds no copy).
+- Ad-removal copy is now allowed **only** for an active All Access subscription —
+  never for the legacy one-time Fishing Pack (this patch adds no copy either way).
 
 ---
 
@@ -97,12 +105,12 @@ any sync, because Capacitor has been known to rewrite the manifest on plugin cha
 
 ---
 
-## 3. sw.js — bump the cache version (now v34 → v35 after Run 7)
+## 3. sw.js — bump the cache version (now v35 → v36 after the v2.0 pricing run)
 
 index.html changed, so the service worker version MUST move in the same commit.
 
-    line 3:  const CACHE = 'skydog-gps-v34';
-      →      const CACHE = 'skydog-gps-v35';
+    line 3:  const CACHE = 'skydog-gps-v35';
+      →      const CACHE = 'skydog-gps-v36';
 
 ---
 
