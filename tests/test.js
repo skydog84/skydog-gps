@@ -2887,7 +2887,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v35 ($4.99 + no-ads-for-subscribers ships fresh)', sw.includes("skydog-gps-v35") && !sw.includes("skydog-gps-v34") && !sw.includes("skydog-gps-v33"));
+  T('sw.js cache bumped to v36 (ad-gate race fix ships fresh)', sw.includes("skydog-gps-v36") && !sw.includes("skydog-gps-v35") && !sw.includes("skydog-gps-v34"));
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

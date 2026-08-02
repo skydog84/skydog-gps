@@ -8177,10 +8177,19 @@ const SkyGPSAds = {
      ad removal ONLY because this check exists — build it, prove it in the
      suite, then say it. Free users keep the banner; it pays for the map. */
   adsOff(){ try{ return Entitlements.isUnlocked('allaccess'); }catch(e){ return false; } },
+  /* _attaching guards a REAL cold-start race: SkyGPSStore.init() runs
+     _syncOwned() → sdAdsSync() → init() WITHOUT awaiting it, and then
+     boot does SkyGPSStore.init().then(() => SkyGPSAds.init()). Both land
+     before the first showBanner() resolves and sets showing=true, so a
+     free user fired TWO banner requests per launch — duplicate AdMob
+     traffic, which is a policy problem, not just a cosmetic one. */
+  _attaching:false,
   async init(){
     const AdMob = sdNativeAdMob();
     if (!AdMob){ console.log('[SkyGPSAds] Browser mode — native ads not attached.'); return; }
     if (this.adsOff()){ this.setInset(0); console.log('[SkyGPSAds] All Access — no banner.'); return; }
+    if (this._attaching || this.showing) return;
+    this._attaching = true;
     try{
       await AdMob.initialize({ initializeForTesting: ADMOB_TESTING });
       try{ await AdMob.requestTrackingAuthorization(); }catch(e){}
@@ -8193,9 +8202,17 @@ const SkyGPSAds = {
       await AdMob.showBanner({ adId: ADMOB_IDS.banner, adSize: 'ADAPTIVE_BANNER',
         position: 'BOTTOM_CENTER', isTesting: ADMOB_TESTING });
       this.showing = true;
-      this.setInset(62);            /* fallback inset until the size event lands */
+      /* only guess a height if bannerAdSizeChanged hasn't already told us the
+         real one — otherwise a measured 50px banner gets stomped back to 62
+         and the subscriber-facing math is off by a dead 12px strip. */
+      const cur = parseInt(getComputedStyle(document.documentElement)
+                    .getPropertyValue('--adh'), 10) || 0;
+      if (!cur) this.setInset(62);   /* fallback inset until the size event lands */
       console.log('[SkyGPSAds] banner up (' + (ADMOB_TESTING ? 'TEST' : 'LIVE') + ').');
+      /* an entitlement can flip mid-attach; re-check once we own `showing` */
+      if (this.adsOff()) return this.remove();
     }catch(e){ console.log('[SkyGPSAds] init failed:', e); }
+    finally{ this._attaching = false; }
   },
   async remove(){
     this.setInset(0);

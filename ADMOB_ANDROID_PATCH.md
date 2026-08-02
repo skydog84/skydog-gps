@@ -105,12 +105,12 @@ any sync, because Capacitor has been known to rewrite the manifest on plugin cha
 
 ---
 
-## 3. sw.js — bump the cache version (now v35 → v36 after the v2.0 pricing run)
+## 3. sw.js — bump the cache version (now v36 → v37 after the ad-gate race fix)
 
 index.html changed, so the service worker version MUST move in the same commit.
 
-    line 3:  const CACHE = 'skydog-gps-v35';
-      →      const CACHE = 'skydog-gps-v36';
+    line 3:  const CACHE = 'skydog-gps-v36';
+      →      const CACHE = 'skydog-gps-v37';
 
 ---
 
