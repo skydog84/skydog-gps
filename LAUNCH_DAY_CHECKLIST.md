@@ -67,16 +67,40 @@ next binary that can actually sell it is ready to submit.
 
 ---
 
-## PARALLEL TRACK — Apple (independent of everything above)
+## 🚨 HARD GATE BEFORE ANY v2.0 SUBMISSION (Apple or Play)
 
-- Raise `com.skydog.skygps.allaccess.monthly` $2.99 → **$4.99**, and choose
-  **preserve existing subscribers' price**. Price changes do NOT require a
-  new binary or a new review.
-- Free trial: **30 days if offered, never under 14.** Each customer gets ONE
-  introductory offer per subscription group, ever — this setting is the one
-  that can't be redone.
-- Check whether v1.1 is still "Waiting for Review" before touching the
-  submission; price edits are independent of the binary.
+The App Store Connect **subscription review notes still say**:
+> "SkyDog All Access is a $2.99/month auto-renewable subscription … **Ads are
+> shown to all users and no purchase removes ads.**"
+
+That is CORRECT for v1.1 (the binary in review right now) and **FALSE for v2.0**.
+Left unchanged it is a direct contradiction of the app's own paywall copy and a
+likely rejection. Do NOT edit it while v1.1 is in review — it accurately
+describes that build. The moment v1.1 gets its verdict, rewrite it to:
+$4.99/month, 30-day free trial, All Access removes ads (real entitlement gate),
+Party Mode + Push-to-Talk free for the full crew, 3D Terrain included.
+Also refresh the subscription **description**, which still reads "Unlocks the
+Fishing, Drone & ORV Trail packs" — no 3D, no ad removal.
+
+---
+
+## PARALLEL TRACK — Apple  ✅ DONE 2026-08-02
+
+- ✅ **Price raised $2.99 → $4.99** (US). Recalculated across all 175 regions:
+  Canada $6.99 CAD, Europe €5.99. **US proceeds $2.54 → $4.24.**
+  No grandfathering was needed — the sub has never been approved, so there
+  were zero existing subscribers.
+- ✅ **Free trial created: "Free for the first month"**, Aug 2 2026 → No End
+  Date, all 175 regions. (Apple's picker offers 3 Days / 1 Week / 2 Weeks /
+  1 Month / 2 Months / 3 Months / 6 Months / 1 Year — "1 Month" is the 30 days.)
+- ✅ Verified v1.1 build 2 AND the subscription both still read **Waiting for
+  Review** afterward — neither edit disturbed the queue.
+- ⚠️ **NOT created: the $44.99/yr annual IAP.** Deliberate — see the READ FIRST
+  section. The app has no code path to sell it, and the product ID is
+  permanent once created. Create it only alongside a binary that can sell it.
+- 🔧 Gotcha for next time: the duration picker is a real `<select
+  name="offerDuration">` but React ignores synthetic clicks. Use the native
+  value setter + dispatch `input` and `change`, both bubbling.
 - ⚠️ Legacy one-time Fishing Pack was ALSO $4.99. Every price string must say
   "per month" or "per year" so nobody thinks a one-time purchase went recurring.
 - ASC text fields reject emoji; React dropdowns ignore form_input — use the
