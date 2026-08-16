@@ -2950,7 +2950,15 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v37 (3D horizon ships fresh)', sw.includes("skydog-gps-v37") && !sw.includes("skydog-gps-v36") && !sw.includes("skydog-gps-v35"));
+  T('sw.js cache bumped to v38 (website showcase ships fresh)', sw.includes("skydog-gps-v38") && !sw.includes("skydog-gps-v37") && !sw.includes("skydog-gps-v36"));
+  T('features.html showcase: exists, one true price story, no Property Lines', (function(){
+    const f = path.join(APP_DIR, 'features.html');
+    if (!fs.existsSync(f)) return false;
+    const src = fs.readFileSync(f, 'utf8');
+    return src.includes('$4.99') && src.includes('$44.99') && !src.includes('2.99')
+      && !/property\s*lines/i.test(src) && !/regrid/i.test(src)
+      && src.includes('testers.html') && src.includes('OpenStreetMap');
+  })());
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');

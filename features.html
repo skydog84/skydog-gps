@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SkyDog GPS v2.1 — Every Feature</title>
+<meta name="description" content="Everything SkyDog GPS does: SOS safety tools, live radar, Party Mode with push-to-talk, 3D terrain, trip replay and more. Free core, no account. All Access adds Hunt Intelligence, Trail Cam Hub, Drone and ORV Trails for $4.99/mo.">
+<meta name="theme-color" content="#0b0f14">
+<meta property="og:type" content="website">
+<meta property="og:title" content="SkyDog GPS v2.1 — Every Feature">
+<meta property="og:description" content="SOS safety, live radar, Party Mode with push-to-talk, 3D terrain, trip replay and more. Free core, no account. All Access adds Hunt Intelligence, Trail Cam Hub, Drone and ORV Trails.">
+<meta property="og:url" content="https://skydoggps.com/features.html">
+<meta property="og:image" content="https://skydoggps.com/skydog-logo.png">
+<link rel="canonical" href="https://skydoggps.com/features.html">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111823; --panel2:#0e141d; --line:#1f2c3d;
+    --text:#e8f0f8; --dim:#8fa3b8; --accent:#35e08a; --accent2:#25b56d;
+    --blue:#4aa3ff; --warn:#ffb03a;
+    --shadow:0 8px 30px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:17px;line-height:1.55;
+  }
+  a{color:var(--accent)}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding:64px 0 56px;
+    background:linear-gradient(180deg,#0e141d 0%,#0b0f14 78%);
+    border-bottom:1px solid var(--line);
+  }
+  .hero-inner{display:flex;align-items:center;gap:40px}
+  .hero-copy{flex:1 1 auto;min-width:0}
+  .hero img.logo{width:150px;height:auto;flex:0 0 auto;filter:drop-shadow(0 6px 24px rgba(53,224,138,.18))}
+  .hero h1{font-size:clamp(34px,6vw,52px);line-height:1.08;font-weight:800;letter-spacing:-.5px;margin:0 0 6px}
+  .hero h1 .v{color:var(--accent)}
+  .kicker{font-size:13px;letter-spacing:2.5px;color:var(--dim);text-transform:uppercase;font-weight:700;margin:0 0 14px}
+  .hero p.lede{font-size:clamp(18px,2.6vw,21px);color:var(--dim);margin:0 0 26px;max-width:34em}
+  .hero p.lede b{color:var(--text)}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{
+    display:inline-block;text-decoration:none;text-align:center;
+    font-size:18px;font-weight:800;border-radius:14px;padding:15px 26px;
+    transition:transform .15s ease;
+  }
+  .btn:active{transform:scale(.97)}
+  .btn.go{background:var(--accent);color:#04140b}
+  .btn.ghost{border:2px solid var(--line);color:var(--text)}
+  .btn.ghost:hover{border-color:var(--blue)}
+
+  /* ---------- sections ---------- */
+  section{padding:56px 0}
+  h2{font-size:clamp(26px,4vw,34px);font-weight:800;letter-spacing:-.3px;margin:0 0 8px}
+  .sub{color:var(--dim);margin:0 0 30px;max-width:44em}
+  .sub b{color:var(--text)}
+
+  /* free grid: first card wide, rest 2-up */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:20px 22px;
+  }
+  .card.wide{grid-column:1 / -1;background:var(--panel2)}
+  .card .ico{font-size:26px;line-height:1;display:block;margin-bottom:10px}
+  .card h3{font-size:18px;font-weight:800;margin:0 0 6px}
+  .card p{margin:0;color:var(--dim);font-size:15.5px;line-height:1.5}
+  .card p b{color:var(--text);font-weight:600}
+
+  /* all access: distinct treatment — left border rail, blue label */
+  .aa{border-top:1px solid var(--line)}
+  .aa-tag{
+    display:inline-block;border:1.5px solid var(--blue);color:var(--blue);
+    border-radius:999px;font-size:12px;font-weight:800;letter-spacing:1.5px;
+    padding:4px 12px;text-transform:uppercase;margin-bottom:14px;
+  }
+  .aa-list{display:grid;grid-template-columns:1fr;gap:0;border-top:1px solid var(--line)}
+  .aa-row{
+    display:flex;gap:18px;align-items:flex-start;
+    padding:20px 4px;border-bottom:1px solid var(--line);
+  }
+  .aa-row .ico{font-size:26px;line-height:1.2;flex:0 0 34px;text-align:center}
+  .aa-row h3{font-size:18px;font-weight:800;margin:0 0 4px}
+  .aa-row p{margin:0;color:var(--dim);font-size:15.5px}
+
+  /* pricing strip */
+  .price{background:var(--panel2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .price-inner{display:flex;gap:14px;align-items:stretch;flex-wrap:wrap}
+  .price-box{
+    flex:1 1 280px;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:24px;
+  }
+  .price-box.free{border-color:var(--accent2)}
+  .price-box h3{margin:0 0 4px;font-size:16px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800}
+  .price-box.free h3{color:var(--accent)}
+  .price-box.paid h3{color:var(--blue)}
+  .big{font-size:34px;font-weight:800;letter-spacing:-.5px;margin:6px 0 2px}
+  .big small{font-size:16px;color:var(--dim);font-weight:600}
+  .price-box p{margin:8px 0 0;color:var(--dim);font-size:15px}
+  .price-box p b{color:var(--text)}
+
+  /* install steps */
+  ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;max-width:560px}
+  ol.steps li{
+    counter-increment:s;position:relative;
+    padding:0 0 20px 56px;font-size:17px;
+  }
+  ol.steps li::before{
+    content:counter(s);position:absolute;left:0;top:-3px;
+    width:38px;height:38px;border-radius:50%;
+    border:2px solid var(--accent);color:var(--accent);
+    font-weight:800;font-size:18px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  ol.steps small{display:block;color:var(--dim);font-size:15px;margin-top:2px}
+  .store-note{
+    margin-top:8px;max-width:560px;
+    border:1px solid var(--line);border-left:4px solid var(--warn);
+    border-radius:12px;padding:14px 18px;color:var(--dim);font-size:15.5px;
+  }
+  .store-note b{color:var(--warn)}
+  .store-note a{color:var(--accent);font-weight:700}
+
+  footer{
+    border-top:1px solid var(--line);padding:34px 0 48px;
+    color:#5c6f83;font-size:14px;text-align:center;line-height:2;
+  }
+  footer a{color:#8fa3b8;text-decoration:none;margin:0 10px}
+  footer a:hover{color:var(--text)}
+  .attrib{font-size:12px;margin-top:6px}
+
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *{transition:none!important}
+  }
+
+  @media (max-width:760px){
+    .hero{padding:44px 0 40px}
+    .hero-inner{flex-direction:column-reverse;text-align:left;gap:20px}
+    .hero img.logo{width:104px}
+    .grid{grid-template-columns:1fr}
+    section{padding:44px 0}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div class="hero-copy">
+      <p class="kicker">Powered by SkyDog AI</p>
+      <h1>SkyDog GPS <span class="v">v2.1</span></h1>
+      <p class="lede">Topo, satellite and 3D maps with <b>live radar, SOS tools and a crew map with push-to-talk</b>. No account. Your tracks stay on your phone.</p>
+      <div class="cta-row">
+        <a class="btn go" href="/">▶ Open the App</a>
+        <a class="btn ghost" href="/testers.html">Become a Tester</a>
+      </div>
+    </div>
+    <img class="logo" src="skydog-logo.png" alt="SkyDog AI logo" width="150" height="150">
+  </div>
+</header>
+
+<section id="free">
+  <div class="wrap">
+    <h2>Free forever</h2>
+    <p class="sub">The core of SkyDog GPS costs nothing and never asks for an account. It is paid for by ads, which <b>All Access</b> removes.</p>
+
+    <div class="grid">
+      <div class="card wide">
+        <span class="ico">🆘</span>
+        <h3>Safety &amp; Night Ops</h3>
+        <p>An emergency screen with your <b>MGRS/USNG grid coordinates for 911</b> and a one-tap rescuer link. An overdue timer that auto-emails your contact if you don't check back in. Plus 🌙 red-light night mode, a darkness timeline, aurora forecast and a 🐟 solunar activity meter.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🌎</span>
+        <h3>World Data</h3>
+        <p>Live weather radar, NWS alerts including marine, USGS river gauges and active wildfire perimeters, right on your map.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🎉</span>
+        <h3>Party Mode</h3>
+        <p>A live map of your whole crew with <b>push-to-talk voice clips</b>, plus Footprints and Solitude views. Free for everyone, no subscription.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🌄</span>
+        <h3>3D Terrain</h3>
+        <p>Full 3D flyover of any landscape with a real horizon and aerial perspective. Spin, tilt and fly the country you're about to hunt or ride.</p>
+      </div>
+      <div class="card">
+        <span class="ico">📓</span>
+        <h3>Trip Log + Replay</h3>
+        <p>Every adventure saved on your phone and replayed on the map, track by track.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🏃</span>
+        <h3>Activity Engine</h3>
+        <p>19 activities from hiking to wave runners. Knots on the water, and the map auto-loads the right layers for what you're doing.</p>
+      </div>
+      <div class="card">
+        <span class="ico">📍</span>
+        <h3>My Spots &amp; Buddy Trips</h3>
+        <p>Private pins that never leave your phone, and 👥 room-code live location sharing that's consent-first. Share only when you choose.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🗺️</span>
+        <h3>The classics</h3>
+        <p>Three map styles (Streets, Topo, Satellite), one-tap discovery of trails, beaches and launches, GPX share, Map Key, and "What's this?" for any spot on the map.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="aa" id="all-access">
+  <div class="wrap">
+    <span class="aa-tag">All Access</span>
+    <h2>The serious-outdoors packs</h2>
+    <p class="sub">One subscription unlocks every pack and removes the ads. <b>$4.99/mo or $44.99/yr.</b></p>
+
+    <div class="aa-list">
+      <div class="aa-row">
+        <span class="ico">🦌</span>
+        <div><h3>Hunt Intelligence</h3>
+        <p>Wind and thermal direction for every stand you've marked, plus Recovery Mode for after the shot.</p></div>
+      </div>
+      <div class="aa-row">
+        <span class="ico">📷</span>
+        <div><h3>Trail Cam Hub</h3>
+        <p>A private email address ingests your cam photos into a timeline with triage tags, cross-referenced against conditions.</p></div>
+      </div>
+      <div class="aa-row">
+        <span class="ico">🚁</span>
+        <div><h3>Drone</h3>
+        <p>FAA airspace grid over the map and a wind/temp HUD with a simple go/no-go light.</p></div>
+      </div>
+      <div class="aa-row">
+        <span class="ico">🛞</span>
+        <div><h3>ORV Trails</h3>
+        <p>Michigan's full DNR snowmobile, ORV and motorcycle network, with closures.</p></div>
+      </div>
+      <div class="aa-row">
+        <span class="ico">🎣</span>
+        <div><h3>Fishing</h3>
+        <p>Real DNR lake depth contours, NOAA charts, depth-at-tap, launch and parking intel, local rules and records.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="price" id="pricing">
+  <div class="wrap">
+    <h2>Simple pricing</h2>
+    <p class="sub">Prices match the app and the App Store. Cancel anytime.</p>
+    <div class="price-inner">
+      <div class="price-box free">
+        <h3>Free</h3>
+        <div class="big">$0 <small>forever</small></div>
+        <p>Maps, GPS tracking, discovery, safety tools, 3D terrain, trip log, <b>Party Mode for your whole crew</b> and more. Ad-supported.</p>
+      </div>
+      <div class="price-box paid">
+        <h3>All Access</h3>
+        <div class="big">$4.99<small>/mo</small> · $44.99<small>/yr</small></div>
+        <p><b>Removes the ads</b> and unlocks every pack: Hunt Intelligence, Trail Cam Hub, Drone, ORV Trails and Fishing, plus every pack added later.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Put it on your phone</h2>
+    <p class="sub">SkyDog GPS installs straight from the web. No store required.</p>
+    <ol class="steps">
+      <li>Open <b>skydoggps.com</b> in Safari (iPhone) or Chrome (Android).</li>
+      <li>Tap <b>Share → Add to Home Screen</b>.</li>
+      <li>It installs with the SkyDog logo and runs full-screen like a real app.
+        <small>Your GPS tracks stay on the phone. No account, no sign-up.</small></li>
+    </ol>
+    <div class="store-note">
+      <b>Coming to the App Store and Google Play.</b> Testers get it first: <a href="/testers.html">become a tester</a> and help us over the line.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a href="/">Open the App</a><a href="support.html">Support</a><a href="privacy-policy.html">Privacy</a><a href="terms.html">Terms</a>
+    <br>© 2026 SKYDOG AI
+    <div class="attrib">Map data © OpenStreetMap contributors · topo tiles © OpenTopoMap · satellite imagery © Esri</div>
+  </div>
+</footer>
+
+</body>
+</html>
