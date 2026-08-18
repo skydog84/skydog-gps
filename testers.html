@@ -152,10 +152,16 @@
     </div>
   </section>
 
-  <!-- ============ INSTALL MODE (auto-shows once OPT_IN_URL is set) ============ -->
+  <!-- ============ INSTALL (shows once OPT_IN_URL is set) ============
+       This is a CLOSED test: the link only works for people whose Gmail I've
+       already added in Play Console. So the sign-up form stays visible for
+       newcomers, and this section sits below it as step 2. Anyone I've mailed
+       the link to arrives at testers.html#install and skips straight here. -->
   <section id="install" style="display:none">
-    <h1>You're on the list. Here's the app.</h1>
+    <h1 id="installHead">You're on the list. Here's the app.</h1>
     <p class="lede">Do this on your <b>Android phone</b>, signed in with the Gmail you gave me.</p>
+    <p class="btn-note" id="installGate" style="display:none">
+      Only works once I've added your Gmail. Haven't signed up yet? Use the button above first.</p>
 
     <a class="btn" id="optInBtn" href="#">Open the tester link</a>
     <p class="btn-note">Then tap "Become a tester," then install from Google Play.</p>
@@ -220,11 +226,13 @@
 
   /* ------------------------------------------------------------------
      ONE SETTING.
-     Leave OPT_IN_URL empty  -> page shows the sign-up form button.
-     Paste the Play Console closed-test opt-in URL between the quotes
-     -> page automatically flips to install instructions.
+     Empty            -> sign-up form only.
+     Opt-in URL set   -> form stays (still recruiting) AND the install
+                         section appears underneath as step 2.
+     testers.html#install -> install only, for people I've already added
+                         and emailed the link to.
      ------------------------------------------------------------------ */
-  var OPT_IN_URL = "";
+  var OPT_IN_URL = "https://play.google.com/apps/testing/com.skydog.skygps";
 
   /* Where sign-ups go. Google Form: name + Gmail. */
   var SIGNUP_URL = "https://docs.google.com/forms/d/e/1FAIpQLScx_uRqNA2LVuLYv077gn4MxjMyEjZiKNQQvXqJh9wMBexlhA/viewform";
@@ -234,14 +242,25 @@
   var joinBtn = document.getElementById("joinBtn");
   var optBtn  = document.getElementById("optInBtn");
 
+  var head = document.getElementById("installHead");
+  var gate = document.getElementById("installGate");
+  /* arrived from my "you're added" email? then skip the form */
+  var straightToInstall = /install/i.test(location.hash);
+
+  joinBtn.setAttribute("href", SIGNUP_URL);
+  joinBtn.setAttribute("rel", "noopener");
+
   if (OPT_IN_URL) {
-    signup.style.display  = "none";
-    install.style.display = "";
     optBtn.setAttribute("href", OPT_IN_URL);
     optBtn.setAttribute("rel", "noopener");
-  } else {
-    joinBtn.setAttribute("href", SIGNUP_URL);
-    joinBtn.setAttribute("rel", "noopener");
+    install.style.display = "";
+    if (straightToInstall) {
+      signup.style.display = "none";
+    } else {
+      /* both on screen: the form is the front door, install is step 2 */
+      head.textContent = "Already gave me your Gmail?";
+      gate.style.display = "";
+    }
   }
 })();
 </script>

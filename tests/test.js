@@ -2990,6 +2990,16 @@ async function main(){
       && !/property\s*lines/i.test(src) && !/regrid/i.test(src)
       && src.includes('testers.html') && src.includes('OpenStreetMap');
   })());
+  T('testers.html: live opt-in URL, form still recruiting, #install shortcut', (function(){
+    const src = fs.readFileSync(path.join(APP_DIR, 'testers.html'), 'utf8');
+    const optIn = /var OPT_IN_URL = "([^"]*)"/.exec(src);
+    return !!optIn && optIn[1] === 'https://play.google.com/apps/testing/com.skydog.skygps'
+      /* closed test: the sign-up form must survive the opt-in URL going live,
+         or nobody new can ever join and the 12-tester count never grows */
+      && !/signup\.style\.display\s*=\s*"none";\s*\n\s*install\.style\.display/.test(src)
+      && src.includes('straightToInstall')
+      && src.includes('docs.google.com/forms/');
+  })());
   T('buddy system points at the ce24a database (locked rules, no expiry)', (function(){
     const src = fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8');
     return src.includes('skydog-gps-ce24a-default-rtdb.firebaseio.com') && !src.includes('https://skydog-gps-default-rtdb');
