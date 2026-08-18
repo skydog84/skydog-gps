@@ -1584,6 +1584,8 @@ function buildLayerSheet(){
   const oc = $('ovchips');
   oc.innerHTML = '';
   Object.entries(OVERLAYS).forEach(([key, def]) => {
+    /* an overlay can hide itself (dead credentials, expired trial) — no chip at all */
+    if(typeof def.hidden === 'function' && def.hidden()) return;
     const c = document.createElement('button');
     c.className = 'chip' + (map.overlays.has(key) ? ' active' : '');
     c.textContent = def.name;
@@ -4315,7 +4317,17 @@ const REGRID = {
        DELETE the token line, and the grep test below enforces the swap. */
   token: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJyZWdyaWQuY29tIiwiaWF0IjoxNzg0OTUxNzc4LCJleHAiOjE3ODc1NDM3NzgsInUiOjg0ODAzMCwiZyI6MjMxNTMsImNhcCI6InBhOnRzOnBzOmJmOm1hOnR5OmVvOnpvOnNiIn0.WQCvjXYfG8btr2StlWaLG4ne6FUwrAn7GRn2QkX2DLE',   // Regrid sandbox token (expires 2026-08-23)
   proxy: '',            // Phase B Worker base URL — set when the paid Regrid plan activates
+  /* Sandbox trial death date (unix seconds) — matches the token's own "exp" claim.
+     Past it, Regrid returns 401s, so the whole feature hides itself rather than
+     showing a chip that does nothing. Set to 0 to disable the expiry check
+     (do that when the paid proxy is live, or in tests). */
+  expires: 1787543778,  // 2026-08-23
   active(){ return !!(REGRID.proxy || REGRID.token); },
+  expired(){ return !REGRID.proxy && REGRID.expires > 0 && (Date.now()/1000) >= REGRID.expires; },
+  /* active() = credentials exist.  available() = credentials exist AND still work.
+     UI gates on available(); url()/point() stay on active() so the plumbing
+     is testable independent of the calendar. */
+  available(){ return REGRID.active() && !REGRID.expired(); },
   tileMinZ: 13,         // zoom where boundary lines switch on (13 ≈ neighborhood)
   trialNote: true,      // sandbox trial = demo counties only; set false when the nationwide plan is active
   tiles: (z,x,y) => REGRID.proxy
@@ -4330,7 +4342,15 @@ const REGRID = {
 
 OVERLAYS.parcels = { name:'🏡 Property Lines', alpha:0.9, maxTile:19,
   attrib:'Parcel data © Regrid',
+  /* Trial over / no credentials → the chip never renders. A dead button that
+     toasts an apology reads as "app is broken"; an absent button reads as
+     nothing at all. Flip REGRID.proxy on (or expires:0) and it returns. */
+  hidden(){ return !REGRID.available(); },
   url:(z,x,y)=> (!REGRID.active() || z < REGRID.tileMinZ) ? BLANK_TILE : REGRID.tiles(z,x,y) };
+
+/* Someone who had the layer switched on before the trial died would otherwise
+   keep a dead overlay in their active set — drop it on load. */
+if(!REGRID.available() && typeof map !== 'undefined' && map.overlays) map.overlays.delete('parcels');
 
 OVERLAY_LEGENDS.parcels = [
   ['<div class="lg-h">🏡 Property Lines (county parcel records via Regrid)</div>'],
@@ -4400,7 +4420,7 @@ function parcelZoomNudge(){        /* layer on but too far out — say so instea
 const _parcelPrevTap = map.onTap;
 map.onTap = ll => {
   if(_parcelPrevTap && _parcelPrevTap(ll)) return true;
-  if(map.overlays.has('parcels') && REGRID.active()){
+  if(map.overlays.has('parcels') && REGRID.available()){
     if(map.zoom >= REGRID.tileMinZ){ parcelLookup(ll.lat, ll.lng); return true; }
     parcelZoomNudge();
   }

@@ -1320,6 +1320,10 @@ async function main(){
 
   console.log('\n— 🏡 Property Lines (Regrid parcels) —');
   T('parcels handle exposed', await page.evaluate('!!window.__sdparcels && typeof __sdparcels.parcelLookup === "function"'));
+  /* pin the trial clock off for the plumbing tests below so they don't start
+     failing on the day the sandbox token expires — expiry gets its own tests */
+  await page.evaluate('window.__regridSaved = { token: __sdparcels.REGRID.token, expires: __sdparcels.REGRID.expires }');
+  await page.evaluate('__sdparcels.REGRID.expires = 0');
   T('no token → tiles stay blank', await page.evaluate(`(function(){
       const saved = __sdparcels.REGRID.token;
       __sdparcels.REGRID.token = '';
@@ -1371,7 +1375,34 @@ async function main(){
       [[[-85.3,44.3],[-85.2,44.3],[-85.2,44.4],[-85.3,44.3]]]
     ] }).length`) === 2);
   T('regrid attribution when active', await page.evaluate('(function(){ updateAttrib(); return document.getElementById("attrib").textContent; })()').then(t => t.includes('Regrid')));
-  await page.evaluate('__sdmap.overlays.delete("parcels"); __sdparcels.REGRID.token = ""; updateAttrib(); __sdmap.clearGroup("parcel");');
+
+  /* --- trial expiry: the whole feature hides itself rather than dying loudly --- */
+  const chipShown = `(function(){ buildLayerSheet(); return [...document.querySelectorAll('#ovchips .chip')]
+      .some(c => c.textContent.includes('Property Lines')); })()`;
+  T('trial live → Property Lines chip renders', await page.evaluate(chipShown) === true);
+  await page.evaluate('__sdparcels.REGRID.expires = Math.floor(Date.now()/1000) - 1');
+  T('trial expired → expired() true, available() false', await page.evaluate(
+    '__sdparcels.REGRID.expired() === true && __sdparcels.REGRID.available() === false'));
+  T('trial expired → chip disappears', await page.evaluate(chipShown) === false);
+  const hitsBeforeExpiry = regridHits;
+  T('trial expired → tap not hijacked, no lookup fired', await page.evaluate(
+    '(function(){ __sdmap.overlays.add("parcels"); __sdmap.zoom = 16; return __sdmap.onTap({lat:44.76, lng:-85.62}); })()') === false
+    && regridHits === hitsBeforeExpiry);
+  T('paid proxy overrides expiry → chip returns', await page.evaluate(`(function(){
+      __sdparcels.REGRID.proxy = 'https://api.skydoggps.com';
+      const back = __sdparcels.REGRID.available() === true;
+      __sdparcels.REGRID.proxy = '';
+      return back;
+    })()`));
+  await page.evaluate('__sdparcels.REGRID.expires = 0');
+  T('expires 0 → expiry check disabled', await page.evaluate('__sdparcels.REGRID.expired() === false'));
+
+  /* hand the app back exactly as we found it — the chip's visibility now depends
+     on these values, and later suites count the chips in #ovchips */
+  await page.evaluate(`__sdmap.overlays.delete("parcels");
+    __sdparcels.REGRID.token = window.__regridSaved.token;
+    __sdparcels.REGRID.expires = window.__regridSaved.expires;
+    updateAttrib(); __sdmap.clearGroup("parcel");`);
 
 
   console.log('\n— 🆘 Run 1: USNG/MGRS + astronomy (pure, deterministic) —');
@@ -2950,7 +2981,7 @@ async function main(){
   T('window error → fatal banner shows', await page.$eval('#fatal', (el) => getComputedStyle(el).display !== 'none' && el.textContent.includes('test-explosion')));
   await page.evaluate('(function(){ document.getElementById("fatal").click(); })()');
   const sw = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
-  T('sw.js cache bumped to v38 (website showcase ships fresh)', sw.includes("skydog-gps-v38") && !sw.includes("skydog-gps-v37") && !sw.includes("skydog-gps-v36"));
+  T('sw.js cache bumped to v39 (Regrid trial sunset ships fresh)', sw.includes("skydog-gps-v39") && !sw.includes("skydog-gps-v38") && !sw.includes("skydog-gps-v37"));
   T('features.html showcase: exists, one true price story, no Property Lines', (function(){
     const f = path.join(APP_DIR, 'features.html');
     if (!fs.existsSync(f)) return false;
