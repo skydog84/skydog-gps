@@ -1043,6 +1043,14 @@ async function main(){
   console.log('\n— 🏔 Trail network: fetch, cache & zoom gate —');
   await page.evaluate('__sdmap.setView(44.76, -85.58, 12)');
   await page.evaluate('__sdorv.refreshOrv()');
+  /* trailSource.load() returns false immediately when a fetch is already in
+     flight (the _busy guard), so awaiting refreshOrv does NOT guarantee the
+     trails are in. Whichever load is actually running has to finish first —
+     wait for it to settle rather than reading the Map on the next tick.
+     Without this the next six assertions fail at random. Swallow the timeout
+     so a genuine regression shows up as a normal red test below, not a throw. */
+  await page.waitForFunction('!__sdorv.trails._busy && __sdorv.trails.trails.size === 6',
+    null, { timeout: 8000 }).catch(() => {});
   T('DNR trails cached across all 5 layers (6 features)', await page.evaluate('__sdorv.trails.trails.size') === 6);
   T('snowmobile trail parsed: name + open', await page.evaluate(`(function(){
     const t = [...__sdorv.trails.trails.values()].find((x) => x.name === 'Blue Bear Trail');
